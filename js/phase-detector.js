@@ -206,8 +206,8 @@ class PhaseDetector {
         if (phases.followThrough.start <= phases.contact.start) return false;
         
         // Check minimum durations
-        if (phases.durations.acceleration < 3) return false; // Too short
-        if (phases.durations.followThrough < 5) return false; // Too short
+        if (phases.durations.acceleration < 2) return false; // Too short
+        if (phases.durations.followThrough < 3) return false; // Too short
         
         return true;
     }

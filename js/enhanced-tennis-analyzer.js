@@ -199,17 +199,18 @@ class EnhancedTennisAnalyzer {
     }
 
     // Check if we have enough history
-    if (this.poseHistory.length < 30) {
+    if (this.poseHistory.length < 20) {
       return null;
     }
 
     // Detect peak in velocity (indicates potential contact point)
-    const recentVelocities = this.poseHistory.slice(-30).map(p => p.velocity.magnitude);
+    const windowSize = Math.min(30, this.poseHistory.length);
+    const recentVelocities = this.poseHistory.slice(-windowSize).map(p => p.velocity.magnitude);
     const maxVelocity = Math.max(...recentVelocities);
     const peakIndex = recentVelocities.indexOf(maxVelocity);
 
-    // Basic velocity threshold check
-    if (maxVelocity < 0.025 || peakIndex <= 8 || peakIndex >= 25) {
+    // Basic velocity threshold check (lowered for phone camera angles)
+    if (maxVelocity < 0.015 || peakIndex <= 5 || peakIndex >= windowSize - 5) {
       return null;
     }
 
@@ -224,7 +225,7 @@ class EnhancedTennisAnalyzer {
     }
 
     this.lastStrokeTime = now;
-    return this.buildStrokeData(30 - peakIndex); // Index from end of history
+    return this.buildStrokeData(windowSize - peakIndex); // Index from end of history
   }
 
   /**
@@ -252,8 +253,8 @@ class EnhancedTennisAnalyzer {
 
       // Check minimum phase durations for a real stroke
       const minDurations = {
-        acceleration: 3,   // At least 3 frames of acceleration
-        followThrough: 5   // At least 5 frames of follow-through
+        acceleration: 2,   // At least 2 frames of acceleration
+        followThrough: 3   // At least 3 frames of follow-through
       };
 
       if (phases.durations.acceleration < minDurations.acceleration) {
@@ -271,7 +272,7 @@ class EnhancedTennisAnalyzer {
         const endRotation = Math.abs(loadingData[loadingData.length - 1]?.rotation || 0);
         const rotationGain = endRotation - startRotation;
 
-        if (rotationGain < 3) {
+        if (rotationGain < 1.5) {
           return { isValid: false, reason: 'insufficient_loading_rotation' };
         }
       }

@@ -19,15 +19,15 @@ class GPTVoiceCoach {
     this.audioElement.autoplay = true;
 
     try {
+      const coachInstructions = this.getCoachingInstructions();
       const sessionConfig = {
         session: {
           type: "realtime",
           model: "gpt-4o-realtime-preview-2024-12-17",
-          audio: {
-            output: {
-              voice: 'alloy'
-            }
-          }
+          instructions: coachInstructions,
+          modalities: ["text", "audio"],
+          voice: "alloy",
+          turn_detection: { type: "server_vad" }
         }
       };
 
@@ -55,13 +55,13 @@ class GPTVoiceCoach {
       this.sessionStartTime = Date.now();
       console.log('GPT Voice Coach connected via WebRTC');
 
-      // Use player profile for personalized welcome
-      let welcomeMessage = "Hey! I'm your elite tennis coach. Let's work on your technique today.";
+      // Start player profile session if available
       if (typeof playerProfile !== 'undefined') {
-        welcomeMessage = playerProfile.generateWelcomeMessage();
         playerProfile.startSession();
       }
-      this.speak(welcomeMessage);
+
+      // Prompt GPT to greet in character as the tennis coach
+      this.sendCoachGreeting();
       
     } catch (error) {
       console.error('Connection failed:', error);
@@ -99,53 +99,78 @@ PLAYER CONTEXT:
       }
     }
 
-    return `You are an expert tennis coach with 20 years of experience coaching players from beginners to pros.
+    return `You are ACE, an expert AI tennis coach with deep biomechanical knowledge. You are coaching a player in real time on a tennis court via their phone camera.
 ${profileContext}
-Your coaching style:
-- Direct, actionable feedback like a real courtside coach
-- Encouraging but honest about areas to improve
-- Use tennis terminology naturally (topspin, unit turn, contact point, kinetic chain, etc.)
-- Keep responses under 15 seconds when speaking
-- Reference specific metrics provided (percentiles, skill levels, pro comparisons)
-- When faults are detected, address the highest-priority fault first
-- Give ONE actionable cue per stroke - don't overwhelm
-- Celebrate measurable improvements
-- For returning players, reference their history ("last time we worked on..." or "you've been improving your...")
-- When a player fixes a known weakness, celebrate it explicitly
+YOUR IDENTITY:
+- You are their personal tennis coach, not a generic AI assistant
+- You speak naturally like a real courtside coach - confident, direct, warm
+- You remember what you've worked on together (use the player context above)
+- If the player tells you what they want to focus on, prioritize that for the session
 
-ADAPTIVE COACHING:
+COACHING STYLE:
+- Use sandwich coaching: acknowledge a strength, give the correction, encourage
+- Give ONE actionable cue per stroke - never overwhelm
+- Keep responses under 15 seconds
+- Use tennis terminology naturally (topspin, unit turn, contact point, kinetic chain)
+- Celebrate measurable improvements explicitly
+- For returning players, reference history ("last time we worked on..." or "your backhand is getting stronger")
+
+ADAPTIVE BEHAVIOR:
 - If player is fatigued (quality declining), be MORE encouraging and suggest simpler cues
 - If player is on a hot streak, push them to maintain intensity
+- If the player asks you a question or tells you what to focus on, respond conversationally and adjust your coaching
 - Reference the session goal when relevant
-- Celebrate when they fix previously identified weaknesses
 
-When analyzing a stroke, focus on:
-1. What they did well (always start positive)
-2. The ONE most important fault to fix (if detected)
-3. A simple, memorable cue to address it
-4. Motivation based on their skill level and percentile
+STROKE ANALYSIS:
+When you receive stroke data, respond with:
+1. What they did well (start positive, reference a specific strength)
+2. The ONE most important correction (highest-priority fault)
+3. A simple, memorable cue they can use on the next stroke
 
-You receive comprehensive data including:
-- Quality scores (0-100) with breakdown by phase
-- Biomechanical analysis with detected faults and fixes
-- Sequence analysis (preparation, loading, acceleration, contact, follow-through)
-- Kinetic chain quality score
-- Skill level (beginner/intermediate/advanced/professional)
-- Percentile ranking (how they compare to other players)
-- Professional comparison ratios
-- Player history and cross-session context
-- Fatigue indicators
+DATA YOU RECEIVE:
+- Quality scores (0-100) with phase breakdown
+- Biomechanical faults with priority (10 = foundation, 7-9 = power, 4-6 = refinement)
+- Kinetic chain quality, sequence analysis, player strengths
+- Skill level, percentile ranking, professional comparison
+- Player history, fatigue indicators, shot outcomes
 
-IMPORTANT: When biomechanical faults are detected, they are prioritized by importance:
-- Priority 10 = Foundation issues (must fix first)
-- Priority 7-9 = Power issues
-- Priority 4-6 = Refinement issues
-
-Address the highest-priority detected fault. Use the specific "fix" cue provided.
-
-Use this context to provide personalized, progressive coaching. Reference their journey toward elite standards.`;
+IMPORTANT: Always stay in character as their tennis coach. Never break character or discuss being an AI.`;
   }
   
+  sendCoachGreeting() {
+    if (!this.isConnected || this.dataChannel.readyState !== 'open') return;
+
+    // Build context for greeting
+    let greetingPrompt = 'Session starting now. Greet the player as their tennis coach (2-3 sentences). Be warm but professional. Ask what they want to work on today.';
+
+    if (typeof playerProfile !== 'undefined') {
+      const ctx = playerProfile.getCoachingContext();
+      if (ctx.isReturningPlayer) {
+        greetingPrompt = `Returning player session starting. They've done ${ctx.sessionsPlayed} sessions.`;
+        if (ctx.daysSinceLastSession) {
+          greetingPrompt += ` Last session was ${ctx.daysSinceLastSession} day(s) ago.`;
+        }
+        if (ctx.primaryWeaknesses?.length > 0) {
+          greetingPrompt += ` Previously worked on: ${ctx.primaryWeaknesses.map(w => w.name).join(', ')}.`;
+        }
+        if (ctx.improvingAreas?.length > 0) {
+          greetingPrompt += ` Improving: ${ctx.improvingAreas.join(', ')}.`;
+        }
+        greetingPrompt += '\n\nGreet them warmly, reference what you worked on last time, and ask what they want to focus on today. Keep it to 2-3 sentences.';
+      }
+    }
+
+    this.dataChannel.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text: greetingPrompt }]
+      }
+    }));
+    this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+  }
+
   async connectWebRTC(ephemeralKey) {
     return new Promise(async (resolve, reject) => {
       try {
