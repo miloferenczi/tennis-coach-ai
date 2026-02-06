@@ -1,0 +1,112 @@
+{
+  "sport": "tennis",
+  "displayName": "Tennis",
+  "icon": "🎾",
+  "description": "AI-powered tennis stroke analysis",
+
+  "movements": {
+    "Forehand": {
+      "displayName": "Forehand",
+      "category": "groundstroke",
+      "detection": {
+        "rotationSign": "positive",
+        "rotationThreshold": 15,
+        "minVelocity": 2.75
+      }
+    },
+    "Backhand": {
+      "displayName": "Backhand",
+      "category": "groundstroke",
+      "detection": {
+        "rotationSign": "negative",
+        "rotationThreshold": 15,
+        "minVelocity": 2.75
+      }
+    },
+    "Serve": {
+      "displayName": "Serve",
+      "category": "serve",
+      "detection": {
+        "verticalThreshold": 0.25,
+        "minVelocity": 0.04
+      }
+    },
+    "Volley": {
+      "displayName": "Volley",
+      "category": "net",
+      "detection": {
+        "verticalThreshold": 0.1,
+        "maxVelocity": 0.045,
+        "minVelocity": 2.75
+      }
+    },
+    "Overhead": {
+      "displayName": "Overhead",
+      "category": "overhead",
+      "detection": {
+        "verticalThreshold": 0.2,
+        "minVelocity": 0.03
+      }
+    }
+  },
+
+  "phases": {
+    "groundstroke": ["preparation", "backswing", "acceleration", "contact", "follow_through"],
+    "serve": ["preparation", "backswing", "trophy", "acceleration", "contact", "follow_through"],
+    "net": ["split_step", "preparation", "contact", "follow_through"]
+  },
+
+  "detectionThresholds": {
+    "minVelocity": 2.75,
+    "minAcceleration": 108.5,
+    "rotationThreshold": 15
+  },
+
+  "qualityWeights": {
+    "velocity": 0.35,
+    "acceleration": 0.25,
+    "rotation": 0.20,
+    "smoothness": 0.20
+  },
+
+  "keyBodyPoints": {
+    "primary": ["right_wrist", "left_wrist", "right_elbow", "left_elbow"],
+    "secondary": ["right_shoulder", "left_shoulder", "right_hip", "left_hip"],
+    "lower": ["right_knee", "left_knee", "right_ankle", "left_ankle"]
+  },
+
+  "biomechanicalCheckpoints": {
+    "elbowAngle": {
+      "ideal": { "min": 140, "max": 170 },
+      "acceptable": { "min": 120, "max": 180 }
+    },
+    "hipShoulderSeparation": {
+      "ideal": { "min": 30, "max": 60 },
+      "acceptable": { "min": 20, "max": 80 }
+    },
+    "kneeBend": {
+      "ideal": { "min": 135, "max": 165 },
+      "acceptable": { "min": 120, "max": 175 }
+    }
+  },
+
+  "terminology": {
+    "movement": "stroke",
+    "movementPlural": "strokes",
+    "session": "practice session",
+    "quality": "stroke quality",
+    "speed": "racquet speed"
+  },
+
+  "coachingStyle": {
+    "sport": "tennis",
+    "roleDescription": "expert tennis coach with 20 years of experience",
+    "keyTerms": ["topspin", "unit turn", "contact point", "kinetic chain", "follow-through", "preparation"],
+    "encouragement": [
+      "Great pace on that one!",
+      "Beautiful technique!",
+      "That's the rotation we want!",
+      "Excellent follow-through!"
+    ]
+  }
+}

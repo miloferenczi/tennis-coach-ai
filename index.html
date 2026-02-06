@@ -39,9 +39,14 @@
     <script src="js/calibration-tool.js"></script>
     <script src="js/threshold-updater.js"></script>
 
+    <!-- Sport Configuration -->
+    <script src="js/sport-loader.js"></script>
+
     <!-- Application Scripts -->
     <script src="js/session-storage.js"></script>
     <script src="js/player-profile.js"></script>
+    <script src="js/ghost-overlay.js"></script>
+    <script src="js/challenge-mode.js"></script>
     <script src="js/enhanced-tennis-analyzer.js"></script>
     <script src="js/gpt-voice-coach.js"></script>
     <script src="js/video-analyzer.js"></script>
@@ -675,6 +680,332 @@
         @keyframes borderFlash {
             0% { opacity: 1; }
             100% { opacity: 0; }
+        }
+
+        /* ============================================
+           GHOST OVERLAY STYLES
+           ============================================ */
+        .ghost-similarity {
+            position: fixed;
+            top: 140px;
+            right: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-lg);
+            padding: 12px 16px;
+            text-align: center;
+            z-index: 100;
+        }
+
+        .ghost-similarity-label {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .ghost-similarity-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--accent-volt);
+        }
+
+        .ghost-similarity-value.low {
+            color: #f44336;
+        }
+
+        .ghost-similarity-value.medium {
+            color: #FF9800;
+        }
+
+        .ghost-similarity-value.high {
+            color: var(--accent-volt);
+        }
+
+        #ghostBtn.active {
+            background: var(--accent-volt);
+            color: #0A0A0A;
+        }
+
+        #ghostBtn.active .control-icon {
+            filter: none;
+        }
+
+        /* ============================================
+           PRO COMPARISON STYLES
+           ============================================ */
+        .pro-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .pro-card:hover {
+            background: rgba(205, 255, 0, 0.1);
+            border-color: var(--accent-volt);
+        }
+
+        .pro-card.selected {
+            background: rgba(205, 255, 0, 0.15);
+            border-color: var(--accent-volt);
+        }
+
+        .pro-name {
+            font-weight: 700;
+            color: white;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .pro-style {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .comparison-metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .comparison-metric:last-child {
+            border-bottom: none;
+        }
+
+        .comparison-metric-label {
+            color: var(--text-muted);
+            font-size: 13px;
+        }
+
+        .comparison-metric-values {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .comparison-you {
+            color: white;
+            font-weight: 600;
+        }
+
+        .comparison-vs {
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+
+        .comparison-pro {
+            color: var(--accent-volt);
+            font-weight: 600;
+        }
+
+        .comparison-diff {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        .comparison-diff.positive {
+            background: rgba(205, 255, 0, 0.2);
+            color: var(--accent-volt);
+        }
+
+        .comparison-diff.negative {
+            background: rgba(255, 59, 48, 0.2);
+            color: #f44336;
+        }
+
+        /* ============================================
+           CHALLENGE MODE STYLES
+           ============================================ */
+        .active-challenge-bar {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-full);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+        }
+
+        .challenge-info {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .challenge-icon {
+            font-size: 16px;
+        }
+
+        .challenge-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .challenge-progress-bar {
+            width: 80px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .challenge-progress-fill {
+            height: 100%;
+            background: var(--accent-volt);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .challenge-progress-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            min-width: 30px;
+        }
+
+        .challenge-complete-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .challenge-complete-content {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .challenge-complete-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: bounceIn 0.5s ease;
+        }
+
+        .challenge-complete-title {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--accent-volt);
+            margin-bottom: 12px;
+        }
+
+        .challenge-complete-name {
+            font-size: 18px;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .challenge-complete-reward {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+
+        .challenge-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .challenge-card:hover {
+            border-color: var(--accent-volt);
+            background: rgba(205, 255, 0, 0.05);
+        }
+
+        .challenge-card.completed {
+            opacity: 0.6;
+            border-color: var(--accent-volt);
+        }
+
+        .challenge-card.active {
+            border-color: var(--accent-volt);
+            background: rgba(205, 255, 0, 0.1);
+        }
+
+        .challenge-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .challenge-card-icon {
+            font-size: 24px;
+        }
+
+        .challenge-card-title {
+            font-weight: 700;
+            color: white;
+            font-size: 15px;
+        }
+
+        .challenge-card-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .challenge-card-difficulty {
+            font-size: 10px;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .challenge-card-difficulty.easy {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+
+        .challenge-card-difficulty.medium {
+            background: rgba(255, 152, 0, 0.2);
+            color: #FF9800;
+        }
+
+        .challenge-card-difficulty.hard {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+
+        .challenge-card-badge {
+            font-size: 11px;
+            color: var(--accent-volt);
+            margin-left: auto;
         }
 
         /* ============================================
@@ -1335,6 +1666,12 @@
                 </div>
             </div>
 
+            <!-- Ghost Similarity Display -->
+            <div id="ghostSimilarityDisplay" class="ghost-similarity" style="display: none;">
+                <div class="ghost-similarity-label">GHOST MATCH</div>
+                <div class="ghost-similarity-value" id="ghostSimilarityValue">--</div>
+            </div>
+
             <!-- Controls -->
             <div class="controls">
                 <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
@@ -1342,6 +1679,12 @@
                         <span class="control-icon">📊</span>
                     </button>
                     <span class="control-btn-label">STATS</span>
+                </div>
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                    <button id="ghostBtn" class="control-btn" onclick="toggleGhost()" title="Ghost Overlay">
+                        <span class="control-icon">👻</span>
+                    </button>
+                    <span class="control-btn-label" id="ghostBtnLabel">GHOST</span>
                 </div>
                 <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
                     <button id="playBtn" class="control-btn play-btn" onclick="toggleAnalysis()">
@@ -1373,6 +1716,8 @@
             <div class="mode-switcher">
                 <button class="mode-btn active" id="practiceModeBtn" onclick="switchMode('practice')">Practice</button>
                 <button class="mode-btn" id="analysisModeBtn" onclick="switchMode('analysis')">Analysis</button>
+                <button class="mode-btn" onclick="showChallenges()" title="Challenges">🏆</button>
+                <button class="mode-btn" onclick="showProComparison()" title="Compare to pro players">Pro</button>
                 <button class="mode-btn" id="calibrateModeBtn" onclick="openCalibrationModal()" title="Calibrate with pro videos">Cal</button>
             </div>
 
@@ -1499,6 +1844,98 @@
                 </div>
                 <div id="analyticsContent">
                     <!-- Dynamic content inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Challenge Display -->
+        <div id="activeChallengeBar" class="active-challenge-bar" style="display: none;">
+            <div class="challenge-info">
+                <span class="challenge-icon" id="activeChallengeIcon">👑</span>
+                <span class="challenge-name" id="activeChallengeName">Challenge</span>
+            </div>
+            <div class="challenge-progress-bar">
+                <div class="challenge-progress-fill" id="activeChallengeProgress"></div>
+            </div>
+            <div class="challenge-progress-text" id="activeChallengeText">0/10</div>
+        </div>
+
+        <!-- Challenge Completion Celebration -->
+        <div id="challengeCompleteOverlay" class="challenge-complete-overlay" style="display: none;">
+            <div class="challenge-complete-content">
+                <div class="challenge-complete-icon">🏆</div>
+                <div class="challenge-complete-title">Challenge Complete!</div>
+                <div class="challenge-complete-name" id="completedChallengeName">Consistency King</div>
+                <div class="challenge-complete-reward" id="completedChallengeReward">Unlocked: Advanced Analytics</div>
+                <button class="btn" onclick="closeChallengeComplete()">Continue</button>
+            </div>
+        </div>
+
+        <!-- Challenges Modal -->
+        <div id="challengesModal" class="modal-overlay">
+            <div class="modal" style="max-width: 500px;">
+                <div class="modal-header">
+                    <div class="modal-title">Challenges</div>
+                    <button class="modal-close" onclick="closeChallenges()">&times;</button>
+                </div>
+                <div id="challengesContent">
+                    <!-- Dynamic challenge list -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Pro Comparison Modal -->
+        <div id="proComparisonModal" class="modal-overlay">
+            <div class="modal" style="max-width: 500px;">
+                <div class="modal-header">
+                    <div class="modal-title">Compare to Pro</div>
+                    <button class="modal-close" onclick="closeProComparison()">&times;</button>
+                </div>
+                <div id="proComparisonContent">
+                    <!-- Pro selector -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Select a Pro</div>
+                        <div class="pro-selector" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+                            <button class="pro-card" onclick="selectPro('federer')" id="pro-federer">
+                                <div class="pro-name">Roger Federer</div>
+                                <div class="pro-style">Forehand, Serve, Volley</div>
+                            </button>
+                            <button class="pro-card" onclick="selectPro('djokovic')" id="pro-djokovic">
+                                <div class="pro-name">Novak Djokovic</div>
+                                <div class="pro-style">Backhand, Return, Defense</div>
+                            </button>
+                            <button class="pro-card" onclick="selectPro('nadal')" id="pro-nadal">
+                                <div class="pro-name">Rafael Nadal</div>
+                                <div class="pro-style">Forehand, Topspin, Defense</div>
+                            </button>
+                            <button class="pro-card" onclick="selectPro('serena')" id="pro-serena">
+                                <div class="pro-name">Serena Williams</div>
+                                <div class="pro-style">Serve, Power, Forehand</div>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Comparison results -->
+                    <div id="proComparisonResults" style="display: none;">
+                        <div class="summary-stats" style="margin-bottom: 16px;">
+                            <div class="summary-stat highlight">
+                                <div class="summary-stat-value" id="proSimilarityScore">--</div>
+                                <div class="summary-stat-label">Similarity</div>
+                            </div>
+                        </div>
+
+                        <div id="proComparisonDetails">
+                            <!-- Dynamic comparison details -->
+                        </div>
+
+                        <div id="proCoachingTip" style="margin-top: 16px; padding: 12px; background: rgba(205, 255, 0, 0.1); border-radius: 8px; border-left: 3px solid var(--accent-volt);">
+                            <!-- GPT coaching insight -->
+                        </div>
+                    </div>
+
+                    <div id="proComparisonEmpty" style="text-align: center; padding: 30px; color: var(--text-muted);">
+                        <div style="font-size: 14px;">Complete some strokes first to compare your technique with a pro.</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1701,10 +2138,26 @@
                 // Only analyze pose when user has pressed play
                 if (this.isAnalyzing) {
                     const poseData = this.enhancedAnalyzer.analyzePose(results.poseLandmarks, Date.now());
-                    
+
                     // Draw swing trail
                     if (this.enhancedAnalyzer.poseHistory.length > 2) {
                         this.drawSwingTrail();
+                    }
+
+                    // Continuously record frames for ghost (we'll extract stroke when detected)
+                    if (typeof ghostOverlay !== 'undefined') {
+                        ghostOverlay.recordFrame(results.poseLandmarks, Date.now());
+                    }
+                }
+
+                // Draw ghost overlay (behind current pose for visibility)
+                if (typeof ghostOverlay !== 'undefined' && ghostOverlay.isEnabled()) {
+                    ghostOverlay.draw(this.ctx, results.poseLandmarks);
+
+                    // Update similarity display
+                    const similarity = ghostOverlay.getSimilarityScore();
+                    if (similarity !== null) {
+                        this.updateGhostSimilarity(similarity);
                     }
                 }
             }
@@ -1717,24 +2170,43 @@
                     x: p.joints.rightWrist.x * this.canvas.width,
                     y: p.joints.rightWrist.y * this.canvas.height
                 }));
-                
+
                 if (path.length < 2) return;
-                
+
                 this.ctx.save();
-                
+
                 // Draw gradient trail (recent = brighter)
                 for (let i = 1; i < path.length; i++) {
                     const alpha = i / path.length;
                     this.ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
                     this.ctx.lineWidth = 4;
-                    
+
                     this.ctx.beginPath();
                     this.ctx.moveTo(path[i - 1].x, path[i - 1].y);
                     this.ctx.lineTo(path[i].x, path[i].y);
                     this.ctx.stroke();
                 }
-                
+
                 this.ctx.restore();
+            }
+
+            updateGhostSimilarity(similarity) {
+                const display = document.getElementById('ghostSimilarityDisplay');
+                const valueEl = document.getElementById('ghostSimilarityValue');
+
+                if (!display || !valueEl) return;
+
+                valueEl.textContent = `${similarity}%`;
+
+                // Color code based on similarity
+                valueEl.classList.remove('low', 'medium', 'high');
+                if (similarity >= 80) {
+                    valueEl.classList.add('high');
+                } else if (similarity >= 50) {
+                    valueEl.classList.add('medium');
+                } else {
+                    valueEl.classList.add('low');
+                }
             }
 
             updateUI(context) {
@@ -1919,6 +2391,60 @@
             if (tennisAI) {
                 tennisAI.resetSession();
             }
+            // Reset ghost session tracking
+            if (typeof ghostOverlay !== 'undefined') {
+                ghostOverlay.resetSession();
+            }
+        }
+
+        // Ghost Overlay Toggle
+        function toggleGhost() {
+            if (typeof ghostOverlay === 'undefined') return;
+
+            const enabled = ghostOverlay.toggle();
+            const btn = document.getElementById('ghostBtn');
+            const label = document.getElementById('ghostBtnLabel');
+            const display = document.getElementById('ghostSimilarityDisplay');
+
+            if (enabled) {
+                // Check if we have a ghost to show
+                if (!ghostOverlay.ghostStroke) {
+                    // Try to use best stroke from this session
+                    if (!ghostOverlay.useBestStroke()) {
+                        // No ghost available
+                        alert('No ghost available yet. Complete some strokes first, and your best one will become the ghost.');
+                        ghostOverlay.toggle(); // Turn back off
+                        return;
+                    }
+                }
+
+                btn.classList.add('active');
+                label.textContent = 'GHOST ON';
+                display.style.display = 'block';
+                ghostOverlay.play();
+
+                // Show ghost info
+                const info = ghostOverlay.getGhostInfo();
+                if (info) {
+                    console.log(`Ghost active: ${info.name} (${info.frameCount} frames)`);
+                }
+            } else {
+                btn.classList.remove('active');
+                label.textContent = 'GHOST';
+                display.style.display = 'none';
+                ghostOverlay.pause();
+            }
+        }
+
+        // Lock current best stroke as ghost reference
+        function lockCurrentGhost() {
+            if (typeof ghostOverlay === 'undefined' || !ghostOverlay.bestStrokeThisSession) {
+                alert('No stroke to lock. Complete some strokes first.');
+                return;
+            }
+
+            const stroke = ghostOverlay.lockStroke(ghostOverlay.bestStrokeThisSession);
+            alert(`Locked "${stroke.name}" as a saved ghost reference!`);
         }
 
         // Session Summary Modal
@@ -2182,6 +2708,246 @@
 
         function closeAnalytics() {
             document.getElementById('analyticsModal').classList.remove('visible');
+        }
+
+        // ========================================
+        // Challenge Mode Functions
+        // ========================================
+
+        function showChallenges() {
+            renderChallengesList();
+            document.getElementById('challengesModal').classList.add('visible');
+        }
+
+        function closeChallenges() {
+            document.getElementById('challengesModal').classList.remove('visible');
+        }
+
+        function renderChallengesList() {
+            if (typeof challengeMode === 'undefined') return;
+
+            const challenges = challengeMode.getAvailableChallenges();
+            const stats = challengeMode.getStats();
+
+            let html = `
+                <div style="margin-bottom: 16px; text-align: center;">
+                    <div style="font-size: 24px; font-weight: 800; color: var(--accent-volt);">${stats.completed}/${stats.total}</div>
+                    <div style="font-size: 12px; color: var(--text-muted);">Challenges Completed</div>
+                </div>
+            `;
+
+            challenges.forEach(challenge => {
+                const statusClass = challenge.isCompleted ? 'completed' : (challenge.isActive ? 'active' : '');
+                const badge = challenge.isCompleted ? '✓ Completed' : (challenge.isActive ? 'Active' : '');
+
+                html += `
+                    <div class="challenge-card ${statusClass}" onclick="startChallenge('${challenge.id}')">
+                        <div class="challenge-card-header">
+                            <span class="challenge-card-icon">${challenge.icon}</span>
+                            <span class="challenge-card-title">${challenge.name}</span>
+                            ${badge ? `<span class="challenge-card-badge">${badge}</span>` : ''}
+                        </div>
+                        <div class="challenge-card-desc">${challenge.description}</div>
+                        <span class="challenge-card-difficulty ${challenge.difficulty}">${challenge.difficulty}</span>
+                    </div>
+                `;
+            });
+
+            document.getElementById('challengesContent').innerHTML = html;
+        }
+
+        function startChallenge(challengeId) {
+            if (typeof challengeMode === 'undefined') return;
+
+            // Don't start if already completed
+            if (challengeMode.isCompleted(challengeId)) {
+                return;
+            }
+
+            const challenge = challengeMode.startChallenge(challengeId);
+            if (challenge) {
+                closeChallenges();
+                updateActiveChallengeBar();
+            }
+        }
+
+        function updateActiveChallengeBar() {
+            if (typeof challengeMode === 'undefined') return;
+
+            const challengeBar = document.getElementById('activeChallengeBar');
+            const info = challengeMode.getActiveChallengeInfo();
+
+            if (!info) {
+                challengeBar.style.display = 'none';
+                return;
+            }
+
+            challengeBar.style.display = 'flex';
+            document.getElementById('activeChallengeIcon').textContent = info.icon;
+            document.getElementById('activeChallengeName').textContent = info.name;
+            document.getElementById('activeChallengeText').textContent = `${info.progress}/${info.target}`;
+
+            const progressPercent = (info.progress / info.target) * 100;
+            document.getElementById('activeChallengeProgress').style.width = `${progressPercent}%`;
+        }
+
+        function recordChallengeStroke(strokeData) {
+            if (typeof challengeMode === 'undefined' || !challengeMode.activeChallenge) return;
+
+            const result = challengeMode.recordStroke(strokeData);
+
+            if (result) {
+                updateActiveChallengeBar();
+
+                if (result.complete) {
+                    showChallengeComplete(result.challenge);
+                }
+            }
+        }
+
+        function showChallengeComplete(challenge) {
+            document.getElementById('completedChallengeName').textContent = challenge.name;
+            document.getElementById('completedChallengeReward').textContent = `Reward: ${challenge.reward}`;
+            document.getElementById('challengeCompleteOverlay').style.display = 'flex';
+
+            // Hide challenge bar
+            document.getElementById('activeChallengeBar').style.display = 'none';
+        }
+
+        function closeChallengeComplete() {
+            document.getElementById('challengeCompleteOverlay').style.display = 'none';
+        }
+
+        // ========================================
+        // Pro Comparison Functions
+        // ========================================
+
+        let selectedPro = null;
+
+        function showProComparison() {
+            document.getElementById('proComparisonModal').classList.add('visible');
+            updateProComparisonDisplay();
+        }
+
+        function closeProComparison() {
+            document.getElementById('proComparisonModal').classList.remove('visible');
+        }
+
+        function selectPro(proId) {
+            selectedPro = proId;
+
+            // Update UI selection
+            document.querySelectorAll('.pro-card').forEach(card => card.classList.remove('selected'));
+            document.getElementById(`pro-${proId}`).classList.add('selected');
+
+            updateProComparisonDisplay();
+        }
+
+        function updateProComparisonDisplay() {
+            const resultsDiv = document.getElementById('proComparisonResults');
+            const emptyDiv = document.getElementById('proComparisonEmpty');
+            const detailsDiv = document.getElementById('proComparisonDetails');
+            const tipDiv = document.getElementById('proCoachingTip');
+
+            // Check if we have stroke data
+            if (!tennisAI || !tennisAI.enhancedAnalyzer || tennisAI.enhancedAnalyzer.sessionStats.totalStrokes === 0) {
+                resultsDiv.style.display = 'none';
+                emptyDiv.style.display = 'block';
+                return;
+            }
+
+            if (!selectedPro) {
+                resultsDiv.style.display = 'none';
+                emptyDiv.style.display = 'block';
+                emptyDiv.innerHTML = '<div style="font-size: 14px;">Select a pro above to compare your technique.</div>';
+                return;
+            }
+
+            emptyDiv.style.display = 'none';
+            resultsDiv.style.display = 'block';
+
+            // Get pro profile and user's recent stroke data
+            const proReferences = tennisAI.enhancedAnalyzer.proReferences;
+            const proProfile = proReferences.getPlayerProfile(selectedPro);
+            const lastStroke = tennisAI.enhancedAnalyzer.lastStrokeData;
+
+            if (!lastStroke || !proProfile) {
+                resultsDiv.style.display = 'none';
+                emptyDiv.style.display = 'block';
+                emptyDiv.innerHTML = '<div style="font-size: 14px;">Complete a stroke to see comparison.</div>';
+                return;
+            }
+
+            // Get comparison data
+            const comparison = lastStroke.proComparison;
+            const similarity = comparison ? Math.round(comparison.overallSimilarity * 100) : 0;
+
+            // Update similarity score
+            document.getElementById('proSimilarityScore').textContent = `${similarity}%`;
+
+            // Build comparison details
+            let html = '<div class="comparison-metrics">';
+
+            // Velocity comparison
+            const velRatio = comparison?.velocityRatio || 0;
+            html += buildComparisonMetric('Racquet Speed', velRatio, 'velocity');
+
+            // Acceleration comparison
+            const accRatio = comparison?.accelerationRatio || 0;
+            html += buildComparisonMetric('Acceleration', accRatio, 'acceleration');
+
+            // Rotation comparison
+            const rotRatio = comparison?.rotationRatio || 0;
+            html += buildComparisonMetric('Body Rotation', rotRatio, 'rotation');
+
+            html += '</div>';
+
+            // Strengths and improvements
+            if (comparison) {
+                if (comparison.strengths.length > 0) {
+                    html += `<div style="margin-top: 16px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--accent-volt); margin-bottom: 8px;">Your Strengths</div>
+                        <div style="font-size: 13px; color: white;">${comparison.strengths.join(' • ')}</div>
+                    </div>`;
+                }
+
+                if (comparison.improvements.length > 0) {
+                    html += `<div style="margin-top: 12px;">
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;">Focus Areas</div>
+                        <div style="font-size: 13px; color: white;">${comparison.improvements.join(' • ')}</div>
+                    </div>`;
+                }
+            }
+
+            detailsDiv.innerHTML = html;
+
+            // Coaching tip based on pro style
+            const proTips = {
+                federer: `To develop Federer-like technique, focus on fluid motion and early preparation. His forehand is built on timing and effortless power, not muscling the ball.`,
+                djokovic: `Djokovic's game is built on flexibility and consistency. Work on staying low through contact and maximizing your court coverage.`,
+                nadal: `To hit like Nadal, focus on extreme topspin and aggressive hip rotation. His lasso forehand comes from tremendous racquet head speed generated by the whole body.`,
+                serena: `Serena's power comes from explosive leg drive and core rotation. Focus on loading your legs and driving up through the shot.`
+            };
+
+            tipDiv.innerHTML = `<div style="font-size: 13px; color: white;">${proTips[selectedPro] || 'Study the pro\'s technique and work on matching their form.'}</div>`;
+        }
+
+        function buildComparisonMetric(label, ratio, type) {
+            const percent = Math.round(ratio * 100);
+            const diff = percent - 100;
+            const diffClass = diff >= 0 ? 'positive' : 'negative';
+            const diffText = diff >= 0 ? `+${diff}%` : `${diff}%`;
+
+            return `
+                <div class="comparison-metric">
+                    <div class="comparison-metric-label">${label}</div>
+                    <div class="comparison-metric-values">
+                        <span class="comparison-you">${percent}%</span>
+                        <span class="comparison-vs">of pro</span>
+                        <span class="comparison-diff ${diffClass}">${diffText}</span>
+                    </div>
+                </div>
+            `;
         }
 
         // ========================================

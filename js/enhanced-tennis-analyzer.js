@@ -467,6 +467,14 @@ class EnhancedTennisAnalyzer {
     // Store for calibration tool access
     this.lastStrokeData = strokeData;
 
+    // End ghost recording and check if this is the best stroke
+    if (typeof ghostOverlay !== 'undefined' && ghostOverlay.isRecording) {
+      const recordedStroke = ghostOverlay.endRecording(strokeData.type, strokeData.quality.overall);
+      if (recordedStroke && ghostOverlay.bestStrokeThisSession === recordedStroke) {
+        console.log(`New best stroke recorded: ${strokeData.type} (${strokeData.quality.overall})`);
+      }
+    }
+
     // Update session statistics
     this.sessionStats.totalStrokes++;
     this.sessionStats.scores.push(strokeData.quality.overall);
@@ -518,6 +526,11 @@ class EnhancedTennisAnalyzer {
     // Trigger screen border flash based on quality
     if (typeof flashStrokeQuality === 'function') {
       flashStrokeQuality(strokeData.quality.overall);
+    }
+
+    // Record stroke for challenge mode
+    if (typeof recordChallengeStroke === 'function') {
+      recordChallengeStroke(strokeData);
     }
 
     // Clear pose history after stroke
