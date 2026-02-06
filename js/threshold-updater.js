@@ -365,7 +365,7 @@ class ThresholdUpdater {
       }
     }
 
-    console.log('✅ Calibrated thresholds applied to running application');
+    console.log('Calibrated thresholds applied to running application');
     return { success: true, updatedModules };
   }
 
@@ -567,7 +567,7 @@ const calibrationData = ${JSON.stringify(this.calibratedThresholds, null, 2)};
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    console.log('✅ Threshold updates exported');
+    console.log('Threshold updates exported');
   }
 
   /**
@@ -586,7 +586,7 @@ const calibrationData = ${JSON.stringify(this.calibratedThresholds, null, 2)};
     const ct = this.calibratedThresholds;
     const current = this.currentThresholds;
 
-    console.group('📊 Threshold Comparison: Current vs Calibrated');
+    console.group('Threshold Comparison: Current vs Calibrated');
 
     console.log('\n=== STROKE DETECTION ===');
     console.table({

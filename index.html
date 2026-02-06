@@ -155,57 +155,460 @@
         }
 
         /* ============================================
-           SCREENS (Permission, API Key, Loading)
+           ONBOARDING SCREENS - Nike/W+K Premium
            ============================================ */
+
+        /* System font stack - SF Pro Display */
+        .onboarding-font {
+            font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, system-ui, sans-serif;
+        }
+
         .screen {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: var(--bg-primary);
+            background: #0A0A0A;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            text-align: center;
-            padding: 40px;
+            padding: 40px 24px;
             z-index: 1001;
+            opacity: 1;
+            transform: translateY(0);
+            transition: opacity 400ms ease-out, transform 400ms ease-out;
+            font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, system-ui, sans-serif;
         }
 
-        .screen-title {
-            font-size: 56px;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: -0.03em;
-            margin-bottom: 12px;
-            color: var(--text-primary);
+        .screen.exiting {
+            opacity: 0;
+            transform: translateY(-20px);
+            pointer-events: none;
         }
 
-        .screen-subtitle {
-            font-size: 16px;
-            font-weight: 400;
-            color: var(--text-muted);
-            margin-bottom: 48px;
-            text-transform: lowercase;
+        .screen.entering {
+            opacity: 0;
+            transform: translateY(20px);
         }
 
-        .screen-text {
-            font-size: 15px;
-            margin-bottom: 32px;
-            color: var(--text-muted);
-            line-height: 1.5;
-            max-width: 320px;
+        .screen.entering.active {
+            opacity: 1;
+            transform: translateY(0);
         }
 
-        .powered-by {
+        /* Onboarding content container */
+        .onboarding-content {
+            width: 100%;
+            max-width: 360px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            justify-content: center;
+        }
+
+        /* Step Indicator - Fixed at bottom */
+        .step-indicator {
             position: absolute;
             bottom: 40px;
-            font-size: 11px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 12px;
+        }
+
+        .step-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 300ms ease-out;
+        }
+
+        .step-dot.active {
+            background: #CDFF00;
+            border-color: #CDFF00;
+        }
+
+        /* Step 1: Welcome Screen */
+        .hero-title {
+            font-size: 72px;
+            font-weight: 900;
+            color: #F5F5F5;
+            letter-spacing: -0.03em;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .hero-title .accent {
+            color: #CDFF00;
+        }
+
+        .hero-subtitle {
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--text-primary);
-            opacity: 0.3;
+            letter-spacing: 0.2em;
+            margin-bottom: 48px;
+        }
+
+        .hero-session-count {
+            font-size: 11px;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-top: 4px;
+        }
+
+        /* Feature Cards */
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+            margin-bottom: 32px;
+        }
+
+        .feature-card {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 18px 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            opacity: 0;
+            transform: translateY(12px);
+            animation: featureCardIn 400ms ease-out forwards;
+        }
+
+        .feature-card:nth-child(1) { animation-delay: 0ms; }
+        .feature-card:nth-child(2) { animation-delay: 80ms; }
+        .feature-card:nth-child(3) { animation-delay: 160ms; }
+        .feature-card:nth-child(4) { animation-delay: 240ms; }
+
+        @keyframes featureCardIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .feature-icon {
+            width: 24px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+
+        .feature-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: #CDFF00;
+            fill: none;
+            stroke-width: 1.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .feature-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .feature-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: #F5F5F5;
+        }
+
+        .feature-desc {
+            font-size: 12px;
+            font-weight: 400;
+            color: #444;
+        }
+
+        /* Primary CTA Button */
+        .btn-primary {
+            width: 100%;
+            height: 56px;
+            background: #CDFF00;
+            color: #0A0A0A;
+            border: none;
+            border-radius: 28px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            cursor: pointer;
+            transition: transform 150ms ease-out, background 150ms ease-out;
+            font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, system-ui, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            /* Haptic trigger point */
+        }
+
+        .btn-primary:active {
+            transform: scale(0.97);
+            background: #B8E600;
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Step 2: Voice Coach Screen */
+        .voice-header {
+            width: 100%;
+            text-align: left;
+            margin-bottom: 32px;
+        }
+
+        .voice-title {
+            font-size: 56px;
+            font-weight: 900;
+            color: #F5F5F5;
+            letter-spacing: -0.02em;
+            line-height: 0.95;
+        }
+
+        .voice-label {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 600;
+            color: #0A0A0A;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            background: rgba(255, 255, 255, 0.12);
+            padding: 6px 10px;
+            border-radius: 4px;
+            margin-top: 16px;
+        }
+
+        .voice-tagline {
+            font-size: 14px;
+            font-weight: 400;
+            color: #555;
+            margin-top: 12px;
+            text-align: left;
+        }
+
+        /* API Input */
+        .api-input-group {
+            width: 100%;
+            margin-bottom: 24px;
+        }
+
+        .api-label {
+            display: block;
+            font-size: 10px;
+            font-weight: 600;
+            color: #444;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+
+        .api-input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .api-input {
+            width: 100%;
+            height: 52px;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid transparent;
+            border-radius: 12px;
+            padding: 0 16px;
+            font-size: 14px;
+            font-family: 'SF Mono', Menlo, Monaco, 'Courier New', monospace;
+            color: #F5F5F5;
+            transition: border-color 200ms ease-out, background 200ms ease-out;
+        }
+
+        .api-input:focus {
+            outline: none;
+            border-color: rgba(205, 255, 0, 0.4);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .api-input::placeholder {
+            color: #333;
+        }
+
+        .api-input.validated {
+            padding-right: 44px;
+        }
+
+        .api-input.flash {
+            animation: inputFlash 200ms ease-out;
+        }
+
+        @keyframes inputFlash {
+            0%, 100% { border-color: rgba(205, 255, 0, 0.4); }
+            50% { border-color: #CDFF00; }
+        }
+
+        .api-checkmark {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            display: none;
+        }
+
+        .api-checkmark.visible {
+            display: block;
+        }
+
+        .api-checkmark svg {
+            width: 16px;
+            height: 16px;
+            stroke: #CDFF00;
+            fill: none;
+            stroke-width: 2;
+        }
+
+        .api-link {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
+            text-decoration: none;
+            margin-top: 12px;
+            transition: color 200ms ease-out;
+        }
+
+        .api-link:hover {
+            color: #CDFF00;
+        }
+
+        /* Skip Button */
+        .btn-skip {
+            background: transparent;
+            border: none;
+            font-size: 13px;
+            font-weight: 500;
+            color: #444;
+            cursor: pointer;
+            padding: 16px 24px;
+            margin-top: 24px;
+            transition: color 200ms ease-out;
+            font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, system-ui, sans-serif;
+            min-height: 44px;
+            /* Intentionally de-emphasized */
+        }
+
+        .btn-skip:hover {
+            color: #666;
+        }
+
+        /* Step 3: Loading Screen */
+        .loading-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0;
+        }
+
+        .loading-logo {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 20px;
+            animation: logoScale 2s ease-in-out infinite;
+        }
+
+        .loading-logo svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        @keyframes logoScale {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+        }
+
+        .loading-phase {
+            font-size: 14px;
+            font-weight: 700;
+            color: #F5F5F5;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            margin-bottom: 8px;
+            min-height: 20px;
+            transition: opacity 200ms ease-out;
+        }
+
+        .loading-phase.crossfade {
+            opacity: 0;
+        }
+
+        .loading-detail {
+            font-size: 12px;
+            font-weight: 400;
+            color: #444;
+            margin-bottom: 24px;
+            min-height: 16px;
+            transition: opacity 200ms ease-out;
+        }
+
+        .loading-detail.crossfade {
+            opacity: 0;
+        }
+
+        .loading-track {
+            width: 100%;
+            max-width: 360px;
+            height: 3px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .loading-fill {
+            height: 100%;
+            background: #CDFF00;
+            width: 0%;
+            transition: width 400ms ease-out;
+            border-radius: 2px;
+        }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100%);
+            background: rgba(255, 59, 48, 0.15);
+            color: #FF3B30;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 12px 20px;
+            border-radius: 12px;
+            z-index: 9999;
+            opacity: 0;
+            transition: transform 300ms ease-out, opacity 300ms ease-out;
+            font-family: -apple-system, 'SF Pro Display', BlinkMacSystemFont, system-ui, sans-serif;
+        }
+
+        .toast.visible {
+            transform: translateX(-50%) translateY(20px);
+            opacity: 1;
+        }
+
+        .toast.hiding {
+            transform: translateX(-50%) translateY(-20px);
+            opacity: 0;
         }
 
         /* ============================================
@@ -1563,50 +1966,141 @@
 </head>
 <body>
     <div class="container">
-        <!-- Permission Screen -->
+        <!-- Onboarding Step 1: Welcome -->
         <div id="permissionScreen" class="screen">
-            <img src="ace-ai-logo.svg" alt="ACE" class="logo" style="width: 80px; height: 80px; margin-bottom: 24px;">
-            <div class="screen-title">ACE</div>
-            <div class="screen-subtitle">ai-powered stroke analysis</div>
-            <div class="screen-text">
-                Real-time coaching powered by computer vision.<br>
-                Camera access required to analyze your form.
+            <div class="onboarding-content">
+                <div class="hero-title">ACE<span class="accent">.</span></div>
+                <div class="hero-subtitle" id="heroSubtitle">AI TENNIS COACH</div>
+                <div class="hero-session-count" id="heroSessionCount" style="display: none;"></div>
+
+                <div class="feature-list" id="featureList">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <!-- Waveform/pulse icon -->
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="2 12 5 12 7 8 10 16 13 10 16 14 19 12 22 12"/>
+                            </svg>
+                        </div>
+                        <div class="feature-content">
+                            <div class="feature-title">Real-Time Analysis</div>
+                            <div class="feature-desc">30fps pose detection</div>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <!-- Sound wave icon (3 bars) -->
+                            <svg viewBox="0 0 24 24">
+                                <line x1="8" y1="8" x2="8" y2="16"/>
+                                <line x1="12" y1="5" x2="12" y2="19"/>
+                                <line x1="16" y1="8" x2="16" y2="16"/>
+                            </svg>
+                        </div>
+                        <div class="feature-content">
+                            <div class="feature-title">Voice Coaching</div>
+                            <div class="feature-desc">Real-time spoken feedback</div>
+                        </div>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <!-- Bar chart icon -->
+                            <svg viewBox="0 0 24 24">
+                                <line x1="6" y1="20" x2="6" y2="14"/>
+                                <line x1="12" y1="20" x2="12" y2="8"/>
+                                <line x1="18" y1="20" x2="18" y2="11"/>
+                            </svg>
+                        </div>
+                        <div class="feature-content">
+                            <div class="feature-title">Pro Comparison</div>
+                            <div class="feature-desc">Match elite benchmarks</div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-primary" onclick="requestCameraPermission()">
+                    GET STARTED <span style="margin-left: 4px;">→</span>
+                </button>
             </div>
-            <button class="btn" onclick="requestCameraPermission()">
-                START SESSION →
-            </button>
-            <div class="powered-by">powered by computer vision</div>
+
+            <div class="step-indicator">
+                <div class="step-dot active"></div>
+                <div class="step-dot"></div>
+                <div class="step-dot"></div>
+            </div>
         </div>
 
-        <!-- API Key Screen -->
+        <!-- Onboarding Step 2: Voice Coach Setup -->
         <div id="apiKeyScreen" class="screen" style="display: none;">
-            <div class="screen-title">CONNECT</div>
-            <div class="screen-subtitle">enable voice coaching</div>
-            <div class="screen-text">
-                Enter your OpenAI API key for real-time voice feedback.<br>
-                <a href="https://platform.openai.com/api-keys" target="_blank" style="color: var(--accent-volt); text-decoration: none;">Get your key →</a>
+            <div class="onboarding-content">
+                <div class="voice-header">
+                    <div class="voice-title">VOICE<br>COACH</div>
+                    <div class="voice-label">OPTIONAL</div>
+                    <div class="voice-tagline">Real-time voice feedback on your form.</div>
+                </div>
+
+                <div class="api-input-group">
+                    <label class="api-label">OPENAI API KEY</label>
+                    <div class="api-input-wrapper">
+                        <input
+                            type="password"
+                            id="apiKeyInput"
+                            class="api-input"
+                            placeholder="sk-..."
+                            autocomplete="off"
+                        />
+                        <div class="api-checkmark" id="apiCheckmark">
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="api-link">
+                        Get an API key →
+                    </a>
+                </div>
+
+                <button class="btn-primary" id="connectBtn" onclick="connectGPTCoach()">
+                    CONNECT <span style="margin-left: 4px;">→</span>
+                </button>
+                <button class="btn-skip" onclick="skipGPTCoach()">
+                    Continue without voice
+                </button>
             </div>
-            <input
-                type="password"
-                id="apiKeyInput"
-                placeholder="sk-..."
-            />
-            <button class="btn" onclick="connectGPTCoach()">
-                CONNECT →
-            </button>
-            <button class="btn-ghost" onclick="skipGPTCoach()" style="margin-top: 16px;">
-                Skip for now
-            </button>
+
+            <div class="step-indicator">
+                <div class="step-dot active"></div>
+                <div class="step-dot active"></div>
+                <div class="step-dot"></div>
+            </div>
         </div>
 
-        <!-- Loading Screen -->
-        <div id="loadingScreen" class="screen loading-screen" style="display: none;">
-            <img src="ace-ai-logo.svg" alt="ACE" class="logo" style="width: 64px; height: 64px; margin-bottom: 32px; animation: pulse 2s infinite;">
-            <div class="loading-text" id="loadingStatus">INITIALIZING</div>
-            <div class="loading-progress">
-                <div id="loadingBar" class="loading-bar"></div>
+        <!-- Onboarding Step 3: Loading -->
+        <div id="loadingScreen" class="screen" style="display: none;">
+            <div class="onboarding-content">
+                <div class="loading-content">
+                    <div class="loading-logo">
+                        <!-- ACE Logo Mark: Ball + Chevron -->
+                        <svg viewBox="0 0 64 64" fill="none">
+                            <circle cx="20" cy="32" r="10" fill="#CDFF00"/>
+                            <path d="M38 16L54 32L38 48L42 48L58 32L42 16Z" fill="#CDFF00"/>
+                        </svg>
+                    </div>
+                    <div class="loading-phase" id="loadingPhase">LOADING</div>
+                    <div class="loading-detail" id="loadingDetail">Initializing pose detection model</div>
+                    <div class="loading-track">
+                        <div class="loading-fill" id="loadingFill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-indicator">
+                <div class="step-dot active"></div>
+                <div class="step-dot active"></div>
+                <div class="step-dot active"></div>
             </div>
         </div>
+
+        <!-- Toast Notification Container -->
+        <div class="toast" id="toast"></div>
 
         <!-- Main Camera Interface -->
         <div class="camera-container" style="display: none;" id="cameraContainer">
@@ -1674,30 +2168,18 @@
 
             <!-- Controls -->
             <div class="controls">
-                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
-                    <button class="control-btn" onclick="showAnalytics()" title="View History">
-                        <span class="control-icon">📊</span>
-                    </button>
-                    <span class="control-btn-label">STATS</span>
-                </div>
-                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
-                    <button id="ghostBtn" class="control-btn" onclick="toggleGhost()" title="Ghost Overlay">
-                        <span class="control-icon">👻</span>
-                    </button>
-                    <span class="control-btn-label" id="ghostBtnLabel">GHOST</span>
-                </div>
-                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
-                    <button id="playBtn" class="control-btn play-btn" onclick="toggleAnalysis()">
-                        <span class="control-icon">▶</span>
-                    </button>
-                    <span class="control-btn-label">RECORD</span>
-                </div>
-                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
-                    <button class="control-btn" onclick="resetSession()">
-                        <span class="control-icon">↺</span>
-                    </button>
-                    <span class="control-btn-label">RESET</span>
-                </div>
+                <button class="control-btn text-btn" onclick="showAnalytics()" title="View History">
+                    STATS
+                </button>
+                <button id="ghostBtn" class="control-btn text-btn" onclick="toggleGhost()" title="Ghost Overlay">
+                    <span id="ghostBtnLabel">GHOST</span>
+                </button>
+                <button id="playBtn" class="control-btn play-btn" onclick="toggleAnalysis()">
+                    REC
+                </button>
+                <button class="control-btn text-btn" onclick="resetSession()">
+                    RESET
+                </button>
             </div>
 
             <!-- Coaching Panel -->
@@ -1716,7 +2198,7 @@
             <div class="mode-switcher">
                 <button class="mode-btn active" id="practiceModeBtn" onclick="switchMode('practice')">Practice</button>
                 <button class="mode-btn" id="analysisModeBtn" onclick="switchMode('analysis')">Analysis</button>
-                <button class="mode-btn" onclick="showChallenges()" title="Challenges">🏆</button>
+                <button class="mode-btn" onclick="showChallenges()" title="Challenges">CHAL</button>
                 <button class="mode-btn" onclick="showProComparison()" title="Compare to pro players">Pro</button>
                 <button class="mode-btn" id="calibrateModeBtn" onclick="openCalibrationModal()" title="Calibrate with pro videos">Cal</button>
             </div>
@@ -1725,7 +2207,7 @@
             <div class="analysis-mode-container" id="analysisModeContainer">
                 <!-- Video Upload Zone -->
                 <div class="video-upload-zone" id="videoUploadZone">
-                    <div class="upload-icon">🎬</div>
+                    <div class="upload-icon" style="font-size: 24px; font-weight: bold; letter-spacing: 2px;">VIDEO</div>
                     <div class="upload-text">Drop a video here or click to upload</div>
                     <div class="upload-subtext">Supports MP4, MOV, WebM</div>
                     <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
@@ -1741,7 +2223,7 @@
                     <!-- Timeline -->
                     <div class="timeline-container">
                         <div class="timeline-controls">
-                            <button class="timeline-playback-btn" id="timelinePlayBtn" onclick="toggleVideoPlayback()">▶️</button>
+                            <button class="timeline-playback-btn" id="timelinePlayBtn" onclick="toggleVideoPlayback()">PLAY</button>
                             <span class="timeline-time" id="timelineTime">0:00 / 0:00</span>
                             <div style="margin-left: auto; display: flex; gap: 8px;">
                                 <button class="btn btn-secondary" onclick="exportHighlightReel()" style="padding: 8px 12px; font-size: 11px;" title="Export best 5 strokes">
@@ -1851,7 +2333,7 @@
         <!-- Active Challenge Display -->
         <div id="activeChallengeBar" class="active-challenge-bar" style="display: none;">
             <div class="challenge-info">
-                <span class="challenge-icon" id="activeChallengeIcon">👑</span>
+                <span class="challenge-icon" id="activeChallengeIcon" style="font-weight: bold; font-size: 14px;"></span>
                 <span class="challenge-name" id="activeChallengeName">Challenge</span>
             </div>
             <div class="challenge-progress-bar">
@@ -1863,7 +2345,7 @@
         <!-- Challenge Completion Celebration -->
         <div id="challengeCompleteOverlay" class="challenge-complete-overlay" style="display: none;">
             <div class="challenge-complete-content">
-                <div class="challenge-complete-icon">🏆</div>
+                <div class="challenge-complete-icon" style="font-size: 32px; font-weight: bold; letter-spacing: 3px;">DONE</div>
                 <div class="challenge-complete-title">Challenge Complete!</div>
                 <div class="challenge-complete-name" id="completedChallengeName">Consistency King</div>
                 <div class="challenge-complete-reward" id="completedChallengeReward">Unlocked: Advanced Analytics</div>
@@ -1970,7 +2452,7 @@
                     </div>
 
                     <div id="calibrationUploadZone" style="border: 2px dashed rgba(255,255,255,0.3); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; margin-bottom: 20px;">
-                        <div style="font-size: 32px; margin-bottom: 12px;">🎬</div>
+                        <div style="font-size: 18px; font-weight: bold; letter-spacing: 2px; margin-bottom: 12px;">UPLOAD</div>
                         <div>Drop video here or click to upload</div>
                         <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 8px;">MP4, MOV, WebM supported</div>
                         <input type="file" id="calibrationFileInput" accept="video/*" style="display: none;">
@@ -2249,7 +2731,7 @@
                 this.isAnalyzing = true;
                 
                 document.getElementById('aiStatusDot').className = 'status-dot active';
-                document.getElementById('playBtn').textContent = '⏸️';
+                document.getElementById('playBtn').textContent = 'STOP';
                 document.getElementById('coachingText').textContent = 
                     'AI analyzing your strokes. Make tennis swings to get feedback!';
             }
@@ -2258,7 +2740,7 @@
                 this.isAnalyzing = false;
                 
                 document.getElementById('aiStatusDot').className = 'status-dot ready';
-                document.getElementById('playBtn').textContent = '▶️';
+                document.getElementById('playBtn').textContent = 'REC';
                 document.getElementById('coachingText').textContent = 
                     'Analysis paused. Tap play to resume.';
             }
@@ -2302,31 +2784,85 @@
             }
 
             completeInitialization() {
-                document.getElementById('loadingScreen').style.display = 'none';
-                document.getElementById('cameraContainer').style.display = 'block';
-                document.getElementById('aiStatusDot').className = 'status-dot ready';
+                const loadingScreen = document.getElementById('loadingScreen');
+                const cameraContainer = document.getElementById('cameraContainer');
 
-                // Create or restore session
-                if (typeof sessionStorage !== 'undefined' && sessionStorage.createSession) {
-                    const existingSession = sessionStorage.getCurrentSession();
-                    if (!existingSession) {
-                        sessionStorage.createSession();
-                    }
+                // Cinematic exit: Hold at READY for 1s, then exit
+                // Haptic trigger point: navigator.vibrate && navigator.vibrate(10);
+
+                setTimeout(() => {
+                    // Exit: fade out + move up (more dramatic -30px)
+                    loadingScreen.style.transition = 'opacity 300ms ease-out, transform 300ms ease-out';
+                    loadingScreen.style.opacity = '0';
+                    loadingScreen.style.transform = 'translateY(-30px)';
+
+                    // Prepare camera view underneath
+                    cameraContainer.style.display = 'block';
+                    cameraContainer.style.opacity = '0';
+
+                    setTimeout(() => {
+                        loadingScreen.style.display = 'none';
+
+                        // Fade in camera view
+                        cameraContainer.style.transition = 'opacity 400ms ease-out';
+                        cameraContainer.offsetHeight; // Trigger reflow
+                        cameraContainer.style.opacity = '1';
+
+                        document.getElementById('aiStatusDot').className = 'status-dot ready';
+
+                        // Create or restore session
+                        if (typeof sessionStorage !== 'undefined' && sessionStorage.createSession) {
+                            const existingSession = sessionStorage.getCurrentSession();
+                            if (!existingSession) {
+                                sessionStorage.createSession();
+                            }
+                        }
+
+                        // Welcome coaching message
+                        document.getElementById('coachingText').textContent =
+                            'Ready to analyze. Tap REC to start.';
+                    }, 300);
+                }, 1000); // Hold at READY for 1 second
+            }
+
+            // Premium loading phase management
+            updateLoadingProgress(percent, status) {
+                const phaseEl = document.getElementById('loadingPhase');
+                const detailEl = document.getElementById('loadingDetail');
+                const fillEl = document.getElementById('loadingFill');
+
+                // Phase mapping with spec-compliant details
+                const phases = {
+                    'Loading MediaPipe libraries...': { phase: 'LOADING', detail: 'Initializing pose detection model', progress: 10 },
+                    'Initializing pose detection...': { phase: 'DETECTING', detail: 'Configuring MediaPipe Holistic', progress: 30 },
+                    'Setting up tennis analysis...': { phase: 'ANALYZING', detail: 'Loading stroke analysis engine', progress: 60 },
+                    'Configuring camera...': { phase: 'CAMERA', detail: 'Requesting camera access', progress: 80 },
+                    'Ready to coach!': { phase: 'READY', detail: "Let's go.", progress: 100 }
+                };
+
+                const mapped = phases[status] || { phase: 'LOADING', detail: status, progress: percent };
+
+                // Crossfade phase text
+                if (phaseEl && phaseEl.textContent !== mapped.phase) {
+                    phaseEl.classList.add('crossfade');
+                    detailEl.classList.add('crossfade');
+
+                    setTimeout(() => {
+                        phaseEl.textContent = mapped.phase;
+                        detailEl.textContent = mapped.detail;
+                        phaseEl.classList.remove('crossfade');
+                        detailEl.classList.remove('crossfade');
+                    }, 200);
+                }
+
+                // Smooth progress bar - never jumps, always eases
+                if (fillEl) {
+                    fillEl.style.width = mapped.progress + '%';
                 }
             }
 
-            updateLoadingProgress(percent, status) {
-                document.getElementById('loadingBar').style.width = percent + '%';
-                document.getElementById('loadingStatus').textContent = status;
-            }
-
             showError(message) {
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'error-message';
-                errorDiv.textContent = message;
-                document.getElementById('errorContainer').appendChild(errorDiv);
-                
-                setTimeout(() => errorDiv.remove(), 5000);
+                showToast(message);
             }
 
             sleep(ms) {
@@ -2337,44 +2873,123 @@
         // Global application state
         let tennisAI = null;
 
-        // Global functions for UI interaction
+        // ============================================
+        // PREMIUM SCREEN TRANSITIONS
+        // Vertical motion only, 400ms ease-out
+        // ============================================
+
+        function transitionScreens(fromId, toId, callback) {
+            const fromScreen = document.getElementById(fromId);
+            const toScreen = document.getElementById(toId);
+
+            // Exit animation: fade out + move up
+            fromScreen.classList.add('exiting');
+
+            setTimeout(() => {
+                fromScreen.style.display = 'none';
+                fromScreen.classList.remove('exiting');
+
+                // Enter animation: start below, fade in while moving up
+                toScreen.style.display = 'flex';
+                toScreen.classList.add('entering');
+
+                // Trigger reflow
+                toScreen.offsetHeight;
+
+                // Activate enter animation
+                toScreen.classList.add('active');
+
+                setTimeout(() => {
+                    toScreen.classList.remove('entering', 'active');
+                    if (callback) callback();
+                }, 400);
+            }, 400);
+        }
+
+        // ============================================
+        // ONBOARDING FLOW
+        // ============================================
+
         async function requestCameraPermission() {
-            try {
-                document.getElementById('permissionScreen').style.display = 'none';
-                document.getElementById('apiKeyScreen').style.display = 'flex';
-            } catch (error) {
-                document.getElementById('permissionScreen').style.display = 'flex';
-                alert('Camera access denied. Please enable camera permissions and try again.');
-            }
+            // Haptic trigger point: navigator.vibrate && navigator.vibrate(10);
+            transitionScreens('permissionScreen', 'apiKeyScreen');
         }
 
         async function connectGPTCoach() {
-            const apiKey = document.getElementById('apiKeyInput').value;
-            
+            const input = document.getElementById('apiKeyInput');
+            const apiKey = input.value;
+            const connectBtn = document.getElementById('connectBtn');
+
             if (!apiKey || !apiKey.startsWith('sk-')) {
-                alert('Please enter a valid OpenAI API key');
+                showToast('Please enter a valid OpenAI API key');
+                input.focus();
                 return;
             }
-            
-            document.getElementById('apiKeyScreen').style.display = 'none';
-            document.getElementById('loadingScreen').style.display = 'flex';
-            
-            // Initialize GPT coach
-            await gptVoiceCoach.initialize(apiKey);
-            
-            // Continue with tennis AI initialization
-            tennisAI = new TennisAI();
+
+            // Save API key for future sessions
+            try {
+                localStorage.setItem('ace_openai_key', apiKey);
+            } catch (e) {}
+
+            // Micro-interaction: flash input border
+            input.classList.add('flash');
+
+            // Show checkmark
+            document.getElementById('apiCheckmark').classList.add('visible');
+
+            // Change button text to CONNECTED
+            const originalHTML = connectBtn.innerHTML;
+            connectBtn.innerHTML = 'CONNECTED <span style="margin-left: 4px;">✓</span>';
+            connectBtn.disabled = true;
+
+            // Haptic trigger point: navigator.vibrate && navigator.vibrate([10, 50, 10]);
+
+            // Wait for micro-interaction to complete
+            await new Promise(r => setTimeout(r, 800));
+
+            // Transition to loading
+            transitionScreens('apiKeyScreen', 'loadingScreen', async () => {
+                // Initialize GPT coach
+                await gptVoiceCoach.initialize(apiKey);
+
+                // Start tennis AI initialization
+                tennisAI = new TennisAI();
+            });
         }
 
         function skipGPTCoach() {
-            document.getElementById('apiKeyScreen').style.display = 'none';
-            document.getElementById('loadingScreen').style.display = 'flex';
-            
-            // Use fallback coaching
-            gptVoiceCoach.fallbackToSpeechSynthesis();
-            
-            // Continue with tennis AI initialization
-            tennisAI = new TennisAI();
+            transitionScreens('apiKeyScreen', 'loadingScreen', () => {
+                // Use fallback coaching
+                gptVoiceCoach.fallbackToSpeechSynthesis();
+
+                // Start tennis AI initialization
+                tennisAI = new TennisAI();
+            });
+        }
+
+        // ============================================
+        // TOAST NOTIFICATIONS
+        // Slides down from top, auto-dismiss
+        // ============================================
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+
+            // Clear any existing state
+            toast.classList.remove('visible', 'hiding');
+            toast.textContent = message;
+
+            // Show toast
+            requestAnimationFrame(() => {
+                toast.classList.add('visible');
+            });
+
+            // Auto-dismiss after 3s
+            setTimeout(() => {
+                toast.classList.add('hiding');
+                toast.classList.remove('visible');
+            }, 3000);
         }
 
         function toggleAnalysis() {
@@ -2520,7 +3135,7 @@
                         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                             ${summary.milestones.map(m => `
                                 <span style="background: linear-gradient(135deg, var(--accent-volt), #a0cc00); color: #0A0A0A; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px;">
-                                    🏆 ${m.label}
+                                    ${m.label}
                                 </span>
                             `).join('')}
                         </div>
@@ -2557,7 +3172,7 @@
             if (!stats || stats.totalSessions === 0) {
                 html = `
                     <div style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.7);">
-                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <div style="font-size: 24px; font-weight: bold; margin-bottom: 16px; letter-spacing: 2px;">STATS</div>
                         <div style="font-size: 16px;">No session history yet</div>
                         <div style="font-size: 14px; margin-top: 8px;">Complete a practice session to see your stats</div>
                     </div>
@@ -2616,7 +3231,7 @@
                             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                                 ${profileStats.milestones.slice(0, 6).map(m => `
                                     <span style="background: rgba(205, 255, 0, 0.2); color: var(--accent-volt); padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;">
-                                        🏆 ${m.label}
+                                        ${m.label}
                                     </span>
                                 `).join('')}
                             </div>
@@ -2738,7 +3353,7 @@
 
             challenges.forEach(challenge => {
                 const statusClass = challenge.isCompleted ? 'completed' : (challenge.isActive ? 'active' : '');
-                const badge = challenge.isCompleted ? '✓ Completed' : (challenge.isActive ? 'Active' : '');
+                const badge = challenge.isCompleted ? 'DONE' : (challenge.isActive ? 'Active' : '');
 
                 html += `
                     <div class="challenge-card ${statusClass}" onclick="startChallenge('${challenge.id}')">
@@ -3143,7 +3758,7 @@
 
             // Update compare button state
             const isInComparison = comparisonStrokes.some(s => s._index === index);
-            document.getElementById('compareBtn').textContent = isInComparison ? '✓ Added' : '+ Compare';
+            document.getElementById('compareBtn').textContent = isInComparison ? 'ADDED' : '+ Compare';
 
             panel.classList.add('visible');
         }
@@ -3164,7 +3779,7 @@
             } else if (comparisonStrokes.length < 2) {
                 // Add to comparison
                 comparisonStrokes.push({ ...selectedStroke });
-                document.getElementById('compareBtn').textContent = '✓ Added';
+                document.getElementById('compareBtn').textContent = 'ADDED';
             }
 
             // Update comparison panel
@@ -3314,10 +3929,10 @@
 
             if (video.paused) {
                 video.play();
-                btn.textContent = '⏸️';
+                btn.textContent = 'PAUSE';
             } else {
                 video.pause();
-                btn.textContent = '▶️';
+                btn.textContent = 'PLAY';
             }
         }
 
@@ -3364,7 +3979,70 @@
             initVideoUpload();
             initTimelineInteraction();
             initCalibrationUpload();
+            initOnboarding();
         });
+
+        // Initialize onboarding - detect returning users
+        function initOnboarding() {
+            try {
+                // Check for saved API key
+                const savedKey = localStorage.getItem('ace_openai_key');
+                if (savedKey && savedKey.startsWith('sk-')) {
+                    const input = document.getElementById('apiKeyInput');
+                    if (input) {
+                        // Mask all but last 4 characters
+                        const masked = '••••••••••••' + savedKey.slice(-4);
+                        input.value = savedKey;
+                        input.classList.add('validated');
+
+                        // Show checkmark
+                        document.getElementById('apiCheckmark').classList.add('visible');
+                    }
+                }
+
+                // Check if returning user with player profile
+                if (typeof playerProfile !== 'undefined') {
+                    const profile = playerProfile.profile;
+                    if (profile && profile.sessionsPlayed > 0) {
+                        // Update hero subtitle for returning user
+                        const subtitle = document.getElementById('heroSubtitle');
+                        if (subtitle) {
+                            subtitle.textContent = 'WELCOME BACK';
+                        }
+
+                        // Show session count
+                        const sessionCount = document.getElementById('heroSessionCount');
+                        if (sessionCount) {
+                            sessionCount.textContent = `SESSION #${profile.sessionsPlayed + 1}`;
+                            sessionCount.style.display = 'block';
+                        }
+
+                        // Add progress card for users with 3+ sessions
+                        if (profile.sessionsPlayed >= 3) {
+                            const featureList = document.getElementById('featureList');
+                            if (featureList) {
+                                const progressCard = document.createElement('div');
+                                progressCard.className = 'feature-card';
+                                progressCard.innerHTML = `
+                                    <div class="feature-icon">
+                                        <svg viewBox="0 0 24 24">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                    </div>
+                                    <div class="feature-content">
+                                        <div class="feature-title">${profile.sessionsPlayed} Sessions Logged</div>
+                                        <div class="feature-desc">Your progress is saved</div>
+                                    </div>
+                                `;
+                                featureList.appendChild(progressCard);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {
+                console.log('Onboarding init:', e);
+            }
+        }
 
         // ========================================
         // Calibration Functions
@@ -3579,7 +4257,7 @@
             const statusEl = document.getElementById('thresholdApplyStatus');
 
             if (typeof thresholdUpdater === 'undefined') {
-                statusEl.textContent = '❌ ThresholdUpdater not loaded';
+                statusEl.textContent = 'ERROR: ThresholdUpdater not loaded';
                 statusEl.style.color = '#f44336';
                 return;
             }
@@ -3587,11 +4265,11 @@
             const result = thresholdUpdater.applyToRunningApp();
 
             if (result.success) {
-                statusEl.innerHTML = `✅ Applied ${result.updatedModules.length} module updates!<br>` +
+                statusEl.innerHTML = `Applied ${result.updatedModules.length} module updates!<br>` +
                     result.updatedModules.map(m => `• ${m}`).join('<br>');
                 statusEl.style.color = 'var(--accent-volt, #CDFF00)';
             } else {
-                statusEl.textContent = `❌ Failed: ${result.error}`;
+                statusEl.textContent = `FAILED: ${result.error}`;
                 statusEl.style.color = '#f44336';
             }
         }

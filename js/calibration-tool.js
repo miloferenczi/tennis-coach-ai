@@ -618,7 +618,7 @@ class CalibrationTool {
       return;
     }
 
-    console.group('📊 Threshold Comparison: Current vs Calibrated');
+    console.group('Threshold Comparison: Current vs Calibrated');
 
     console.log('\n=== VELOCITY ===');
     if (proStats.metrics.velocity) {

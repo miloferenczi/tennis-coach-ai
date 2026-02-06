@@ -24,9 +24,9 @@ class CoachingOrchestrator {
         try {
             const response = await fetch('tennis_coaching_tree.json');
             this.decisionTree = await response.json();
-            console.log('✅ Coaching decision tree loaded successfully');
+            console.log('Coaching decision tree loaded successfully');
         } catch (error) {
-            console.error('❌ Failed to load decision tree:', error);
+            console.error('Failed to load decision tree:', error);
             // Fallback to basic coaching if tree unavailable
             this.decisionTree = null;
         }

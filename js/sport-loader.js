@@ -191,7 +191,7 @@ class SportLoader {
     return {
       sport: 'tennis',
       displayName: 'Tennis',
-      icon: '🎾',
+      icon: 'TENNIS',
       movements: {
         'Forehand': { displayName: 'Forehand', category: 'groundstroke' },
         'Backhand': { displayName: 'Backhand', category: 'groundstroke' },

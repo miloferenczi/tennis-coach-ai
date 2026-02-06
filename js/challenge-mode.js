@@ -14,7 +14,7 @@ class ChallengeMode {
         id: 'consistency_king',
         name: 'Consistency King',
         description: 'Hit 10 forehands with a score above 80',
-        icon: '👑',
+        icon: '01',
         goal: { strokeType: 'Forehand', minScore: 80, count: 10 },
         reward: 'Unlocks advanced analytics',
         difficulty: 'medium'
@@ -23,7 +23,7 @@ class ChallengeMode {
         id: 'rotation_pro',
         name: 'Rotation Pro',
         description: 'Hit 5 strokes with 40°+ hip-shoulder separation',
-        icon: '🔄',
+        icon: '02',
         goal: { metric: 'hipShoulderSeparation', minValue: 40, count: 5 },
         reward: 'Unlocks pro comparison feature',
         difficulty: 'medium'
@@ -32,7 +32,7 @@ class ChallengeMode {
         id: 'power_player',
         name: 'Power Player',
         description: 'Hit 5 strokes at advanced skill level or above',
-        icon: '💪',
+        icon: '03',
         goal: { skillLevel: 'advanced', count: 5 },
         reward: 'Unlocks power training drills',
         difficulty: 'hard'
@@ -41,7 +41,7 @@ class ChallengeMode {
         id: 'smooth_operator',
         name: 'Smooth Operator',
         description: 'Complete 15 strokes with 70+ smoothness score',
-        icon: '✨',
+        icon: '04',
         goal: { metric: 'smoothness', minValue: 70, count: 15 },
         reward: 'Unlocks rhythm training',
         difficulty: 'easy'
@@ -50,7 +50,7 @@ class ChallengeMode {
         id: 'backhand_boss',
         name: 'Backhand Boss',
         description: 'Hit 8 backhands with a score above 75',
-        icon: '🎯',
+        icon: '05',
         goal: { strokeType: 'Backhand', minScore: 75, count: 8 },
         reward: 'Unlocks backhand analysis',
         difficulty: 'medium'
@@ -59,7 +59,7 @@ class ChallengeMode {
         id: 'serve_ace',
         name: 'Serve Ace',
         description: 'Hit 5 serves with a score above 85',
-        icon: '🚀',
+        icon: '06',
         goal: { strokeType: 'Serve', minScore: 85, count: 5 },
         reward: 'Unlocks serve power metrics',
         difficulty: 'hard'
@@ -68,16 +68,16 @@ class ChallengeMode {
         id: 'warm_up',
         name: 'Warm Up',
         description: 'Complete 20 strokes of any type',
-        icon: '🔥',
+        icon: '07',
         goal: { count: 20 },
-        reward: 'First milestone!',
+        reward: 'First milestone',
         difficulty: 'easy'
       },
       perfect_form: {
         id: 'perfect_form',
         name: 'Perfect Form',
         description: 'Hit 3 strokes with a score of 90 or above',
-        icon: '💯',
+        icon: '08',
         goal: { minScore: 90, count: 3 },
         reward: 'Technique mastery badge',
         difficulty: 'hard'

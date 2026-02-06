@@ -1,7 +1,7 @@
 {
   "sport": "tennis",
   "displayName": "Tennis",
-  "icon": "🎾",
+  "icon": "TENNIS",
   "description": "AI-powered tennis stroke analysis",
 
   "movements": {

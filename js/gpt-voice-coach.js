@@ -279,7 +279,7 @@ Use this context to provide personalized, progressive coaching. Reference their 
     // Fatigue detection
     const fatigueInfo = this.detectFatigue();
     if (fatigueInfo.fatigued) {
-      prompt += `⚠️ FATIGUE DETECTED: Quality has dropped ${fatigueInfo.dropPercent}% over the last ${fatigueInfo.strokeWindow} strokes.\n`;
+      prompt += `FATIGUE DETECTED: Quality has dropped ${fatigueInfo.dropPercent}% over the last ${fatigueInfo.strokeWindow} strokes.\n`;
       prompt += `Coaching tone: Be more encouraging, suggest simpler cues, consider suggesting a short break.\n\n`;
     }
 
@@ -317,7 +317,7 @@ Use this context to provide personalized, progressive coaching. Reference their 
     if (data.orchestratorFeedback) {
       if (data.orchestratorFeedback.type === 'excellence') {
         // Excellence feedback - celebrate!
-        prompt += `✅ EXCELLENT EXECUTION\n`;
+        prompt += `EXCELLENT EXECUTION\n`;
         prompt += `Trend: ${data.orchestratorFeedback.trend}\n\n`;
         prompt += `Keep it brief - celebrate this stroke and encourage maintaining this quality.\n`;
         return prompt;
@@ -325,7 +325,7 @@ Use this context to provide personalized, progressive coaching. Reference their 
         // Structured coaching from decision tree
         const coaching = data.orchestratorFeedback;
         
-        prompt += `🎯 COACHING FOCUS: ${coaching.issue.name}\n`;
+        prompt += `COACHING FOCUS: ${coaching.issue.name}\n`;
         prompt += `Priority: ${coaching.issue.priority}/10 | Category: ${coaching.issue.category}\n`;
         prompt += `Impact: ${coaching.issue.impactLevel}\n\n`;
         
@@ -334,7 +334,7 @@ Use this context to provide personalized, progressive coaching. Reference their 
         prompt += `Symptoms: ${coaching.diagnosis.symptoms.join(', ').replace(/_/g, ' ')}\n\n`;
         
         // THE KEY CUE (skill-level appropriate)
-        prompt += `🔑 COACHING CUE (${coaching.playerLevel} level):\n`;
+        prompt += `KEY CUE (${coaching.playerLevel} level):\n`;
         prompt += `"${coaching.cue}"\n\n`;
         
         // Key metrics showing the issue
@@ -359,7 +359,7 @@ Use this context to provide personalized, progressive coaching. Reference their 
         
         // Critical situation handling
         if (coaching.criticalSituation) {
-          prompt += `⚠️ CRITICAL: ${coaching.criticalSituation.replace(/_/g, ' ')}\n`;
+          prompt += `CRITICAL: ${coaching.criticalSituation.replace(/_/g, ' ')}\n`;
           if (coaching.consecutiveOccurrences >= 3) {
             prompt += `This issue has occurred ${coaching.consecutiveOccurrences} times in a row - emphasize importance!\n`;
           }
@@ -374,9 +374,9 @@ Use this context to provide personalized, progressive coaching. Reference their 
     // Fallback to legacy format if no orchestrator feedback
     // Lead with motivational metrics
     if (data.comparison) {
-      prompt += `🎯 PLAYER LEVEL: ${data.comparison.skillLevel.toUpperCase()}\n`;
-      prompt += `📊 Percentile: ${data.comparison.percentile}th (better than ${data.comparison.percentile}% of players)\n`;
-      prompt += `⭐ Pro Similarity: ${data.comparison.overallSimilarity}% match to professional form\n\n`;
+      prompt += `PLAYER LEVEL: ${data.comparison.skillLevel.toUpperCase()}\n`;
+      prompt += `Percentile: ${data.comparison.percentile}th (better than ${data.comparison.percentile}% of players)\n`;
+      prompt += `Pro Similarity: ${data.comparison.overallSimilarity}% match to professional form\n\n`;
     }
     
     // Quality assessment
@@ -404,11 +404,11 @@ Use this context to provide personalized, progressive coaching. Reference their 
       prompt += `- Body Rotation: ${data.comparison.rotationRatio}% of pro average\n`;
       
       if (data.comparison.strengths.length > 0) {
-        prompt += `\n✅ STRENGTHS: ${data.comparison.strengths.join(', ')}\n`;
+        prompt += `\nSTRENGTHS: ${data.comparison.strengths.join(', ')}\n`;
       }
       
       if (data.comparison.improvements.length > 0) {
-        prompt += `🎯 FOCUS AREAS: ${data.comparison.improvements.join(', ')}\n`;
+        prompt += `FOCUS AREAS: ${data.comparison.improvements.join(', ')}\n`;
       }
       prompt += `\n`;
     }
@@ -423,7 +423,7 @@ Use this context to provide personalized, progressive coaching. Reference their 
 
     // Biomechanical evaluation (if available)
     if (data.biomechanical) {
-      prompt += `🔬 BIOMECHANICAL ANALYSIS:\n`;
+      prompt += `BIOMECHANICAL ANALYSIS:\n`;
       prompt += `Overall Biomechanical Score: ${data.biomechanical.overallScore}/100\n`;
 
       if (data.biomechanical.phaseScores) {
@@ -435,18 +435,18 @@ Use this context to provide personalized, progressive coaching. Reference their 
       }
 
       if (data.biomechanical.detectedFaults && data.biomechanical.detectedFaults.length > 0) {
-        prompt += `\n⚠️ DETECTED FAULTS (by priority):\n`;
+        prompt += `\nDETECTED FAULTS (by priority):\n`;
         data.biomechanical.detectedFaults.forEach(fault => {
           prompt += `- ${fault.name}: ${fault.fix}\n`;
         });
       }
 
       if (data.biomechanical.primaryFeedback) {
-        prompt += `\n🎯 PRIMARY FOCUS: ${data.biomechanical.primaryFeedback.message}\n`;
+        prompt += `\nPRIMARY FOCUS: ${data.biomechanical.primaryFeedback.message}\n`;
       }
 
       if (data.biomechanical.drillRecommendations && data.biomechanical.drillRecommendations.length > 0) {
-        prompt += `\n📋 RECOMMENDED DRILLS: ${data.biomechanical.drillRecommendations.slice(0, 2).join(', ')}\n`;
+        prompt += `\nRECOMMENDED DRILLS: ${data.biomechanical.drillRecommendations.slice(0, 2).join(', ')}\n`;
       }
       prompt += `\n`;
     }

@@ -233,7 +233,7 @@ class DiagnosticLogger {
   printStats() {
     const stats = this.getStats();
 
-    console.group('📊 Diagnostic Statistics');
+    console.group('Diagnostic Statistics');
     console.log(`Total strokes analyzed: ${stats.strokeCount}`);
 
     console.table(
