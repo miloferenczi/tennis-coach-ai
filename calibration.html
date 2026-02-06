@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tennis Coaching Calibration Tool</title>
+    
+    <!-- MediaPipe Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+    
+    <!-- Analysis modules - SAME ORDER AS PRODUCTION -->
+    <script src="js/physics-analyzer.js"></script>
+    <script src="js/stroke-classifier.js"></script>
+    <script src="js/professional-references.js"></script>
+    <script src="js/PhaseDetector.js"></script>
+    <script src="js/KineticChainAnalyzer.js"></script>
+    <script src="js/MotionSequenceAnalyzer.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+        }
+
+        .section h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #667eea;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+
+        .upload-zone {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 60px 40px;
+            text-align: center;
+            background: #f8f9ff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-zone:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .upload-zone.dragover {
+            background: #e8ebff;
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            font-size: 14px;
+            color: #999;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .skill-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .skill-btn {
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .skill-btn:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+
+        .skill-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .video-list {
+            margin-top: 30px;
+        }
+
+        .video-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9ff;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .video-info {
+            flex: 1;
+        }
+
+        .video-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .video-meta {
+            font-size: 12px;
+            color: #999;
+        }
+
+        .video-status {
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-processing {
+            background: #cce5ff;
+            color: #004085;
+        }
+
+        .status-complete {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .btn:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #f8f9ff;
+        }
+
+        .progress-container {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .progress-container.active {
+            display: block;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .result-card {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-card h3 {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .metric-label {
+            color: #666;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+
+        canvas {
+            display: none;
+        }
+
+        .log-container {
+            background: #1e1e1e;
+            color: #0f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .log-container.active {
+            display: block;
+        }
+
+        .log-line {
+            margin-bottom: 4px;
+        }
+
+        .download-btn {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎾 Tennis Coaching Calibration Tool</h1>
+            <p>Upload videos to automatically calibrate coaching thresholds</p>
+        </div>
+
+        <div class="content">
+            <!-- Upload Section -->
+            <div class="section">
+                <h2>1. Select Skill Level</h2>
+                <div class="skill-selector">
+                    <div class="skill-btn" data-level="professional">
+                        🏆 Professional
+                    </div>
+                    <div class="skill-btn" data-level="advanced">
+                        ⭐ Advanced
+                    </div>
+                    <div class="skill-btn" data-level="intermediate">
+                        📈 Intermediate
+                    </div>
+                    <div class="skill-btn" data-level="beginner">
+                        🌱 Beginner
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>2. Upload Videos</h2>
+                <div class="upload-zone" id="uploadZone">
+                    <div class="upload-icon">📹</div>
+                    <div class="upload-text">Click to upload or drag & drop videos</div>
+                    <div class="upload-hint">MP4, MOV, WebM supported • Multiple files allowed</div>
+                </div>
+                <input type="file" id="fileInput" accept="video/*" multiple>
+
+                <div class="video-list" id="videoList"></div>
+            </div>
+
+            <div class="section">
+                <h2>3. Process Videos</h2>
+                <button class="btn" id="processBtn" disabled>
+                    🚀 Start Processing
+                </button>
+                <button class="btn btn-secondary" id="clearBtn">
+                    🗑️ Clear All
+                </button>
+
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">
+                        Processing video 0 of 0...
+                    </div>
+                </div>
+
+                <div class="log-container" id="logContainer"></div>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection">
+                <h2>📊 Calibration Results</h2>
+                <div class="results-grid" id="resultsGrid"></div>
+
+                <button class="btn download-btn" id="downloadBtn">
+                    💾 Download Calibration Data
+                </button>
+                <button class="btn btn-secondary download-btn" id="downloadTreeBtn">
+                    📄 Download Updated Decision Tree
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+    // Enhanced Calibration Tool with Motion Sequence Analysis
+    class CalibrationTool {
+        constructor() {
+            this.selectedSkillLevel = null;
+            this.videos = [];
+            this.pose = null;
+            this.canvas = document.getElementById('canvas');
+            this.ctx = this.canvas.getContext('2d');
+            
+            // Use SAME analysis modules as production
+            this.physicsAnalyzer = new PhysicsAnalyzer();
+            this.strokeClassifier = new StrokeClassifier();
+            this.phaseDetector = new PhaseDetector();
+            this.kineticChainAnalyzer = new KineticChainAnalyzer();
+            this.motionSequenceAnalyzer = new MotionSequenceAnalyzer();
+            
+            // Calibration data storage - NOW INCLUDES SEQUENCES
+            this.calibrationData = {
+                professional: { strokes: [], sequences: [] },
+                advanced: { strokes: [], sequences: [] },
+                intermediate: { strokes: [], sequences: [] },
+                beginner: { strokes: [], sequences: [] }
+            };
+            
+            // Track pose history like production app
+            this.poseHistory = [];
+            this.lastStrokeTime = 0;
+            this.strokeCooldown = 1500;
+            
+            this.initializeUI();
+            this.initializeMediaPipe();
+        }
+
+        initializeUI() {
+            // Skill level selection
+            document.querySelectorAll('.skill-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.skill-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    this.selectedSkillLevel = btn.dataset.level;
+                    this.updateProcessButton();
+                    this.log(`Selected skill level: ${this.selectedSkillLevel}`);
+                });
+            });
+
+            // Upload zone
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                this.handleFiles(e.dataTransfer.files);
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                this.handleFiles(e.target.files);
+            });
+
+            // Buttons
+            document.getElementById('processBtn').addEventListener('click', () => {
+                this.processAllVideos();
+            });
+
+            document.getElementById('clearBtn').addEventListener('click', () => {
+                this.clearAll();
+            });
+
+            document.getElementById('downloadBtn').addEventListener('click', () => {
+                this.downloadCalibrationData();
+            });
+
+            document.getElementById('downloadTreeBtn').addEventListener('click', () => {
+                this.downloadProfessionalReferences();
+            });
+        }
+
+        async initializeMediaPipe() {
+            this.log('Initializing MediaPipe Pose...');
+            
+            this.pose = new Pose({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+            });
+
+            this.pose.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                enableSegmentation: false,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+
+            this.log('✅ MediaPipe ready');
+        }
+
+        handleFiles(files) {
+            if (!this.selectedSkillLevel) {
+                alert('Please select a skill level first!');
+                return;
+            }
+
+            for (const file of files) {
+                if (file.type.startsWith('video/')) {
+                    this.videos.push({
+                        file: file,
+                        name: file.name,
+                        size: this.formatFileSize(file.size),
+                        skillLevel: this.selectedSkillLevel,
+                        status: 'pending',
+                        strokes: [],
+                        sequences: []
+                    });
+                }
+            }
+
+            this.renderVideoList();
+            this.updateProcessButton();
+            this.log(`Added ${files.length} video(s) at ${this.selectedSkillLevel} level`);
+        }
+
+        renderVideoList() {
+            const listEl = document.getElementById('videoList');
+            
+            if (this.videos.length === 0) {
+                listEl.innerHTML = '';
+                return;
+            }
+
+            listEl.innerHTML = this.videos.map((video, index) => `
+                <div class="video-item">
+                    <div class="video-info">
+                        <div class="video-name">${video.name}</div>
+                        <div class="video-meta">${video.size} • ${video.skillLevel}</div>
+                    </div>
+                    <div class="video-status status-${video.status}">
+                        ${video.status.toUpperCase()}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        updateProcessButton() {
+            const btn = document.getElementById('processBtn');
+            btn.disabled = this.videos.length === 0 || !this.selectedSkillLevel;
+        }
+
+        async processAllVideos() {
+            this.log('🚀 Starting video processing with motion sequence analysis...');
+            document.getElementById('progressContainer').classList.add('active');
+            document.getElementById('logContainer').classList.add('active');
+            document.getElementById('processBtn').disabled = true;
+
+            for (let i = 0; i < this.videos.length; i++) {
+                const video = this.videos[i];
+                
+                this.updateProgress(i + 1, this.videos.length);
+                this.log(`Processing: ${video.name}`);
+                
+                video.status = 'processing';
+                this.renderVideoList();
+
+                try {
+                    await this.processVideo(video);
+                    video.status = 'complete';
+                    this.log(`✅ Complete: ${video.name} (${video.strokes.length} strokes, ${video.sequences.length} sequences)`);
+                } catch (error) {
+                    video.status = 'error';
+                    this.log(`❌ Error: ${video.name} - ${error.message}`);
+                }
+
+                this.renderVideoList();
+            }
+
+            this.log('✅ All videos processed!');
+            this.aggregateResults();
+            this.showResults();
+        }
+
+        async processVideo(videoData) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                video.src = URL.createObjectURL(videoData.file);
+                video.muted = true;
+                
+                video.onloadedmetadata = async () => {
+                    this.canvas.width = video.videoWidth;
+                    this.canvas.height = video.videoHeight;
+                    
+                    try {
+                        await this.analyzeVideoFrames(video, videoData);
+                        URL.revokeObjectURL(video.src);
+                        resolve();
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+
+                video.onerror = () => reject(new Error('Failed to load video'));
+                video.load();
+            });
+        }
+
+        async analyzeVideoFrames(video, videoData) {
+            const frameRate = 30;
+            const frameDuration = 1000 / frameRate;
+            let currentTime = 0;
+
+            // Reset analyzers for this video
+            this.physicsAnalyzer.reset();
+            this.poseHistory = [];
+            this.lastStrokeTime = 0;
+
+            // Set up pose results handler
+            let currentLandmarks = null;
+            this.pose.onResults((results) => {
+                currentLandmarks = results.poseLandmarks;
+            });
+
+            video.currentTime = 0;
+            await video.play();
+
+            while (currentTime < video.duration) {
+                video.currentTime = currentTime;
+                await this.waitForSeek(video);
+
+                // Draw frame to canvas
+                this.ctx.drawImage(video, 0, 0, this.canvas.width, this.canvas.height);
+                
+                // Send to MediaPipe
+                currentLandmarks = null;
+                await this.pose.send({ image: this.canvas });
+                
+                // Wait for MediaPipe processing
+                await new Promise(resolve => setTimeout(resolve, 50));
+                
+                if (currentLandmarks) {
+                    // Process pose data EXACTLY like production app
+                    const poseData = this.processPoseFrame(currentLandmarks, currentTime * 1000);
+                    
+                    if (poseData) {
+                        this.poseHistory.push(poseData);
+                        
+                        // Keep last 60 frames
+                        if (this.poseHistory.length > 60) {
+                            this.poseHistory.shift();
+                        }
+                        
+                        // Detect strokes
+                        const stroke = this.detectStrokePattern(poseData);
+                        if (stroke) {
+                            this.onStrokeDetected(stroke, videoData);
+                        }
+                    }
+                }
+                
+                currentTime += frameDuration / 1000;
+            }
+
+            video.pause();
+        }
+
+        /**
+         * Process pose frame EXACTLY like production app
+         */
+        processPoseFrame(landmarks, timestamp) {
+            // Feed to physics analyzer
+            const hasEnoughData = this.physicsAnalyzer.addPoseData(landmarks, timestamp);
+            
+            if (!hasEnoughData) {
+                return null;
+            }
+            
+            // Calculate physics metrics
+            const wristVelocity = this.physicsAnalyzer.calculateWristVelocity();
+            const acceleration = this.physicsAnalyzer.calculateAcceleration();
+            const rotation = this.physicsAnalyzer.calculateBodyRotation();
+            const verticalMotion = this.physicsAnalyzer.calculateVerticalMotion();
+            const swingPath = this.physicsAnalyzer.extractSwingPath();
+            
+            // Build pose data structure
+            return {
+                timestamp,
+                landmarks: landmarks,
+                velocity: wristVelocity,
+                acceleration: acceleration,
+                rotation: rotation,
+                verticalMotion: verticalMotion,
+                swingPath: swingPath,
+                joints: this.extractJointPositions(landmarks),
+                angles: this.calculateBasicAngles(landmarks)
+            };
+        }
+
+        extractJointPositions(landmarks) {
+            return {
+                rightWrist: landmarks[16],
+                rightElbow: landmarks[14],
+                rightShoulder: landmarks[12],
+                leftShoulder: landmarks[11],
+                rightHip: landmarks[24],
+                leftHip: landmarks[23],
+                rightKnee: landmarks[26],
+                rightAnkle: landmarks[28],
+                leftAnkle: landmarks[27],
+                nose: landmarks[0]
+            };
+        }
+
+        calculateBasicAngles(landmarks) {
+            return {
+                elbowAngle: this.calculateAngle(landmarks[16], landmarks[14], landmarks[12]),
+                shoulderRotation: this.calculateRotation(landmarks[11], landmarks[12]),
+                hipShoulderSeparation: this.calculateSeparation(
+                    landmarks[11], landmarks[12], 
+                    landmarks[23], landmarks[24]
+                ),
+                kneeBend: this.calculateAngle(landmarks[26], landmarks[24], landmarks[28])
+            };
+        }
+
+        calculateAngle(p1, p2, p3) {
+            const radians = Math.atan2(p3.y - p2.y, p3.x - p2.x) - 
+                            Math.atan2(p1.y - p2.y, p1.x - p2.x);
+            let angle = Math.abs(radians * 180.0 / Math.PI);
+            if (angle > 180.0) angle = 360 - angle;
+            return angle;
+        }
+
+        calculateRotation(leftShoulder, rightShoulder) {
+            return Math.atan2(
+                rightShoulder.y - leftShoulder.y,
+                rightShoulder.x - leftShoulder.x
+            ) * 180 / Math.PI;
+        }
+
+        calculateSeparation(leftShoulder, rightShoulder, leftHip, rightHip) {
+            const shoulderAngle = this.calculateRotation(leftShoulder, rightShoulder);
+            const hipAngle = this.calculateRotation(leftHip, rightHip);
+            return Math.abs(shoulderAngle - hipAngle);
+        }
+
+        /**
+         * Detect stroke pattern EXACTLY like production app
+         */
+        detectStrokePattern(poseData) {
+            const now = Date.now();
+            
+            // Cooldown to prevent double-detection
+            if (now - this.lastStrokeTime < this.strokeCooldown) {
+                return null;
+            }
+            
+            // Validate stroke
+            if (!this.strokeClassifier.isValidStroke(poseData.velocity, poseData.acceleration)) {
+                return null;
+            }
+            
+            // Need enough history
+            if (this.poseHistory.length < 30) {
+                return null;
+            }
+            
+            // Detect peak velocity
+            const recentVelocities = this.poseHistory.slice(-30).map(p => p.velocity.magnitude);
+            const maxVelocity = Math.max(...recentVelocities);
+            const peakIndex = recentVelocities.indexOf(maxVelocity);
+            
+            // Valid stroke pattern check
+            if (maxVelocity > 0.025 && peakIndex > 8 && peakIndex < 25) {
+                this.lastStrokeTime = now;
+                return this.buildStrokeData(30 - peakIndex);
+            }
+            
+            return null;
+        }
+
+        /**
+         * Build complete stroke data with sequence analysis
+         */
+        buildStrokeData(contactIndexFromEnd) {
+            const contactIndex = this.poseHistory.length - contactIndexFromEnd;
+            const contactFrame = this.poseHistory[contactIndex];
+            
+            // Classify stroke
+            const strokeType = this.strokeClassifier.classifyStroke(
+                contactFrame.velocity,
+                contactFrame.acceleration,
+                contactFrame.rotation,
+                contactFrame.verticalMotion
+            );
+            
+            // CRITICAL: Analyze full motion sequence
+            const sequenceAnalysis = this.motionSequenceAnalyzer.analyzeSequence(
+                this.poseHistory,
+                strokeType
+            );
+            
+            // Quality assessment
+            const qualityAssessment = this.strokeClassifier.assessStrokeQuality(
+                strokeType,
+                contactFrame.velocity,
+                contactFrame.acceleration,
+                contactFrame.rotation,
+                contactFrame.swingPath
+            );
+            
+            // Swing path
+            const swingPath = this.physicsAnalyzer.extractSwingPath(15);
+            const smoothness = this.physicsAnalyzer.calculatePathSmoothness(swingPath);
+            
+            return {
+                type: strokeType,
+                timestamp: contactFrame.timestamp,
+                
+                // Physics
+                velocity: contactFrame.velocity,
+                acceleration: contactFrame.acceleration,
+                rotation: contactFrame.rotation,
+                verticalMotion: contactFrame.verticalMotion,
+                
+                // Sequence analysis
+                sequenceAnalysis: sequenceAnalysis,
+                
+                // Quality
+                quality: qualityAssessment,
+                smoothness: smoothness,
+                
+                // Swing
+                swingPath: swingPath,
+                
+                // Full pose history for this stroke
+                poseSequence: this.poseHistory.slice(), // Deep copy
+                
+                // Contact data
+                contactPoint: {
+                    height: contactFrame.joints.rightWrist.y,
+                    distance: contactFrame.joints.rightWrist.x,
+                    angles: contactFrame.angles
+                },
+                
+                // Technique
+                technique: {
+                    elbowAngleAtContact: contactFrame.angles.elbowAngle,
+                    shoulderRotation: contactFrame.angles.shoulderRotation,
+                    hipShoulderSeparation: contactFrame.angles.hipShoulderSeparation,
+                    kneeBend: contactFrame.angles.kneeBend
+                }
+            };
+        }
+
+        onStrokeDetected(strokeData, videoData) {
+            this.log(`  → Detected ${strokeData.type} at ${(strokeData.timestamp / 1000).toFixed(1)}s (Quality: ${strokeData.quality.overall})`);
+            
+            // Store complete stroke data
+            videoData.strokes.push(strokeData);
+            
+            // Store motion sequence if analysis succeeded
+            if (strokeData.sequenceAnalysis) {
+                videoData.sequences.push({
+                    type: strokeData.type,
+                    poseSequence: strokeData.poseSequence,
+                    phases: strokeData.sequenceAnalysis.phases,
+                    phaseAnalysis: strokeData.sequenceAnalysis.phaseAnalysis,
+                    kineticChain: strokeData.sequenceAnalysis.kineticChain,
+                    quality: strokeData.sequenceAnalysis.sequenceQuality
+                });
+            }
+            
+            // Clear history for next stroke
+            this.poseHistory = [];
+        }
+
+        waitForSeek(video) {
+            return new Promise(resolve => {
+                video.onseeked = resolve;
+            });
+        }
+
+        aggregateResults() {
+            // Organize by skill level and stroke type
+            for (const video of this.videos) {
+                if (video.status !== 'complete') continue;
+                
+                const skillLevel = video.skillLevel;
+                
+                // Aggregate strokes
+                for (const stroke of video.strokes) {
+                    this.calibrationData[skillLevel].strokes.push(stroke);
+                }
+                
+                // Aggregate sequences
+                for (const sequence of video.sequences) {
+                    this.calibrationData[skillLevel].sequences.push(sequence);
+                }
+            }
+
+            this.log('📊 Aggregated results by skill level');
+        }
+
+        showResults() {
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsGrid = document.getElementById('resultsGrid');
+            
+            resultsSection.classList.add('active');
+            resultsGrid.innerHTML = '';
+
+            // Generate result cards
+            for (const [skillLevel, data] of Object.entries(this.calibrationData)) {
+                if (data.strokes.length === 0) continue;
+
+                const card = document.createElement('div');
+                card.className = 'result-card';
+                
+                // Group by stroke type
+                const byType = {};
+                for (const stroke of data.strokes) {
+                    if (!byType[stroke.type]) {
+                        byType[stroke.type] = [];
+                    }
+                    byType[stroke.type].push(stroke);
+                }
+                
+                let metricsHTML = '';
+                
+                for (const [strokeType, strokes] of Object.entries(byType)) {
+                    const avgVelocity = this.average(strokes.map(s => s.velocity.magnitude));
+                    const avgAcceleration = this.average(strokes.map(s => s.acceleration.magnitude));
+                    const avgRotation = this.average(strokes.map(s => Math.abs(s.rotation)));
+                    const avgSmoothness = this.average(strokes.map(s => s.smoothness));
+                    
+                    // Sequence analysis averages
+                    const strokesWithSeq = strokes.filter(s => s.sequenceAnalysis);
+                    let seqMetrics = '';
+                    if (strokesWithSeq.length > 0) {
+                        const avgPrepQuality = this.average(strokesWithSeq.map(s => s.sequenceAnalysis.phaseAnalysis.preparation?.quality || 0));
+                        const avgLoadQuality = this.average(strokesWithSeq.map(s => s.sequenceAnalysis.phaseAnalysis.loading?.quality || 0));
+                        const avgAccelQuality = this.average(strokesWithSeq.map(s => s.sequenceAnalysis.phaseAnalysis.acceleration?.quality || 0));
+                        const avgChainQuality = this.average(strokesWithSeq.map(s => s.sequenceAnalysis.kineticChain?.chainQuality || 0));
+                        
+                        seqMetrics = `
+                            <div class="metric-row">
+                                <span class="metric-label">Preparation Phase:</span>
+                                <span class="metric-value">${avgPrepQuality.toFixed(0)}/100</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Loading Phase:</span>
+                                <span class="metric-value">${avgLoadQuality.toFixed(0)}/100</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Acceleration Phase:</span>
+                                <span class="metric-value">${avgAccelQuality.toFixed(0)}/100</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label">Kinetic Chain:</span>
+                                <span class="metric-value">${avgChainQuality.toFixed(0)}/100</span>
+                            </div>
+                        `;
+                    }
+                    
+                    metricsHTML += `
+                        <div class="metric-row">
+                            <span class="metric-label"><strong>${strokeType}:</strong></span>
+                            <span class="metric-value"><strong>${strokes.length} strokes</strong></span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Avg Velocity:</span>
+                            <span class="metric-value">${avgVelocity.toFixed(4)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Avg Acceleration:</span>
+                            <span class="metric-value">${avgAcceleration.toFixed(4)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Avg Rotation:</span>
+                            <span class="metric-value">${avgRotation.toFixed(1)}°</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Avg Smoothness:</span>
+                            <span class="metric-value">${avgSmoothness.toFixed(0)}/100</span>
+                        </div>
+                        ${seqMetrics}
+                        <hr style="margin: 10px 0; border: none; border-top: 1px solid #ddd;">
+                    `;
+                }
+                
+                card.innerHTML = `
+                    <h3>${skillLevel.charAt(0).toUpperCase() + skillLevel.slice(1)}</h3>
+                    <div class="metric-row">
+                        <span class="metric-label"><strong>Total Strokes:</strong></span>
+                        <span class="metric-value"><strong>${data.strokes.length}</strong></span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label"><strong>Motion Sequences:</strong></span>
+                        <span class="metric-value"><strong>${data.sequences.length}</strong></span>
+                    </div>
+                    <hr style="margin: 15px 0; border: none; border-top: 2px solid #667eea;">
+                    ${metricsHTML}
+                `;
+                
+                resultsGrid.appendChild(card);
+            }
+        }
+
+        downloadCalibrationData() {
+            const dataStr = JSON.stringify(this.calibrationData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `calibration_full_data_${Date.now()}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            this.log('💾 Downloaded complete calibration data');
+        }
+
+        downloadProfessionalReferences() {
+            // Build professional reference library from processed data
+            const professionalData = this.calibrationData.professional;
+            
+            if (professionalData.sequences.length === 0) {
+                alert('No professional sequences captured. Please process professional videos first.');
+                return;
+            }
+            
+            // Build reference library organized by stroke type
+            const referenceLibrary = {};
+            
+            // Group sequences by stroke type
+            const byType = {};
+            for (const seq of professionalData.sequences) {
+                if (!byType[seq.type]) {
+                    byType[seq.type] = [];
+                }
+                byType[seq.type].push(seq);
+            }
+            
+            // For each stroke type, create reference
+            for (const [strokeType, sequences] of Object.entries(byType)) {
+                // Find highest quality sequence as primary reference
+                const bestSequence = sequences.reduce((best, current) => 
+                    current.quality.overall > best.quality.overall ? current : best
+                );
+                
+                referenceLibrary[strokeType] = {
+                    primaryReference: {
+                        poseSequence: bestSequence.poseSequence,
+                        phases: bestSequence.phases,
+                        phaseAnalysis: bestSequence.phaseAnalysis,
+                        kineticChain: bestSequence.kineticChain,
+                        quality: bestSequence.quality
+                    },
+                    
+                    // Calculate average metrics from all sequences
+                    averageMetrics: this.calculateAverageMetrics(sequences),
+                    
+                    // Store all sequences for comparison
+                    allSequences: sequences.map(s => ({
+                        poseSequence: s.poseSequence,
+                        phases: s.phases,
+                        quality: s.quality.overall
+                    })),
+                    
+                    sampleSize: sequences.length
+                };
+            }
+            
+            const output = {
+                metadata: {
+                    version: "2.0-motion-sequences",
+                    generatedDate: new Date().toISOString(),
+                    description: "Professional reference motion sequences with phase and kinetic chain analysis",
+                    totalSequences: professionalData.sequences.length
+                },
+                references: referenceLibrary
+            };
+            
+            const dataStr = JSON.stringify(output, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `professional_references_${Date.now()}.json`;
+            a.click();
+            
+            URL.revokeObjectURL(url);
+            this.log('📄 Downloaded professional reference sequences');
+        }
+
+        calculateAverageMetrics(sequences) {
+            if (sequences.length === 0) return null;
+            
+            const metrics = {
+                preparation: {
+                    avgQuality: this.average(sequences.map(s => s.phaseAnalysis.preparation?.quality || 0)),
+                    avgDuration: this.average(sequences.map(s => s.phases.durations.preparation))
+                },
+                loading: {
+                    avgQuality: this.average(sequences.map(s => s.phaseAnalysis.loading?.quality || 0)),
+                    avgDuration: this.average(sequences.map(s => s.phases.durations.loading)),
+                    avgRotationGain: this.average(sequences.map(s => s.phaseAnalysis.loading?.rotationGain || 0))
+                },
+                acceleration: {
+                    avgQuality: this.average(sequences.map(s => s.phaseAnalysis.acceleration?.quality || 0)),
+                    avgDuration: this.average(sequences.map(s => s.phases.durations.acceleration)),
+                    avgAcceleration: this.average(sequences.map(s => s.phaseAnalysis.acceleration?.avgAcceleration || 0))
+                },
+                contact: {
+                    avgQuality: this.average(sequences.map(s => s.phaseAnalysis.contact?.quality || 0)),
+                    avgRotation: this.average(sequences.map(s => s.phaseAnalysis.contact?.rotationAtContact || 0))
+                },
+                followThrough: {
+                    avgQuality: this.average(sequences.map(s => s.phaseAnalysis.followThrough?.quality || 0)),
+                    avgDuration: this.average(sequences.map(s => s.phases.durations.followThrough))
+                },
+                kineticChain: {
+                    avgQuality: this.average(sequences.map(s => s.kineticChain?.chainQuality || 0)),
+                    sequenceCorrectPercent: this.average(sequences.map(s => 
+                        s.kineticChain?.sequenceCorrect ? 100 : 0
+                    ))
+                }
+            };
+            
+            return metrics;
+        }
+
+        clearAll() {
+            this.videos = [];
+            this.calibrationData = {
+                professional: { strokes: [], sequences: [] },
+                advanced: { strokes: [], sequences: [] },
+                intermediate: { strokes: [], sequences: [] },
+                beginner: { strokes: [], sequences: [] }
+            };
+            
+            this.renderVideoList();
+            this.updateProcessButton();
+            
+            document.getElementById('progressContainer').classList.remove('active');
+            document.getElementById('resultsSection').classList.remove('active');
+            document.getElementById('logContainer').innerHTML = '';
+            document.getElementById('logContainer').classList.remove('active');
+            
+            this.log('🗑️ Cleared all data');
+        }
+
+        updateProgress(current, total) {
+            const percent = (current / total) * 100;
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = 
+                `Processing video ${current} of ${total}...`;
+        }
+
+        log(message) {
+            const container = document.getElementById('logContainer');
+            const line = document.createElement('div');
+            line.className = 'log-line';
+            line.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.appendChild(line);
+            container.scrollTop = container.scrollHeight;
+            console.log(message);
+        }
+
+        formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        average(arr) {
+            if (arr.length === 0) return 0;
+            return arr.reduce((a, b) => a + b, 0) / arr.length;
+        }
+    }
+
+    // Initialize when page loads
+    window.addEventListener('load', () => {
+        new CalibrationTool();
+    });
+</script>
+</body>
+</html>

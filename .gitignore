@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+server/venv/
+venv/
+ven/
+__pycache__/
+*.pyc
+
+# Large video files
+calibration_videos/*.mp4
+*.mp4
+
+# Model weights (too large for git)
+model_weights/
+server/*.task
+server/*.pt
+server/*.cbm
+ball_detection_weights.pt
+model_tennis_court_det.pt
+
+# Debug images from calibration
+server/*.jpg
+
+# Environment and secrets
+.env
+.env.local
+*.pem
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+*.gif

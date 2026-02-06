@@ -1,0 +1,43 @@
+to start venv
+
+rm -rf venv
+python3.11 -m venv venv
+source venv/bin/activate
+pip install flask flask-cors opencv-python numpy scipy pandas sympy tqdm catboost scenedetect mediapipe torch torchvision
+
+
+# Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+werkzeug==3.0.0
+
+# Computer Vision & Image Processing
+opencv-python==4.9.0.80
+mediapipe==0.10.9
+
+# Deep Learning (install separately - see pytorch.org for your system)
+# torch
+# torchvision
+
+# Scientific Computing
+numpy==1.26.3
+scipy==1.11.4
+pandas==2.1.4
+
+# Machine Learning
+catboost==1.2.2
+
+# Symbolic Math
+sympy==1.12
+
+# Utilities
+tqdm==4.66.1
+matplotlib==3.8.2
+Pillow==10.2.0
+
+# Video Processing
+scenedetect==0.6.3
+
+# Additional Dependencies
+python-dateutil==2.8.2
+pytz==2024.1

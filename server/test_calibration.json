@@ -1,0 +1,147 @@
+{
+  "timestamp": "2026-02-05T00:02:43.931438",
+  "video_path": "../calibration_videos/court_level_tennis.mp4",
+  "video_info": {
+    "width": 1280,
+    "height": 720,
+    "fps": 60.0,
+    "total_frames": 47644
+  },
+  "detection_stats": {
+    "ball_detection_rate": 0.692,
+    "court_detection_rate": 0.0,
+    "bounces_detected": 0,
+    "shots_segmented": 9,
+    "shots_analyzed": 2
+  },
+  "summary": {
+    "total_shots": 2,
+    "successful_shots": 0,
+    "success_rate": 0.0,
+    "stroke_distribution": {
+      "Forehand": 1,
+      "Groundstroke": 1
+    },
+    "outcome_distribution": {
+      "in": 0,
+      "out": 0,
+      "unknown": 2
+    },
+    "all_shots": {
+      "velocity_normalized": {
+        "count": 2,
+        "min": 50.59538633707061,
+        "max": 179.14258031519668,
+        "mean": 114.86898332613364,
+        "median": 114.86898332613364,
+        "std": 64.27359698906304,
+        "p10": 63.450105734883216,
+        "p25": 82.73218483160213,
+        "p75": 147.00578182066516,
+        "p90": 166.28786091738408
+      },
+      "ball_speed_mph": null,
+      "hip_shoulder_separation": {
+        "count": 2,
+        "min": 16.183552987934647,
+        "max": 38.83214733667496,
+        "mean": 27.507850162304802,
+        "median": 27.507850162304802,
+        "std": 11.324297174370155,
+        "p10": 18.448412422808676,
+        "p25": 21.845701575119726,
+        "p75": 33.16999874948988,
+        "p90": 36.567287901800924
+      },
+      "knee_bend": {
+        "count": 2,
+        "min": 169.59060614504182,
+        "max": 172.51780984454751,
+        "mean": 171.05420799479467,
+        "median": 171.05420799479467,
+        "std": 1.4636018497528482,
+        "p10": 169.88332651499238,
+        "p25": 170.32240706991826,
+        "p75": 171.78600891967108,
+        "p90": 172.22508947459696
+      }
+    },
+    "successful_shots_only": {
+      "velocity_normalized": null,
+      "ball_speed_mph": null,
+      "hip_shoulder_separation": null,
+      "knee_bend": null
+    },
+    "by_stroke_type": {
+      "Forehand": {
+        "total": 1,
+        "successful": 0,
+        "velocity_normalized": null,
+        "ball_speed_mph": null
+      },
+      "Groundstroke": {
+        "total": 1,
+        "successful": 0,
+        "velocity_normalized": null,
+        "ball_speed_mph": null
+      }
+    },
+    "camera_angles": {
+      "view_types": {
+        "side": 1,
+        "extreme_side": 4,
+        "front_or_back": 1
+      },
+      "suitable_for_analysis": 2
+    },
+    "body_scale_consistency": {
+      "mean_torso_length": 0.09899879919357,
+      "std_torso_length": 0.01783333098173613,
+      "cv": 0.18013684132538862
+    }
+  },
+  "shots": [
+    {
+      "shot_index": 1,
+      "stroke_type": "Forehand",
+      "outcome": "unknown",
+      "contact_frame": 102,
+      "duration_seconds": 1.1,
+      "ball_speed_mps": null,
+      "ball_speed_mph": null,
+      "landing_position_meters": [
+        null,
+        null
+      ],
+      "velocity_normalized": 179.14258031519668,
+      "velocity_raw": 16.304836943022327,
+      "left_elbow_angle": 104.43734797156195,
+      "right_elbow_angle": 157.4959071943459,
+      "hip_shoulder_separation": 38.83214733667496,
+      "knee_bend": 169.59060614504182,
+      "camera_view_type": "side",
+      "body_scale_torso": 0.09101597685114501
+    },
+    {
+      "shot_index": 8,
+      "stroke_type": "Groundstroke",
+      "outcome": "unknown",
+      "contact_frame": 414,
+      "duration_seconds": 1.3333333333333333,
+      "ball_speed_mps": null,
+      "ball_speed_mph": null,
+      "landing_position_meters": [
+        null,
+        null
+      ],
+      "velocity_normalized": 50.59538633707061,
+      "velocity_raw": 5.885406933901295,
+      "left_elbow_angle": 32.004393901945214,
+      "right_elbow_angle": 137.85180137315172,
+      "hip_shoulder_separation": 16.183552987934647,
+      "knee_bend": 172.51780984454751,
+      "camera_view_type": "front_or_back",
+      "body_scale_torso": 0.1163229962252335
+    }
+  ]
+}

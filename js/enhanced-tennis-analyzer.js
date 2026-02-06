@@ -1,0 +1,783 @@
+class EnhancedTennisAnalyzer {
+  constructor() {
+    // Initialize sophisticated modules
+    this.physicsAnalyzer = new PhysicsAnalyzer();
+    this.strokeClassifier = new StrokeClassifier();
+    this.proReferences = new ProfessionalReferences();
+    this.coachingOrchestrator = new CoachingOrchestrator();
+
+    // Motion sequence analyzer for phase-by-phase analysis
+    this.motionSequenceAnalyzer = new MotionSequenceAnalyzer();
+
+    // Phase detector for stroke validation
+    this.phaseDetector = new PhaseDetector();
+
+    // Biomechanical checkpoint system for quality evaluation
+    this.biomechanicalCheckpoints = new BiomechanicalCheckpoints();
+    
+    // Session tracking
+    this.poseHistory = [];
+    this.sessionStats = {
+      totalStrokes: 0,
+      scores: [],
+      strokeTypes: {},
+      skillLevels: {}, // Track skill level per stroke type
+      contactPointHistory: [] // Track for variance calculation
+    };
+
+    // Stroke detection state
+    this.lastStrokeTime = 0;
+    this.strokeCooldown = 1500; // ms between stroke detections
+
+    // Last detected stroke (for calibration tool access)
+    this.lastStrokeData = null;
+  }
+
+  /**
+   * Get the last detected stroke data (for calibration tool)
+   */
+  getLastStrokeData() {
+    return this.lastStrokeData;
+  }
+
+    resetSession() {
+    this.sessionStats = {
+      totalStrokes: 0,
+      scores: [],
+      strokeTypes: {},
+      skillLevels: {},
+      contactPointHistory: []
+    };
+    this.physicsAnalyzer.reset();
+    this.coachingOrchestrator.reset();
+    this.poseHistory = [];
+    console.log('Session reset complete');
+  }
+  
+  analyzePose(landmarks, timestamp) {
+    // Feed data to physics analyzer
+    const hasEnoughData = this.physicsAnalyzer.addPoseData(landmarks, timestamp);
+    
+    if (!hasEnoughData) {
+      return null; // Need more frames
+    }
+    
+    // Get sophisticated physics analysis
+    const wristVelocity = this.physicsAnalyzer.calculateWristVelocity();
+    const acceleration = this.physicsAnalyzer.calculateAcceleration();
+    const rotation = this.physicsAnalyzer.calculateBodyRotation();
+    const verticalMotion = this.physicsAnalyzer.calculateVerticalMotion();
+    const swingPath = this.physicsAnalyzer.extractSwingPath();
+    
+    // Build rich pose data structure
+    const poseData = {
+      timestamp,
+      landmarks: landmarks,
+      
+      // Sophisticated physics metrics
+      velocity: wristVelocity,
+      acceleration: acceleration,
+      rotation: rotation,
+      verticalMotion: verticalMotion,
+      swingPath: swingPath,
+      
+      // Joint positions for compatibility
+      joints: this.extractJointPositions(landmarks),
+      
+      // Legacy angles for UI display
+      angles: this.calculateBasicAngles(landmarks)
+    };
+    
+    this.poseHistory.push(poseData);
+    
+    // Keep last 60 frames (2 seconds at 30fps)
+    if (this.poseHistory.length > 60) {
+      this.poseHistory.shift();
+    }
+    
+    // Detect stroke completion
+    const stroke = this.detectStrokePattern(wristVelocity, acceleration);
+    if (stroke) {
+      this.onStrokeDetected(stroke, poseData);
+    }
+    
+    return poseData;
+  }
+  
+  extractJointPositions(landmarks) {
+    return {
+      rightWrist: landmarks[16],
+      rightElbow: landmarks[14],
+      rightShoulder: landmarks[12],
+      leftShoulder: landmarks[11],
+      rightHip: landmarks[24],
+      leftHip: landmarks[23],
+      rightKnee: landmarks[26],
+      rightAnkle: landmarks[28],
+      leftAnkle: landmarks[27]
+    };
+  }
+  
+  calculateBasicAngles(landmarks) {
+    // Keep for UI compatibility
+    return {
+      elbowAngle: this.calculateAngle(landmarks[16], landmarks[14], landmarks[12]),
+      shoulderRotation: this.calculateRotation(landmarks[11], landmarks[12]),
+      hipShoulderSeparation: this.calculateSeparation(
+        landmarks[11], landmarks[12], 
+        landmarks[23], landmarks[24]
+      ),
+      kneeBend: this.calculateAngle(landmarks[26], landmarks[24], landmarks[28])
+    };
+  }
+  
+  calculateAngle(p1, p2, p3) {
+    const radians = Math.atan2(p3.y - p2.y, p3.x - p2.x) - 
+                    Math.atan2(p1.y - p2.y, p1.x - p2.x);
+    let angle = Math.abs(radians * 180.0 / Math.PI);
+    if (angle > 180.0) angle = 360 - angle;
+    return angle;
+  }
+  
+  calculateRotation(leftShoulder, rightShoulder) {
+    return Math.atan2(
+      rightShoulder.y - leftShoulder.y,
+      rightShoulder.x - leftShoulder.x
+    ) * 180 / Math.PI;
+  }
+  
+  calculateSeparation(leftShoulder, rightShoulder, leftHip, rightHip) {
+    const shoulderAngle = this.calculateRotation(leftShoulder, rightShoulder);
+    const hipAngle = this.calculateRotation(leftHip, rightHip);
+    return Math.abs(shoulderAngle - hipAngle);
+  }
+  
+  detectStrokePattern(velocity, acceleration) {
+    const now = Date.now();
+
+    // Cooldown period to prevent double-detection
+    if (now - this.lastStrokeTime < this.strokeCooldown) {
+      return null;
+    }
+
+    // Check if we have enough history
+    if (this.poseHistory.length < 30) {
+      return null;
+    }
+
+    // Detect peak in velocity (indicates potential contact point)
+    const recentVelocities = this.poseHistory.slice(-30).map(p => p.velocity.magnitude);
+    const maxVelocity = Math.max(...recentVelocities);
+    const peakIndex = recentVelocities.indexOf(maxVelocity);
+
+    // Basic velocity threshold check
+    if (maxVelocity < 0.025 || peakIndex <= 8 || peakIndex >= 25) {
+      return null;
+    }
+
+    // PHASE-BASED VALIDATION: Verify this is a real stroke pattern
+    const strokeValidation = this.validateStrokeWithPhases();
+    if (!strokeValidation.isValid) {
+      // Log rejection reason for debugging
+      if (maxVelocity > 0.03) {
+        console.log('Stroke rejected:', strokeValidation.reason, '| Velocity:', maxVelocity.toFixed(3));
+      }
+      return null;
+    }
+
+    this.lastStrokeTime = now;
+    return this.buildStrokeData(30 - peakIndex); // Index from end of history
+  }
+
+  /**
+   * Validate stroke using phase detection
+   * A valid stroke should show: preparation → loading → acceleration → contact → follow-through
+   */
+  validateStrokeWithPhases() {
+    if (!this.phaseDetector || this.poseHistory.length < 20) {
+      // Fallback to basic validation if phase detector unavailable
+      return { isValid: true, reason: 'phase_detector_unavailable' };
+    }
+
+    try {
+      const phases = this.phaseDetector.detectPhases(this.poseHistory);
+
+      // No phases detected
+      if (!phases) {
+        return { isValid: false, reason: 'no_phases_detected' };
+      }
+
+      // Validate phase sequence
+      if (!this.phaseDetector.validatePhases(phases)) {
+        return { isValid: false, reason: 'invalid_phase_sequence' };
+      }
+
+      // Check minimum phase durations for a real stroke
+      const minDurations = {
+        acceleration: 3,   // At least 3 frames of acceleration
+        followThrough: 5   // At least 5 frames of follow-through
+      };
+
+      if (phases.durations.acceleration < minDurations.acceleration) {
+        return { isValid: false, reason: 'acceleration_too_short' };
+      }
+
+      if (phases.durations.followThrough < minDurations.followThrough) {
+        return { isValid: false, reason: 'followthrough_too_short' };
+      }
+
+      // Check for minimum rotation during loading (indicates actual tennis stroke)
+      const loadingData = this.poseHistory.slice(phases.loading.start, phases.loading.end);
+      if (loadingData.length >= 2) {
+        const startRotation = Math.abs(loadingData[0]?.rotation || 0);
+        const endRotation = Math.abs(loadingData[loadingData.length - 1]?.rotation || 0);
+        const rotationGain = endRotation - startRotation;
+
+        if (rotationGain < 3) {
+          return { isValid: false, reason: 'insufficient_loading_rotation' };
+        }
+      }
+
+      return {
+        isValid: true,
+        reason: 'valid_stroke_pattern',
+        phases: phases
+      };
+
+    } catch (error) {
+      console.warn('Phase validation error:', error.message);
+      // On error, fall back to accepting the stroke
+      return { isValid: true, reason: 'phase_validation_error' };
+    }
+  }
+  
+  buildStrokeData(contactIndexFromEnd) {
+    const contactIndex = this.poseHistory.length - contactIndexFromEnd;
+    const contactFrame = this.poseHistory[contactIndex];
+    
+    // USE SOPHISTICATED CLASSIFIER (not naive left/right heuristic!)
+    const strokeType = this.strokeClassifier.classifyStroke(
+      contactFrame.velocity,
+      contactFrame.acceleration,
+      contactFrame.rotation,
+      contactFrame.verticalMotion
+    );
+    
+    // Assess quality using sophisticated classifier
+    const qualityAssessment = this.strokeClassifier.assessStrokeQuality(
+      strokeType,
+      contactFrame.velocity,
+      contactFrame.acceleration,
+      contactFrame.rotation,
+      contactFrame.swingPath
+    );
+    
+    // Get swing path with smoothness score
+    const swingPath = this.physicsAnalyzer.extractSwingPath(15);
+    const smoothness = this.physicsAnalyzer.calculatePathSmoothness(swingPath);
+
+    // Estimate ball speed
+    const estimatedBallSpeed = this.strokeClassifier.estimateBallSpeed(contactFrame.velocity);
+    
+    // Calculate contact point variance
+    const contactPointVariance = this.calculateContactPointVariance(contactFrame);
+    
+    // Compare with professional standards
+    const proComparison = this.proReferences.compareWithProfessional({
+      velocity: contactFrame.velocity.magnitude,
+      acceleration: contactFrame.acceleration.magnitude,
+      rotation: contactFrame.rotation,
+      smoothness: smoothness
+    }, strokeType);
+    
+    return {
+      type: strokeType,
+      timestamp: contactFrame.timestamp,
+      
+      // Physics data
+      velocity: contactFrame.velocity,
+      acceleration: contactFrame.acceleration,
+      rotation: contactFrame.rotation,
+      verticalMotion: contactFrame.verticalMotion,
+      
+      // Quality assessment
+      quality: qualityAssessment,
+      smoothness: smoothness,
+      estimatedBallSpeed: estimatedBallSpeed,
+      
+      // Professional comparison
+      proComparison: proComparison,
+      
+      // Swing analysis
+      swingPath: swingPath,
+      
+      // Contact point data (for UI compatibility)
+      contactPoint: {
+        height: contactFrame.joints.rightWrist.y,
+        distance: contactFrame.joints.rightWrist.x,
+        angles: contactFrame.angles
+      },
+      contactPointVariance: contactPointVariance,
+      
+      // Technique details (for UI display)
+      technique: {
+        elbowAngleAtContact: contactFrame.angles.elbowAngle,
+        shoulderRotation: contactFrame.angles.shoulderRotation,
+        hipShoulderSeparation: contactFrame.angles.hipShoulderSeparation,
+        kneeBend: contactFrame.angles.kneeBend,
+        stance: this.detectStance(contactFrame.joints),
+        weightTransfer: this.calculateWeightTransfer(contactFrame.joints)
+      },
+
+      // Phase-by-phase analysis (from motion sequence analyzer)
+      sequenceAnalysis: this.analyzeMotionSequence(strokeType),
+
+      // Biomechanical checkpoint evaluation
+      biomechanicalEvaluation: null  // Will be populated after sequenceAnalysis
+    };
+
+    // Run biomechanical evaluation if we have sequence analysis
+    if (strokeData.sequenceAnalysis && this.biomechanicalCheckpoints) {
+      strokeData.biomechanicalEvaluation = this.biomechanicalCheckpoints.evaluateStroke(
+        strokeData,
+        strokeData.sequenceAnalysis
+      );
+
+      // Log checkpoint results for debugging
+      if (strokeData.biomechanicalEvaluation) {
+        console.log('Biomechanical Evaluation:', {
+          overall: strokeData.biomechanicalEvaluation.overall,
+          faults: strokeData.biomechanicalEvaluation.detectedFaults.map(f => f.name),
+          primaryFeedback: strokeData.biomechanicalEvaluation.primaryFeedback?.message
+        });
+      }
+    }
+
+    return strokeData;
+  }
+
+  /**
+   * Analyze the motion sequence for phase-by-phase insights
+   */
+  analyzeMotionSequence(strokeType) {
+    if (!this.motionSequenceAnalyzer || this.poseHistory.length < 20) {
+      return null;
+    }
+
+    try {
+      const analysis = this.motionSequenceAnalyzer.analyzeSequence(
+        this.poseHistory,
+        strokeType
+      );
+
+      if (analysis) {
+        // Log for diagnostic purposes
+        console.log('Motion Sequence Analysis:', {
+          strokeType,
+          phases: analysis.phases?.durations,
+          sequenceQuality: analysis.sequenceQuality?.overall,
+          kineticChain: analysis.kineticChain?.chainQuality
+        });
+      }
+
+      return analysis;
+    } catch (error) {
+      console.warn('Motion sequence analysis failed:', error.message);
+      return null;
+    }
+  }
+  
+  detectStance(joints) {
+    const leftFoot = joints.leftAnkle;
+    const rightFoot = joints.rightAnkle;
+    const leftShoulder = joints.leftShoulder;
+    const rightShoulder = joints.rightShoulder;
+    
+    const footAngle = Math.atan2(
+      rightFoot.y - leftFoot.y,
+      rightFoot.x - leftFoot.x
+    );
+    const shoulderAngle = Math.atan2(
+      rightShoulder.y - leftShoulder.y,
+      rightShoulder.x - leftShoulder.x
+    );
+    
+    const diff = Math.abs(footAngle - shoulderAngle) * 180 / Math.PI;
+    
+    if (diff < 30) return 'neutral';
+    if (diff < 60) return 'semi-open';
+    return 'open';
+  }
+  
+  calculateWeightTransfer(joints) {
+    if (this.poseHistory.length < 30) return 'static';
+    
+    const start = this.poseHistory[0].joints;
+    const end = joints;
+    
+    const rightShift = Math.abs(end.rightAnkle.y - start.rightAnkle.y);
+    const leftShift = Math.abs(end.leftAnkle.y - start.leftAnkle.y);
+    
+    if (rightShift > 0.05 || leftShift > 0.05) {
+      return 'back-to-front';
+    }
+    return 'static';
+  }
+  
+  /**
+   * Calculate contact point variance for consistency tracking
+   */
+  calculateContactPointVariance(currentFrame) {
+    const currentContact = {
+      x: currentFrame.joints.rightWrist.x,
+      y: currentFrame.joints.rightWrist.y,
+      z: currentFrame.joints.rightWrist.z || 0
+    };
+    
+    // Store in history
+    this.sessionStats.contactPointHistory.push(currentContact);
+    
+    // Keep last 20 strokes
+    if (this.sessionStats.contactPointHistory.length > 20) {
+      this.sessionStats.contactPointHistory.shift();
+    }
+    
+    // Need at least 3 strokes to calculate variance
+    if (this.sessionStats.contactPointHistory.length < 3) {
+      return 0.05; // Default low variance
+    }
+    
+    // Calculate 3D variance
+    const contacts = this.sessionStats.contactPointHistory;
+    const avgX = contacts.reduce((sum, c) => sum + c.x, 0) / contacts.length;
+    const avgY = contacts.reduce((sum, c) => sum + c.y, 0) / contacts.length;
+    const avgZ = contacts.reduce((sum, c) => sum + c.z, 0) / contacts.length;
+    
+    const variance = contacts.reduce((sum, c) => {
+      const dx = c.x - avgX;
+      const dy = c.y - avgY;
+      const dz = c.z - avgZ;
+      return sum + Math.sqrt(dx*dx + dy*dy + dz*dz);
+    }, 0) / contacts.length;
+    
+    return variance;
+  }
+  
+  onStrokeDetected(strokeData, currentPose) {
+    // Store for calibration tool access
+    this.lastStrokeData = strokeData;
+
+    // Update session statistics
+    this.sessionStats.totalStrokes++;
+    this.sessionStats.scores.push(strokeData.quality.overall);
+
+    // DIAGNOSTIC LOGGING - capture all raw metrics for calibration
+    if (typeof diagnosticLogger !== 'undefined') {
+      diagnosticLogger.logStroke(
+        strokeData,
+        strokeData.sequenceAnalysis,
+        strokeData.biomechanicalEvaluation
+      );
+    }
+
+    // Persist stroke to localStorage
+    if (typeof sessionStorage !== 'undefined' && sessionStorage.addStroke) {
+      sessionStorage.addStroke(strokeData);
+    }
+    
+    // Track stroke type distribution
+    const type = strokeData.type;
+    this.sessionStats.strokeTypes[type] = 
+      (this.sessionStats.strokeTypes[type] || 0) + 1;
+    
+    // Track skill level per stroke type
+    if (strokeData.proComparison) {
+      this.sessionStats.skillLevels[type] = strokeData.proComparison.skillLevel;
+    }
+    
+    // Build player metrics for coaching orchestrator
+    const playerMetrics = this.buildPlayerMetrics(strokeData);
+    
+    // USE COACHING ORCHESTRATOR to get intelligent feedback
+    const coachingRecommendation = this.coachingOrchestrator.analyzeStroke(
+      strokeData, 
+      playerMetrics
+    );
+    
+    // Build enhanced coaching context
+    const coachingContext = this.buildCoachingContext(strokeData, coachingRecommendation);
+    
+    // Send to GPT Coach with rich context
+    if (coachingRecommendation) {
+      gptVoiceCoach.analyzeStroke(coachingContext);
+    }
+    
+    // Update UI
+    this.updateUI(coachingContext);
+
+    // Trigger screen border flash based on quality
+    if (typeof flashStrokeQuality === 'function') {
+      flashStrokeQuality(strokeData.quality.overall);
+    }
+
+    // Clear pose history after stroke
+    this.poseHistory = [];
+  }
+
+  /**
+   * Build player metrics object for coaching orchestrator
+   */
+  buildPlayerMetrics(strokeData) {
+    return {
+      velocity: strokeData.velocity,
+      acceleration: strokeData.acceleration,
+      rotation: strokeData.rotation,
+      verticalMotion: strokeData.verticalMotion,
+      smoothness: strokeData.smoothness,
+      technique: strokeData.technique,
+      contactPointVariance: strokeData.contactPointVariance,
+      quality: strokeData.quality.overall,
+      consistency: this.getConsistency(),
+      preparationTime: this.estimatePreparationTime(),
+      forwardMomentum: this.estimateForwardMomentum(),
+      backFootWeight: this.estimateBackFootWeight(),
+      armExtension: this.estimateArmExtension(strokeData),
+      followThroughComplete: this.checkFollowThroughComplete(strokeData)
+    };
+  }
+  
+  /**
+   * Estimate preparation time (simplified for now)
+   */
+  estimatePreparationTime() {
+    // Use pose history length as proxy - shorter history = later preparation
+    const historyLength = this.poseHistory.length;
+    if (historyLength < 20) return 0.9; // Late
+    if (historyLength < 30) return 0.7; // Moderate
+    return 0.5; // Early (good)
+  }
+  
+  /**
+   * Estimate forward momentum from pose progression
+   */
+  estimateForwardMomentum() {
+    if (this.poseHistory.length < 10) return 0.5;
+    
+    const start = this.poseHistory[0].joints;
+    const end = this.poseHistory[this.poseHistory.length - 1].joints;
+    
+    // Check if center of mass moved forward
+    const hipMovement = end.rightHip.x - start.rightHip.x;
+    
+    if (hipMovement > 0.05) return 0.8; // Good forward movement
+    if (hipMovement > 0.02) return 0.6; // Moderate
+    return 0.3; // Static or backward
+  }
+  
+  /**
+   * Estimate back foot weight at contact
+   */
+  estimateBackFootWeight() {
+    if (this.poseHistory.length < 5) return 0.5;
+    
+    const contactFrame = this.poseHistory[this.poseHistory.length - 1];
+    
+    // Check ankle heights (higher back ankle = weight on back foot)
+    const backAnkleHeight = contactFrame.joints.rightAnkle.y;
+    const frontAnkleHeight = contactFrame.joints.leftAnkle.y;
+    
+    if (backAnkleHeight < frontAnkleHeight - 0.05) {
+      return 0.7; // Weight on back foot (bad)
+    } else if (backAnkleHeight < frontAnkleHeight) {
+      return 0.4; // Balanced
+    }
+    return 0.2; // Weight forward (good)
+  }
+  
+  /**
+   * Estimate arm extension
+   */
+  estimateArmExtension(strokeData) {
+    const elbowAngle = strokeData.technique.elbowAngleAtContact;
+    
+    // More extension = higher angle
+    if (elbowAngle > 150) return 0.9;
+    if (elbowAngle > 140) return 0.75;
+    if (elbowAngle > 130) return 0.6;
+    return 0.4; // Collapsed elbow
+  }
+  
+  /**
+   * Check if follow-through was complete
+   */
+  checkFollowThroughComplete(strokeData) {
+    // Use smoothness and swing path as proxies
+    return strokeData.smoothness > 60 && strokeData.swingPath.length >= 12;
+  }
+  
+  buildCoachingContext(strokeData, coachingRecommendation) {
+    const proComp = strokeData.proComparison;
+    
+    // Base context from stroke data
+    const baseContext = {
+      strokeType: strokeData.type,
+      
+      // Quality breakdown
+      quality: {
+        overall: strokeData.quality.overall,
+        breakdown: strokeData.quality.breakdown,
+        feedback: strokeData.quality.feedback,
+        trend: this.getTrend(),
+        estimatedBallSpeed: strokeData.estimatedBallSpeed
+      },
+      
+      // Professional comparison
+      comparison: proComp ? {
+        skillLevel: proComp.skillLevel,
+        percentile: proComp.percentile,
+        overallSimilarity: Math.round(proComp.overallSimilarity * 100),
+        velocityRatio: Math.round(proComp.velocityRatio * 100),
+        accelerationRatio: Math.round(proComp.accelerationRatio * 100),
+        rotationRatio: Math.round(proComp.rotationRatio * 100),
+        strengths: proComp.strengths,
+        improvements: proComp.improvements
+      } : null,
+      
+      // Technique specifics (for UI display)
+      technique: strokeData.technique,
+      
+      // Physics metrics
+      physics: {
+        velocity: strokeData.velocity.magnitude.toFixed(3),
+        acceleration: strokeData.acceleration.magnitude.toFixed(3),
+        rotation: strokeData.rotation.toFixed(1),
+        smoothness: strokeData.smoothness.toFixed(0)
+      },
+      
+      // Session context
+      session: {
+        strokeCount: this.sessionStats.totalStrokes,
+        averageScore: this.getAverageScore(),
+        strokeDistribution: this.sessionStats.strokeTypes,
+        consistency: this.getConsistency(),
+        skillLevels: this.sessionStats.skillLevels
+      }
+    };
+    
+    // Add orchestrator coaching if available
+    if (coachingRecommendation) {
+      if (coachingRecommendation.type === 'excellence') {
+        baseContext.orchestratorFeedback = {
+          type: 'excellence',
+          message: coachingRecommendation.message,
+          trend: coachingRecommendation.sessionContext.recentQualityTrend
+        };
+      } else if (coachingRecommendation.issue) {
+        baseContext.orchestratorFeedback = {
+          type: 'coaching',
+          issue: coachingRecommendation.issue,
+          cue: coachingRecommendation.cue,
+          diagnosis: coachingRecommendation.diagnosis,
+          keyMetrics: coachingRecommendation.keyMetrics,
+          expectedImprovement: coachingRecommendation.expectedImprovement,
+          playerLevel: coachingRecommendation.playerLevel,
+          criticalSituation: coachingRecommendation.criticalSituation,
+          consecutiveOccurrences: coachingRecommendation.consecutiveOccurrences
+        };
+      }
+    }
+
+    // Add sequence analysis if available (phase-by-phase insights)
+    if (strokeData.sequenceAnalysis) {
+      const seq = strokeData.sequenceAnalysis;
+      baseContext.sequenceAnalysis = {
+        sequenceQuality: seq.sequenceQuality?.overall,
+        phaseBreakdown: seq.sequenceQuality?.breakdown,
+        kineticChainQuality: seq.kineticChain?.chainQuality,
+        phaseDurations: seq.phases?.durations,
+        feedback: seq.feedback
+      };
+    }
+
+    // Add biomechanical evaluation (checkpoint-based quality)
+    if (strokeData.biomechanicalEvaluation) {
+      const bio = strokeData.biomechanicalEvaluation;
+      baseContext.biomechanical = {
+        overallScore: bio.overall,
+        phaseScores: Object.fromEntries(
+          Object.entries(bio.byPhase).map(([phase, data]) => [phase, Math.round(data.score)])
+        ),
+        detectedFaults: bio.detectedFaults.slice(0, 3).map(f => ({
+          name: f.name,
+          fix: f.fix
+        })),
+        primaryFeedback: bio.primaryFeedback,
+        drillRecommendations: this.biomechanicalCheckpoints?.getDrillRecommendations(bio) || []
+      };
+    }
+
+    return baseContext;
+  }
+
+  getTrend() {
+    const recent = this.sessionStats.scores.slice(-5);
+    if (recent.length < 2) return 'stable';
+    
+    const avg = recent.reduce((a, b) => a + b, 0) / recent.length;
+    const prevAvg = this.sessionStats.scores.slice(-10, -5)
+      .reduce((a, b) => a + b, 0) / 5;
+    
+    if (avg > prevAvg + 5) return 'improving';
+    if (avg < prevAvg - 5) return 'declining';
+    return 'stable';
+  }
+  
+  getAverageScore() {
+    if (this.sessionStats.scores.length === 0) return 0;
+    return this.sessionStats.scores.reduce((a, b) => a + b, 0) / 
+           this.sessionStats.scores.length;
+  }
+  
+  getConsistency() {
+    if (this.sessionStats.scores.length < 3) return 'N/A';
+    
+    const scores = this.sessionStats.scores;
+    const avg = this.getAverageScore();
+    const variance = scores.reduce((sum, score) => 
+      sum + Math.pow(score - avg, 2), 0) / scores.length;
+    const stdDev = Math.sqrt(variance);
+    
+    if (stdDev < 10) return 'Excellent';
+    if (stdDev < 15) return 'Good';
+    return 'Needs Work';
+  }
+  
+  updateUI(context) {
+    // Update status bar
+    document.getElementById('strokeCount').textContent = context.session.strokeCount;
+    document.getElementById('avgScore').textContent = context.quality.overall.toFixed(0);
+    document.getElementById('consistencyScore').textContent = context.session.consistency;
+    
+    // Update analysis card
+    const strokeTypeText = context.strokeType.charAt(0).toUpperCase() + 
+                          context.strokeType.slice(1);
+    document.getElementById('strokeType').textContent = strokeTypeText;
+    document.getElementById('techniqueScore').textContent = 
+      `${context.quality.overall.toFixed(0)}/100`;
+    
+    // Update advanced metrics
+    document.getElementById('elbowAngleMetric').textContent = 
+      `${context.technique.elbowAngleAtContact.toFixed(0)}°`;
+    document.getElementById('hipSepMetric').textContent = 
+      `${context.technique.hipShoulderSeparation.toFixed(0)}°`;
+    document.getElementById('stanceMetric').textContent = context.technique.stance;
+    document.getElementById('weightMetric').textContent = context.technique.weightTransfer;
+    
+    // Show card
+    const card = document.getElementById('analysisCard');
+    card.classList.add('visible');
+    setTimeout(() => {
+      card.classList.remove('visible');
+    }, 4000);
+  }
+}

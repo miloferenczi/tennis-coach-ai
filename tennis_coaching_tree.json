@@ -1,0 +1,362 @@
+{
+"metadata": {
+"version": "1.1",
+"sport": "tennis",
+"description": "Machine-readable diagnostic decision tree for tennis stroke analysis tuned for elite coaching standards",
+"metricsSchema": {
+"preparationTime": "s from opponent impact to racquet set (unitless normalization optional)",
+"velocity": "normalized racquet head speed (0–1) or m/s if calibrated",
+"acceleration": "normalized racquet head acceleration (0–1) or m/s²",
+"rotation": "degrees of trunk rotation from unit turn to contact",
+"hipShoulderSeparation": "degrees hips vs shoulders at max coil",
+"contactPointVariance": "std dev (m) of 3D contact location over last N strokes",
+"forwardMomentum": "player COM forward velocity (m/s) or normalized 0–1",
+"backFootWeightAtContact": "fraction of weight on back foot at contact (0–1)",
+"elbowAngleAtContact": "degrees",
+"armExtension": "normalized 0–1 (1 = full reach on intended pattern)",
+"swingPathSmoothness": "0–100 (higher = smoother jerk-minimized path)"
+}
+},
+"issuePriority": {
+"foundation": ["latePreparation", "inconsistentContactPoint"],
+"power": ["lowRacquetSpeed", "insufficientRotation", "poorWeightTransfer"],
+"refinement": ["collapsingElbowChickenWing", "closedStanceLimitingPower", "poorFollowThrough"]
+},
+"issues": [
+{
+"id": "latePreparation",
+"name": "Late Preparation",
+"priority": 10,
+"category": "foundation",
+"impactLevel": "critical",
+"detection": {
+"primary": {
+"preparationTime": { "min": 0.60 }
+},
+"confirming": {
+"preparationTime": { "min": 0.80 },
+"velocity": { "max": 0.038 }
+}
+},
+"diagnosis": {
+"rootCause": "insufficient_anticipation",
+"symptoms": ["rushed_swing", "late_contact", "poor_balance"]
+},
+"dependencies": {
+"blocksFixing": ["lowRacquetSpeed", "poorWeightTransfer", "insufficientRotation"],
+"resolves": ["lowRacquetSpeed", "inconsistentContactPoint", "poorFollowThrough"],
+"requires": ["basic_ready_position", "consistent_grip"]
+},
+"cueSelection": {
+"beginner": "Turn your shoulders as soon as you read direction.",
+"intermediate": "Unit turn before the bounce; racquet set by bounce.",
+"advanced": "Anticipate off opponent’s contact; load while moving to the ball."
+},
+"keyMetrics": ["preparationTime", "velocity"],
+"expectedImprovement": {
+"preparationTime": { "decrease": 0.25 },
+"velocity": { "increase": 0.015 },
+"consistency": { "increase": 12 }
+}
+},
+{
+"id": "inconsistentContactPoint",
+"name": "Inconsistent Contact Point",
+"priority": 9,
+"category": "foundation",
+"impactLevel": "critical",
+"detection": {
+"primary": {
+"contactPointVariance": { "min": 0.12 }
+},
+"confirming": {
+"contactHeightVariance": { "min": 0.10 },
+"contactDistanceVariance": { "min": 0.08 }
+}
+},
+"diagnosis": {
+"rootCause": "poor_timing_and_footwork",
+"symptoms": ["mishits", "erratic_control", "varying_power"]
+},
+"dependencies": {
+"blocksFixing": ["lowRacquetSpeed", "collapsingElbowChickenWing"],
+"resolves": ["mishits", "frame_shots", "weak_returns"],
+"requires": ["basic_stroke_mechanics", "agility"]
+},
+"cueSelection": {
+"beginner": "Move early and meet the ball in front.",
+"intermediate": "Small adjustment steps; stabilize contact around waist-to-chest.",
+"advanced": "Drill fixed-contact targets; lock spacing under pressure."
+},
+"keyMetrics": ["contactPointVariance", "contactHeightVariance", "contactDistanceVariance"],
+"expectedImprovement": {
+"contactPointVariance": { "decrease": 0.06 },
+"quality": { "increase": 10 },
+"sweetSpotHits": { "increase": 20 }
+}
+},
+{
+"id": "lowRacquetSpeed",
+"name": "Low Racquet Speed",
+"priority": 8,
+"category": "power",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"velocity": { "max": 0.040 }
+},
+"confirming": {
+"acceleration": { "max": 0.015 },
+"rotation": { "max": 35 }
+}
+},
+"diagnosis": {
+"rootCause": "insufficient_kinetic_chain",
+"symptoms": ["weak_shots", "short_balls", "lack_of_depth"]
+},
+"dependencies": {
+"mustFixFirst": ["latePreparation"],
+"resolves": ["weak_power", "short_depth"],
+"requires": ["inconsistentContactPoint", "sound_grip", "flexibility"]
+},
+"cueSelection": {
+"beginner": "Loose arm; whip through the ball.",
+"intermediate": "Load legs, uncoil hips then shoulders.",
+"advanced": "Sequence: ground → hips → torso → arm → racquet; feel stretch-shortening."
+},
+"keyMetrics": ["velocity", "acceleration", "rotation"],
+"expectedImprovement": {
+"velocity": { "increase": 0.022 },
+"power": { "increase": 22 },
+"depth": { "increase": 18 }
+}
+},
+{
+"id": "insufficientRotation",
+"name": "Insufficient Rotation",
+"priority": 7,
+"category": "power",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"rotation": { "max": 40 }
+},
+"confirming": {
+"hipShoulderSeparation": { "max": 25 },
+"followThroughComplete": false
+}
+},
+"diagnosis": {
+"rootCause": "inadequate_coiling",
+"symptoms": ["arm_only_swing", "weak_power", "short_followthrough"]
+},
+"dependencies": {
+"mustFixFirst": ["latePreparation"],
+"resolves": ["lowRacquetSpeed", "poor_power", "arm_fatigue"],
+"requires": ["core_flexibility", "proper_stance", "timing_confidence"]
+},
+"cueSelection": {
+"beginner": "Turn shoulders; show strings back.",
+"intermediate": "Lead with the hip; keep chest closed a beat longer.",
+"advanced": "Create 40–60° hip–shoulder separation; unwind from the ground up."
+},
+"keyMetrics": ["rotation", "hipShoulderSeparation", "torsoEngagement"],
+"expectedImprovement": {
+"rotation": { "increase": 20 },
+"velocity": { "increase": 0.012 },
+"power": { "increase": 18 }
+}
+},
+{
+"id": "poorWeightTransfer",
+"name": "Poor Weight Transfer",
+"priority": 7,
+"category": "power",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"weightTransfer": { "equals": "static" }
+},
+"confirming": {
+"backFootWeightAtContact": { "min": 0.50 },
+"forwardMomentum": { "max": 0.30 }
+}
+},
+"diagnosis": {
+"rootCause": "lack_of_forward_momentum",
+"symptoms": ["weak_shots", "hitting_off_back_foot", "poor_balance"]
+},
+"dependencies": {
+"mustFixFirst": ["latePreparation"],
+"resolves": ["weak_power", "arm_strain", "poor_recovery"],
+"requires": ["balance", "split_step", "stance_understanding"]
+},
+"cueSelection": {
+"beginner": "Step through so weight finishes on front foot.",
+"intermediate": "Push the ground; drive hip through the ball.",
+"advanced": "Create forward COM flow before contact; land balanced for fast recovery."
+},
+"keyMetrics": ["weightTransfer", "forwardMomentum", "backFootLift"],
+"expectedImprovement": {
+"weightTransfer": { "improve": "back-to-front" },
+"power": { "increase": 16 },
+"armStrain": { "decrease": 25 }
+}
+},
+{
+"id": "collapsingElbowChickenWing",
+"name": "Collapsing Elbow (Chicken Wing)",
+"priority": 6,
+"category": "refinement",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"elbowAngleAtContact": { "max": 130 }
+},
+"confirming": {
+"contactDistance": { "max": 0.30 },
+"armExtension": { "max": 0.65 }
+}
+},
+"diagnosis": {
+"rootCause": "poor_spacing_or_fear",
+"symptoms": ["cramped_contact", "weak_power", "limited_reach"]
+},
+"dependencies": {
+"mustFixFirst": ["inconsistentContactPoint"],
+"resolves": ["weak_shots", "limited_reach", "elbow_strain"],
+"requires": ["timing", "footwork", "confidence_with_spin"]
+},
+"cueSelection": {
+"beginner": "Hit out in front; keep space between elbow and ribs.",
+"intermediate": "Maintain a fist of space; extend through contact.",
+"advanced": "Relaxed straightening through contact; extend along target line."
+},
+"keyMetrics": ["elbowAngleAtContact", "armExtension", "contactDistance"],
+"expectedImprovement": {
+"elbowAngleAtContact": { "increase": 15 },
+"power": { "increase": 12 },
+"reach": { "increase": 10 }
+}
+},
+{
+"id": "closedStanceLimitingPower",
+"name": "Closed Stance Limiting Power",
+"priority": 5,
+"category": "refinement",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"stance": { "equals": "closed" }
+},
+"confirming": {
+"rotation": { "max": 30 },
+"stanceFrequency": { "closed": { "min": 0.60 } }
+}
+},
+"diagnosis": {
+"rootCause": "overemphasis_on_stepping_in",
+"symptoms": ["locked_rotation", "limited_power", "poor_recovery"]
+},
+"dependencies": {
+"blocksFixing": ["insufficientRotation"],
+"resolves": ["rotation_limitation", "recovery_issues"],
+"requires": ["footwork_patterns", "stance_understanding", "balance"]
+},
+"cueSelection": {
+"beginner": "Open your stance when you have time.",
+"intermediate": "Match stance to ball; open on wide or fast balls.",
+"advanced": "Blend stances seamlessly; avoid over-closed on neutral balls."
+},
+"keyMetrics": ["stance", "rotation", "recoverySpeed"],
+"expectedImprovement": {
+"rotation": { "increase": 12 },
+"power": { "increase": 10 },
+"recovery": { "improve": 18 }
+}
+},
+{
+"id": "poorFollowThrough",
+"name": "Poor Follow-Through",
+"priority": 4,
+"category": "refinement",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"followThroughComplete": false
+},
+"confirming": {
+"swingPathSmoothness": { "max": 55 },
+"decelerationAtContact": true
+}
+},
+"diagnosis": {
+"rootCause": "fear_or_tension",
+"symptoms": ["abbreviated_finish", "weak_depth", "poor_spin"]
+},
+"dependencies": {
+"mustFixFirst": ["latePreparation"],
+"resolves": ["weak_depth", "poor_spin", "inconsistency"],
+"requires": ["swing_path", "topspin_skills", "confidence"]
+},
+"cueSelection": {
+"beginner": "Finish over the shoulder; let it wrap.",
+"intermediate": "Accelerate through; extend then wrap to shoulder.",
+"advanced": "Long through-line to target, then relaxed wrap; no braking at contact."
+},
+"keyMetrics": ["followThroughComplete", "swingPathSmoothness", "finishHeight"],
+"expectedImprovement": {
+"followThroughComplete": true,
+"spin": { "increase": 18 },
+"depth": { "increase": 12 }
+}
+}
+],
+"diagnosisRules": {
+"simultaneousIssues": {
+"maxToAddress": 1,
+"selectionLogic": "highest_priority_with_met_prerequisites"
+},
+"improvementTracking": {
+"minimumStrokesBeforeReassess": 8,
+"improvementThreshold": 0.06,
+"regressionThreshold": -0.10
+},
+"feedbackCadence": {
+"cooldownStrokes": 5,
+"allowFeedbackIf": [
+"obvious_regression",
+"repeated_mistake_3_plus",
+"breakthrough_opportunity",
+"excellent_execution"
+],
+"silenceIf": [
+"recent_feedback_and_improving",
+"high_consistency_no_issues",
+"fatigue_detected"
+]
+}
+},
+"skillLevelThresholds": {
+"beginner": {
+"velocity": { "max": 0.032 },
+"consistency": { "max": 65 },
+"quality": { "max": 60 }
+},
+"intermediate": {
+"velocity": { "min": 0.032, "max": 0.047 },
+"consistency": { "min": 65, "max": 80 },
+"quality": { "min": 60, "max": 75 }
+},
+"advanced": {
+"velocity": { "min": 0.047, "max": 0.055 },
+"consistency": { "min": 80, "max": 88 },
+"quality": { "min": 75, "max": 82 }
+},
+"elite": {
+"velocity": { "min": 0.055 },
+"consistency": { "min": 88 },
+"quality": { "min": 82 }
+}
+}
+}

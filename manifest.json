@@ -1,0 +1,28 @@
+{
+  "name": "Tennis Ace AI Coach",
+  "short_name": "Tennis Ace",
+  "description": "AI-powered tennis coaching using MediaPipe pose detection",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1e3c72",
+  "theme_color": "#1e3c72",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Ccircle cx='96' cy='96' r='88' fill='%231e3c72'/%3E%3Ctext x='96' y='130' font-family='Arial' font-size='80' fill='white' text-anchor='middle'%3E🎾%3C/text%3E%3C/svg%3E",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Ccircle cx='256' cy='256' r='240' fill='%231e3c72'/%3E%3Ctext x='256' y='340' font-family='Arial' font-size='200' fill='white' text-anchor='middle'%3E🎾%3C/text%3E%3C/svg%3E",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["sports", "fitness", "productivity"],
+  "lang": "en",
+  "dir": "ltr"
+}

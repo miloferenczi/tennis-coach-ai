@@ -1,0 +1,2315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tennis Ace AI Coach</title>
+    <meta name="description" content="AI-powered tennis coaching using MediaPipe pose detection">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1e3c72">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Tennis Ace AI">
+    
+    <!-- Link to manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- MediaPipe Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
+        
+        <!-- Add these new scripts in order -->
+    <script src="js/physics-analyzer.js"></script>
+    <script src="js/stroke-classifier.js"></script>
+    <script src="js/professional-references.js"></script>
+    <script src="js/coaching-orchestrator.js"></script>
+    <script src="js/phase-detector.js"></script>
+    <script src="js/kinetic-chain-analyzer.js"></script>
+    <script src="js/motion-sequence-analyzer.js"></script>
+    <script src="js/biomechanical-checkpoints.js"></script>
+    <script src="js/diagnostic-logger.js"></script>
+    <script src="js/calibration-tool.js"></script>
+    <script src="js/threshold-updater.js"></script>
+
+    <!-- Application Scripts -->
+    <script src="js/session-storage.js"></script>
+    <script src="js/enhanced-tennis-analyzer.js"></script>
+    <script src="js/gpt-voice-coach.js"></script>
+    <script src="js/video-analyzer.js"></script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .camera-container {
+            position: relative;
+            flex: 1;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #videoElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+        }
+
+        #canvasElement {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: absolute;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+}
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 40px;
+            z-index: 1001;
+        }
+
+        .screen-title {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        .screen-text {
+            font-size: 18px;
+            margin-bottom: 30px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 16px 32px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #45a049;
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            margin-top: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        input[type="password"] {
+            width: 80%;
+            max-width: 400px;
+            padding: 12px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.1);
+            color: white;
+            font-size: 14px;
+            margin: 20px 0;
+        }
+
+        input[type="password"]::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        .loading-screen {
+            z-index: 1000;
+        }
+
+        .loading-text {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+
+        .loading-progress {
+            width: 80%;
+            max-width: 300px;
+            height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .loading-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .status-bar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 100;
+            background: rgba(0,0,0,0.7);
+            padding: 12px 16px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .status-label {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-bottom: 4px;
+        }
+
+        .status-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        .ai-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #FF5722;
+        }
+
+        .status-dot.ready {
+            background: #FFC107;
+        }
+
+        .status-dot.active {
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .analysis-card {
+            position: absolute;
+            top: 130px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            border-radius: 16px;
+            padding: 16px;
+            min-width: 160px;
+            border-left: 4px solid #4CAF50;
+            backdrop-filter: blur(10px);
+            transform: scale(0);
+            transition: transform 0.3s ease;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .analysis-card.visible {
+            transform: scale(1);
+        }
+
+        .stroke-type {
+            color: #4CAF50;
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .technique-score {
+            color: white;
+            font-size: 28px;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 6px;
+        }
+
+        .advanced-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .metric-item {
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 9px;
+            color: #B0BEC5;
+            margin-bottom: 2px;
+        }
+
+        .metric-value {
+            font-size: 11px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .coaching-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.9);
+            border-radius: 16px;
+            padding: 16px;
+            border-left: 4px solid #FF9800;
+            backdrop-filter: blur(10px);
+            max-height: 140px;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .coaching-label {
+            color: #FF9800;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .coaching-text {
+            color: white;
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 180px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            width: 60px;
+            height: 60px;
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .play-btn {
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+        }
+
+        .play-btn:hover {
+            background: rgba(76, 175, 80, 1);
+            transform: scale(1.1);
+        }
+
+        .reset-btn {
+            background: rgba(255, 87, 34, 0.9);
+            color: white;
+        }
+
+        .reset-btn:hover {
+            background: rgba(255, 87, 34, 1);
+            transform: scale(1.1);
+        }
+
+        .analytics-btn {
+            background: rgba(33, 150, 243, 0.9);
+            color: white;
+        }
+
+        .analytics-btn:hover {
+            background: rgba(33, 150, 243, 1);
+            transform: scale(1.1);
+        }
+
+        .error-message {
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+
+        /* Screen Border Flash for Stroke Quality */
+        .stroke-flash-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.1s ease-out;
+        }
+
+        .stroke-flash-overlay.flash {
+            animation: borderFlash 0.6s ease-out forwards;
+        }
+
+        .stroke-flash-overlay.great {
+            box-shadow: inset 0 0 100px 30px rgba(76, 175, 80, 0.8);
+        }
+
+        .stroke-flash-overlay.good {
+            box-shadow: inset 0 0 100px 30px rgba(255, 152, 0, 0.8);
+        }
+
+        .stroke-flash-overlay.needs-work {
+            box-shadow: inset 0 0 100px 30px rgba(244, 67, 54, 0.8);
+        }
+
+        @keyframes borderFlash {
+            0% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+            }
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 20px;
+            padding: 24px;
+            max-width: 480px;
+            width: 90%;
+            max-height: 85vh;
+            overflow-y: auto;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-overlay.visible .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-title {
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .modal-close {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .summary-stat {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+
+        .summary-stat.highlight {
+            grid-column: span 2;
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+
+        .summary-stat-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 4px;
+        }
+
+        .summary-stat-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            text-transform: uppercase;
+        }
+
+        .summary-section {
+            margin-bottom: 20px;
+        }
+
+        .summary-section-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #4CAF50;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .weakness-tag {
+            display: inline-block;
+            background: rgba(255, 152, 0, 0.3);
+            color: #FFC107;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 13px;
+            margin: 4px 4px 4px 0;
+        }
+
+        .drill-card {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 16px;
+            border-radius: 12px;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .drill-name {
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 8px;
+        }
+
+        .drill-description {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+
+        .drill-duration {
+            font-size: 12px;
+            color: #4CAF50;
+        }
+
+        .improvement-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .improvement-badge.positive {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+        }
+
+        .improvement-badge.negative {
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+
+        .improvement-badge.neutral {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Mode Switcher */
+        .mode-switcher {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            display: flex;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 25px;
+            padding: 4px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .mode-btn {
+            padding: 8px 16px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .mode-btn:hover:not(.active) {
+            color: white;
+        }
+
+        /* Analysis Mode Container */
+        .analysis-mode-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: none;
+            flex-direction: column;
+            background: #000;
+        }
+
+        .analysis-mode-container.active {
+            display: flex;
+        }
+
+        .video-upload-zone {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .video-upload-zone.dragover {
+            background: linear-gradient(135deg, #2a2a4e 0%, #263658 100%);
+        }
+
+        .video-upload-zone.has-video {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 8px;
+        }
+
+        .upload-subtext {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* Video Player Area */
+        .video-player-area {
+            flex: 1;
+            position: relative;
+            display: none;
+            background: #000;
+        }
+
+        .video-player-area.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .video-container {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #analysisVideo {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        #analysisCanvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        /* Timeline */
+        .timeline-container {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 16px 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .timeline-controls {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .timeline-time {
+            font-size: 14px;
+            color: white;
+            font-family: monospace;
+            min-width: 100px;
+        }
+
+        .timeline-playback-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .timeline-track {
+            position: relative;
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .timeline-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: rgba(76, 175, 80, 0.3);
+            border-radius: 4px;
+            pointer-events: none;
+        }
+
+        .timeline-playhead {
+            position: absolute;
+            top: 0;
+            width: 3px;
+            height: 100%;
+            background: #4CAF50;
+            border-radius: 2px;
+            pointer-events: none;
+        }
+
+        .stroke-marker {
+            position: absolute;
+            top: 4px;
+            bottom: 4px;
+            width: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .stroke-marker:hover {
+            transform: scaleY(1.2);
+        }
+
+        .stroke-marker.forehand {
+            background: #4CAF50;
+        }
+
+        .stroke-marker.backhand {
+            background: #2196F3;
+        }
+
+        .stroke-marker.serve {
+            background: #FF9800;
+        }
+
+        .stroke-marker.volley {
+            background: #9C27B0;
+        }
+
+        .stroke-marker.selected {
+            box-shadow: 0 0 0 2px white;
+        }
+
+        /* Stroke Details Panel */
+        .stroke-details-panel {
+            position: absolute;
+            bottom: 100px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 16px;
+            padding: 16px;
+            min-width: 200px;
+            max-width: 280px;
+            backdrop-filter: blur(10px);
+            transform: translateX(320px);
+            transition: transform 0.3s ease;
+            z-index: 100;
+        }
+
+        .stroke-details-panel.visible {
+            transform: translateX(0);
+        }
+
+        .stroke-details-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stroke-details-type {
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: capitalize;
+        }
+
+        .stroke-details-score {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .stroke-details-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .stroke-metric {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .stroke-metric-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .stroke-metric-label {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        /* Analysis Progress */
+        .analysis-progress-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+        }
+
+        .analysis-progress-overlay.active {
+            display: flex;
+        }
+
+        .analysis-progress-text {
+            font-size: 18px;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .analysis-progress-bar {
+            width: 80%;
+            max-width: 300px;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .analysis-progress-fill {
+            height: 100%;
+            background: #4CAF50;
+            width: 0%;
+            transition: width 0.2s;
+        }
+
+        @media (max-width: 480px) {
+            .status-bar {
+                top: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 10px 12px;
+            }
+
+            .analysis-card {
+                top: 120px;
+                right: 10px;
+                padding: 12px;
+                min-width: 140px;
+            }
+
+            .coaching-panel {
+                bottom: 10px;
+                left: 10px;
+                right: 10px;
+                padding: 12px;
+                max-height: 120px;
+            }
+
+            .controls {
+                bottom: 140px;
+                gap: 15px;
+            }
+
+            .control-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Permission Screen -->
+        <div id="permissionScreen" class="screen">
+            <div class="screen-title">Tennis Ace AI</div>
+            <div class="screen-text">
+                AI-powered tennis coaching using computer vision.<br>
+                We need camera access to analyze your tennis strokes.
+            </div>
+            <button class="btn" onclick="requestCameraPermission()">
+                Enable Camera & Start Coaching
+            </button>
+        </div>
+
+        <!-- API Key Screen -->
+        <div id="apiKeyScreen" class="screen" style="display: none;">
+            <div class="screen-title">Connect AI Coach</div>
+            <div class="screen-text">
+                Enter your OpenAI API key to enable GPT voice coaching.<br>
+                <small>Get your key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #4CAF50;">platform.openai.com</a></small>
+            </div>
+            <input 
+                type="password" 
+                id="apiKeyInput" 
+                placeholder="sk-..."
+            />
+            <button class="btn" onclick="connectGPTCoach()">
+                Connect AI Coach
+            </button>
+            <button class="btn btn-secondary" onclick="skipGPTCoach()">
+                Skip (use basic feedback)
+            </button>
+        </div>
+
+        <!-- Loading Screen -->
+        <div id="loadingScreen" class="screen loading-screen" style="display: none;">
+            <div class="loading-text">Loading AI Coach...</div>
+            <div class="loading-progress">
+                <div id="loadingBar" class="loading-bar"></div>
+            </div>
+            <div id="loadingStatus" style="margin-top: 20px; font-size: 14px; opacity: 0.8;">
+                Initializing tennis analysis engine...
+            </div>
+        </div>
+
+        <!-- Main Camera Interface -->
+        <div class="camera-container" style="display: none;" id="cameraContainer">
+            <video id="videoElement" playsinline autoplay muted></video>
+            <canvas id="canvasElement"></canvas>
+
+            <!-- Status Bar -->
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-label">Strokes</div>
+                    <div class="status-value" id="strokeCount">0</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Avg Score</div>
+                    <div class="status-value" id="avgScore">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Consistency</div>
+                    <div class="status-value" id="consistencyScore">--</div>
+                </div>
+                <div class="status-item">
+                    <div class="ai-status">
+                        <div class="status-label">AI Coach</div>
+                        <div id="aiStatusDot" class="status-dot"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Card -->
+            <div id="analysisCard" class="analysis-card">
+                <div id="strokeType" class="stroke-type">Forehand</div>
+                <div id="techniqueScore" class="technique-score">85/100</div>
+
+                <div class="advanced-metrics">
+                    <div class="metric-item">
+                        <div class="metric-label">Elbow Angle</div>
+                        <div class="metric-value" id="elbowAngleMetric">--</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Hip-Shoulder</div>
+                        <div class="metric-value" id="hipSepMetric">--</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Stance</div>
+                        <div class="metric-value" id="stanceMetric">--</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Weight</div>
+                        <div class="metric-value" id="weightMetric">--</div>
+                    </div>
+
+                    <div class="metric-item" style="grid-column: span 2;">
+                        <div class="metric-label">Level</div>
+                        <div class="metric-value" id="skillLevelMetric" style="color: #4CAF50;">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button class="control-btn analytics-btn" onclick="showAnalytics()" title="View History">
+                    📊
+                </button>
+                <button id="playBtn" class="control-btn play-btn" onclick="toggleAnalysis()">
+                    ▶️
+                </button>
+                <button class="control-btn reset-btn" onclick="resetSession()">
+                    🔄
+                </button>
+            </div>
+
+            <!-- Coaching Panel -->
+            <div class="coaching-panel">
+                <div class="coaching-label">AI Tennis Coach</div>
+                <div id="coachingText" class="coaching-text">
+                    AI is ready! Stand in front of the camera and make tennis strokes to get coaching feedback.
+                </div>
+            </div>
+
+            <!-- Mode Switcher -->
+            <div class="mode-switcher">
+                <button class="mode-btn active" id="practiceModeBtn" onclick="switchMode('practice')">Practice</button>
+                <button class="mode-btn" id="analysisModeBtn" onclick="switchMode('analysis')">Analysis</button>
+                <button class="mode-btn" id="calibrateModeBtn" onclick="openCalibrationModal()" title="Calibrate with pro videos">Cal</button>
+            </div>
+
+            <!-- Analysis Mode Container -->
+            <div class="analysis-mode-container" id="analysisModeContainer">
+                <!-- Video Upload Zone -->
+                <div class="video-upload-zone" id="videoUploadZone">
+                    <div class="upload-icon">🎬</div>
+                    <div class="upload-text">Drop a video here or click to upload</div>
+                    <div class="upload-subtext">Supports MP4, MOV, WebM</div>
+                    <input type="file" id="videoFileInput" accept="video/*" style="display: none;">
+                </div>
+
+                <!-- Video Player Area -->
+                <div class="video-player-area" id="videoPlayerArea">
+                    <div class="video-container">
+                        <video id="analysisVideo" playsinline></video>
+                        <canvas id="analysisCanvas"></canvas>
+                    </div>
+
+                    <!-- Timeline -->
+                    <div class="timeline-container">
+                        <div class="timeline-controls">
+                            <button class="timeline-playback-btn" id="timelinePlayBtn" onclick="toggleVideoPlayback()">▶️</button>
+                            <span class="timeline-time" id="timelineTime">0:00 / 0:00</span>
+                            <button class="btn btn-secondary" onclick="clearAnalysisVideo()" style="margin-left: auto; padding: 8px 16px;">
+                                New Video
+                            </button>
+                        </div>
+                        <div class="timeline-track" id="timelineTrack">
+                            <div class="timeline-progress" id="timelineProgress"></div>
+                            <div class="timeline-playhead" id="timelinePlayhead"></div>
+                            <!-- Stroke markers will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Stroke Details Panel -->
+                    <div class="stroke-details-panel" id="strokeDetailsPanel">
+                        <div class="stroke-details-header">
+                            <span class="stroke-details-type" id="strokeDetailType">Forehand</span>
+                            <span class="stroke-details-score" id="strokeDetailScore" style="color: #4CAF50;">85</span>
+                        </div>
+                        <div class="stroke-details-metrics">
+                            <div class="stroke-metric">
+                                <div class="stroke-metric-value" id="strokeDetailTime">0:00</div>
+                                <div class="stroke-metric-label">Time</div>
+                            </div>
+                            <div class="stroke-metric">
+                                <div class="stroke-metric-value" id="strokeDetailVelocity">--</div>
+                                <div class="stroke-metric-label">Velocity</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Analysis Progress Overlay -->
+                    <div class="analysis-progress-overlay" id="analysisProgressOverlay">
+                        <div class="analysis-progress-text">Analyzing video...</div>
+                        <div class="analysis-progress-bar">
+                            <div class="analysis-progress-fill" id="analysisProgressFill"></div>
+                        </div>
+                        <div style="margin-top: 12px; font-size: 14px; color: rgba(255,255,255,0.6);" id="analysisProgressPercent">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error Container -->
+        <div id="errorContainer"></div>
+
+        <!-- Stroke Quality Flash Overlay -->
+        <div id="strokeFlashOverlay" class="stroke-flash-overlay"></div>
+
+        <!-- Session Summary Modal -->
+        <div id="sessionSummaryModal" class="modal-overlay">
+            <div class="modal">
+                <div class="modal-header">
+                    <div class="modal-title">Session Complete</div>
+                    <button class="modal-close" onclick="closeSessionSummary()">&times;</button>
+                </div>
+                <div id="sessionSummaryContent">
+                    <!-- Dynamic content inserted here -->
+                </div>
+                <button class="btn" onclick="closeSessionSummary()" style="width: 100%; margin-top: 16px;">
+                    Start New Session
+                </button>
+            </div>
+        </div>
+
+        <!-- Analytics Modal -->
+        <div id="analyticsModal" class="modal-overlay">
+            <div class="modal" style="max-width: 560px;">
+                <div class="modal-header">
+                    <div class="modal-title">Session History</div>
+                    <button class="modal-close" onclick="closeAnalytics()">&times;</button>
+                </div>
+                <div id="analyticsContent">
+                    <!-- Dynamic content inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Calibration Modal -->
+        <div id="calibrationModal" class="modal-overlay">
+            <div class="modal" style="max-width: 600px;">
+                <div class="modal-header">
+                    <div class="modal-title">Calibration Tool</div>
+                    <button class="modal-close" onclick="closeCalibrationModal()">&times;</button>
+                </div>
+                <div id="calibrationContent">
+                    <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
+                        Upload professional tennis videos to calibrate the analysis thresholds.
+                        Use slow-motion court-level footage for best results.
+                    </p>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                        <div>
+                            <label style="font-size: 12px; color: rgba(255,255,255,0.6);">Skill Level</label>
+                            <select id="calibrationLabel" style="width: 100%; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white;">
+                                <option value="professional">Professional</option>
+                                <option value="advanced">Advanced</option>
+                                <option value="intermediate">Intermediate</option>
+                                <option value="beginner">Beginner</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size: 12px; color: rgba(255,255,255,0.6);">Player Name</label>
+                            <input type="text" id="calibrationPlayer" placeholder="e.g., Djokovic" style="width: 100%; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white;">
+                        </div>
+                    </div>
+
+                    <div id="calibrationUploadZone" style="border: 2px dashed rgba(255,255,255,0.3); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; margin-bottom: 20px;">
+                        <div style="font-size: 32px; margin-bottom: 12px;">🎬</div>
+                        <div>Drop video here or click to upload</div>
+                        <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 8px;">MP4, MOV, WebM supported</div>
+                        <input type="file" id="calibrationFileInput" accept="video/*" style="display: none;">
+                    </div>
+
+                    <div id="calibrationProgress" style="display: none; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span id="calibrationStatus">Processing...</span>
+                            <span id="calibrationStrokeCount">0 strokes</span>
+                        </div>
+                        <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
+                            <div id="calibrationProgressBar" style="height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s;"></div>
+                        </div>
+                    </div>
+
+                    <div id="calibrationResults" style="display: none;">
+                        <!-- Results will be inserted here -->
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 20px;">
+                        <button class="btn btn-secondary" onclick="showCalibrationStats()" style="flex: 1;">
+                            View All Stats
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportCalibrationData()" style="flex: 1;">
+                            Export Data
+                        </button>
+                    </div>
+
+                    <!-- Threshold Update Actions -->
+                    <div id="thresholdUpdateSection" style="display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1);">
+                        <div style="font-size: 14px; font-weight: bold; margin-bottom: 12px;">Apply Calibration</div>
+                        <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 16px;">
+                            Apply calibrated thresholds to improve stroke detection accuracy.
+                        </p>
+                        <div style="display: flex; gap: 12px;">
+                            <button class="btn" onclick="applyThresholdsToApp()" style="flex: 1; background: #4CAF50;">
+                                Apply Now
+                            </button>
+                            <button class="btn btn-secondary" onclick="exportThresholdUpdates()" style="flex: 1;">
+                                Export Code
+                            </button>
+                        </div>
+                        <div id="thresholdApplyStatus" style="margin-top: 12px; font-size: 12px; color: rgba(255,255,255,0.6);"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tennis AI Application
+        class TennisAI {
+            constructor() {
+                this.pose = null;
+                this.camera = null;
+                this.isReady = false;
+                this.isAnalyzing = false;
+                
+                // Enhanced Analysis Engine
+                this.enhancedAnalyzer = new EnhancedTennisAnalyzer();
+                
+                // DOM elements
+                this.video = document.getElementById('videoElement');
+                this.canvas = document.getElementById('canvasElement');
+                this.ctx = this.canvas.getContext('2d');
+                
+                this.initializeLoadingSequence();
+            }
+
+            async initializeLoadingSequence() {
+                try {
+                    this.updateLoadingProgress(10, 'Loading MediaPipe libraries...');
+                    await this.sleep(500);
+                    
+                    this.updateLoadingProgress(30, 'Initializing pose detection...');
+                    await this.initializeMediaPipe();
+                    
+                    this.updateLoadingProgress(60, 'Setting up tennis analysis...');
+                    await this.sleep(500);
+                    
+                    this.updateLoadingProgress(80, 'Configuring camera...');
+                    await this.setupCamera();
+                    
+                    this.updateLoadingProgress(100, 'Ready to coach!');
+                    await this.sleep(500);
+                    
+                    this.completeInitialization();
+                    
+                } catch (error) {
+                    this.showError('Failed to initialize: ' + error.message);
+                }
+            }
+
+            async initializeMediaPipe() {
+                this.pose = new Pose({
+                    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+                });
+
+                this.pose.setOptions({
+                    modelComplexity: 1,
+                    smoothLandmarks: true,
+                    enableSegmentation: false,
+                    minDetectionConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+
+                this.pose.onResults(this.onResults.bind(this));
+                this.isReady = true;
+            }
+            async setupCamera() {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        facingMode: 'user',
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                });
+
+                this.video.srcObject = stream;
+                
+                return new Promise((resolve) => {
+                    this.video.onloadedmetadata = () => {
+                        this.canvas.width = this.video.videoWidth;
+                        this.canvas.height = this.video.videoHeight;
+                        
+                       this.camera = new Camera(this.video, {
+                        onFrame: async () => {
+                            if (this.pose) {
+                                await this.pose.send({ image: this.video });
+                            }
+                        },
+                        width: 1280,
+                        height: 720
+                    });
+                        
+                        this.camera.start();
+                        resolve();
+                    };
+                });
+            }
+            onResults(results) {
+                // Clear and draw camera feed
+                this.ctx.save();
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.ctx.drawImage(results.image, 0, 0, this.canvas.width, this.canvas.height);
+
+                if (results.poseLandmarks) {
+
+                // Draw pose overlay
+                drawConnectors(this.ctx, results.poseLandmarks, POSE_CONNECTIONS, {
+                    color: '#00FF00', 
+                    lineWidth: 2
+                });
+                drawLandmarks(this.ctx, results.poseLandmarks, {
+                    color: '#FF0000', 
+                    lineWidth: 1,
+                    radius: 3
+                });
+                
+                // Only analyze pose when user has pressed play
+                if (this.isAnalyzing) {
+                    const poseData = this.enhancedAnalyzer.analyzePose(results.poseLandmarks, Date.now());
+                    
+                    // Draw swing trail
+                    if (this.enhancedAnalyzer.poseHistory.length > 2) {
+                        this.drawSwingTrail();
+                    }
+                }
+            }
+
+                this.ctx.restore();
+            }
+
+            drawSwingTrail() {
+                const path = this.enhancedAnalyzer.poseHistory.map(p => ({
+                    x: p.joints.rightWrist.x * this.canvas.width,
+                    y: p.joints.rightWrist.y * this.canvas.height
+                }));
+                
+                if (path.length < 2) return;
+                
+                this.ctx.save();
+                
+                // Draw gradient trail (recent = brighter)
+                for (let i = 1; i < path.length; i++) {
+                    const alpha = i / path.length;
+                    this.ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
+                    this.ctx.lineWidth = 4;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(path[i - 1].x, path[i - 1].y);
+                    this.ctx.lineTo(path[i].x, path[i].y);
+                    this.ctx.stroke();
+                }
+                
+                this.ctx.restore();
+            }
+
+            updateUI(context) {
+                // Update status bar
+                document.getElementById('strokeCount').textContent = context.session.strokeCount;
+                document.getElementById('avgScore').textContent = context.quality.overall.toFixed(0);
+                document.getElementById('consistencyScore').textContent = context.session.consistency;
+                
+                // Update analysis card
+                document.getElementById('strokeType').textContent = 
+                    context.strokeType.charAt(0).toUpperCase() + context.strokeType.slice(1);
+                document.getElementById('techniqueScore').textContent = 
+                    `${context.quality.overall.toFixed(0)}/100`;
+                
+                // Update metrics
+                document.getElementById('elbowAngleMetric').textContent = 
+                    `${context.technique.elbowAngleAtContact.toFixed(0)}°`;
+                document.getElementById('hipSepMetric').textContent = 
+                    `${context.technique.hipShoulderSeparation.toFixed(0)}°`;
+                document.getElementById('stanceMetric').textContent = context.technique.stance;
+                document.getElementById('weightMetric').textContent = context.technique.weightTransfer;
+                
+                if (context.comparison && context.comparison.skillLevel) {
+        const skillLevel = context.comparison.skillLevel;
+        const skillDisplay = skillLevel.charAt(0).toUpperCase() + skillLevel.slice(1);
+        document.getElementById('skillLevelMetric').textContent = 
+            `${skillDisplay} (${context.comparison.percentile}%)`;
+    }
+    
+                // Show card
+                const card = document.getElementById('analysisCard');
+                card.classList.add('visible');
+                setTimeout(() => card.classList.remove('visible'), 4000);
+        }   
+            
+
+            startAnalysis() {
+                if (!this.isReady) return;
+                
+                this.isAnalyzing = true;
+                
+                document.getElementById('aiStatusDot').className = 'status-dot active';
+                document.getElementById('playBtn').textContent = '⏸️';
+                document.getElementById('coachingText').textContent = 
+                    'AI analyzing your strokes. Make tennis swings to get feedback!';
+            }
+
+            stopAnalysis() {
+                this.isAnalyzing = false;
+                
+                document.getElementById('aiStatusDot').className = 'status-dot ready';
+                document.getElementById('playBtn').textContent = '▶️';
+                document.getElementById('coachingText').textContent = 
+                    'Analysis paused. Tap play to resume.';
+            }
+
+            resetSession() {
+                // End current session and show summary if strokes were recorded
+                if (typeof sessionStorage !== 'undefined' && sessionStorage.endSession) {
+                    const endedSession = sessionStorage.endSession();
+                    if (endedSession && endedSession.summary && endedSession.summary.totalStrokes > 0) {
+                        showSessionSummary(endedSession.summary);
+                    }
+                    // Create new session
+                    sessionStorage.createSession();
+                }
+
+                this.enhancedAnalyzer.resetSession();
+
+                document.getElementById('strokeCount').textContent = '0';
+                document.getElementById('avgScore').textContent = '--';
+                document.getElementById('consistencyScore').textContent = '--';
+                document.getElementById('elbowAngleMetric').textContent = '--';
+                document.getElementById('hipSepMetric').textContent = '--';
+                document.getElementById('stanceMetric').textContent = '--';
+                document.getElementById('weightMetric').textContent = '--';
+                document.getElementById('coachingText').textContent =
+                    'Session reset! Ready to analyze your technique.';
+                document.getElementById('analysisCard').classList.remove('visible');
+            }
+
+            completeInitialization() {
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('cameraContainer').style.display = 'block';
+                document.getElementById('aiStatusDot').className = 'status-dot ready';
+
+                // Create or restore session
+                if (typeof sessionStorage !== 'undefined' && sessionStorage.createSession) {
+                    const existingSession = sessionStorage.getCurrentSession();
+                    if (!existingSession) {
+                        sessionStorage.createSession();
+                    }
+                }
+            }
+
+            updateLoadingProgress(percent, status) {
+                document.getElementById('loadingBar').style.width = percent + '%';
+                document.getElementById('loadingStatus').textContent = status;
+            }
+
+            showError(message) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.textContent = message;
+                document.getElementById('errorContainer').appendChild(errorDiv);
+                
+                setTimeout(() => errorDiv.remove(), 5000);
+            }
+
+            sleep(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+        }
+
+        // Global application state
+        let tennisAI = null;
+
+        // Global functions for UI interaction
+        async function requestCameraPermission() {
+            try {
+                document.getElementById('permissionScreen').style.display = 'none';
+                document.getElementById('apiKeyScreen').style.display = 'flex';
+            } catch (error) {
+                document.getElementById('permissionScreen').style.display = 'flex';
+                alert('Camera access denied. Please enable camera permissions and try again.');
+            }
+        }
+
+        async function connectGPTCoach() {
+            const apiKey = document.getElementById('apiKeyInput').value;
+            
+            if (!apiKey || !apiKey.startsWith('sk-')) {
+                alert('Please enter a valid OpenAI API key');
+                return;
+            }
+            
+            document.getElementById('apiKeyScreen').style.display = 'none';
+            document.getElementById('loadingScreen').style.display = 'flex';
+            
+            // Initialize GPT coach
+            await gptVoiceCoach.initialize(apiKey);
+            
+            // Continue with tennis AI initialization
+            tennisAI = new TennisAI();
+        }
+
+        function skipGPTCoach() {
+            document.getElementById('apiKeyScreen').style.display = 'none';
+            document.getElementById('loadingScreen').style.display = 'flex';
+            
+            // Use fallback coaching
+            gptVoiceCoach.fallbackToSpeechSynthesis();
+            
+            // Continue with tennis AI initialization
+            tennisAI = new TennisAI();
+        }
+
+        function toggleAnalysis() {
+            if (!tennisAI || !tennisAI.isReady) return;
+            
+            if (tennisAI.isAnalyzing) {
+                tennisAI.stopAnalysis();
+            } else {
+                tennisAI.startAnalysis();
+            }
+        }
+
+        function resetSession() {
+            if (tennisAI) {
+                tennisAI.resetSession();
+            }
+        }
+
+        // Session Summary Modal
+        function showSessionSummary(summary) {
+            if (!summary) return;
+
+            const duration = formatDuration(summary.duration);
+            const improvementClass = summary.improvement > 0 ? 'positive' :
+                                     summary.improvement < 0 ? 'negative' : 'neutral';
+            const improvementText = summary.improvement > 0 ? `+${summary.improvement}` :
+                                    summary.improvement < 0 ? `${summary.improvement}` : '0';
+
+            let html = `
+                <div class="summary-stats">
+                    <div class="summary-stat highlight">
+                        <div class="summary-stat-value">${summary.averageScore}</div>
+                        <div class="summary-stat-label">Average Score</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${summary.totalStrokes}</div>
+                        <div class="summary-stat-label">Total Strokes</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${duration}</div>
+                        <div class="summary-stat-label">Duration</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${summary.bestScore}</div>
+                        <div class="summary-stat-label">Best Stroke</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${summary.consistency}</div>
+                        <div class="summary-stat-label">Consistency</div>
+                    </div>
+                </div>
+
+                <div class="summary-section">
+                    <div class="summary-section-title">Session Trend</div>
+                    <span class="improvement-badge ${improvementClass}">
+                        ${summary.improvement > 0 ? '↑' : summary.improvement < 0 ? '↓' : '→'}
+                        ${improvementText} points from start to finish
+                    </span>
+                </div>
+            `;
+
+            if (summary.weaknesses && summary.weaknesses.length > 0) {
+                html += `
+                    <div class="summary-section">
+                        <div class="summary-section-title">Areas to Improve</div>
+                        ${summary.weaknesses.map(w => `<span class="weakness-tag">${w}</span>`).join('')}
+                    </div>
+                `;
+            }
+
+            if (summary.drillRecommendation) {
+                html += `
+                    <div class="summary-section">
+                        <div class="summary-section-title">Recommended Drill</div>
+                        <div class="drill-card">
+                            <div class="drill-name">${summary.drillRecommendation.name}</div>
+                            <div class="drill-description">${summary.drillRecommendation.description}</div>
+                            <div class="drill-duration">${summary.drillRecommendation.duration}</div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            document.getElementById('sessionSummaryContent').innerHTML = html;
+            document.getElementById('sessionSummaryModal').classList.add('visible');
+        }
+
+        function closeSessionSummary() {
+            document.getElementById('sessionSummaryModal').classList.remove('visible');
+        }
+
+        // Analytics Modal
+        function showAnalytics() {
+            if (typeof sessionStorage === 'undefined' || !sessionStorage.getAggregatedStats) {
+                alert('Session history not available');
+                return;
+            }
+
+            const stats = sessionStorage.getAggregatedStats();
+            const history = sessionStorage.getSessionHistory();
+
+            let html = '';
+
+            if (!stats || stats.totalSessions === 0) {
+                html = `
+                    <div style="text-align: center; padding: 40px 20px; color: rgba(255,255,255,0.7);">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📊</div>
+                        <div style="font-size: 16px;">No session history yet</div>
+                        <div style="font-size: 14px; margin-top: 8px;">Complete a practice session to see your stats</div>
+                    </div>
+                `;
+            } else {
+                const trendIcon = stats.trend === 'improving' ? '↑' :
+                                  stats.trend === 'declining' ? '↓' : '→';
+                const trendClass = stats.trend === 'improving' ? 'positive' :
+                                   stats.trend === 'declining' ? 'negative' : 'neutral';
+
+                html = `
+                    <div class="summary-stats">
+                        <div class="summary-stat highlight">
+                            <div class="summary-stat-value">${stats.overallAverage}</div>
+                            <div class="summary-stat-label">Avg Score (All Time)</div>
+                        </div>
+                        <div class="summary-stat">
+                            <div class="summary-stat-value">${stats.totalSessions}</div>
+                            <div class="summary-stat-label">Sessions</div>
+                        </div>
+                        <div class="summary-stat">
+                            <div class="summary-stat-value">${stats.totalStrokes}</div>
+                            <div class="summary-stat-label">Total Strokes</div>
+                        </div>
+                        <div class="summary-stat">
+                            <div class="summary-stat-value" style="text-transform: capitalize;">${stats.mostPracticed}</div>
+                            <div class="summary-stat-label">Most Practiced</div>
+                        </div>
+                        <div class="summary-stat">
+                            <div class="summary-stat-value">
+                                <span class="improvement-badge ${trendClass}">${trendIcon} ${stats.trend}</span>
+                            </div>
+                            <div class="summary-stat-label">Trend</div>
+                        </div>
+                    </div>
+                `;
+
+                if (stats.bestSession) {
+                    const bestDate = new Date(stats.bestSession.date).toLocaleDateString();
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">Personal Best</div>
+                            <div class="drill-card">
+                                <div class="drill-name">${stats.bestSession.score} Average Score</div>
+                                <div class="drill-description">Achieved on ${bestDate}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Recent Sessions
+                if (history.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">Recent Sessions</div>
+                            <div style="max-height: 200px; overflow-y: auto;">
+                    `;
+
+                    history.slice(0, 10).forEach(session => {
+                        const date = new Date(session.date).toLocaleDateString();
+                        const time = new Date(session.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const s = session.summary;
+
+                        if (s) {
+                            html += `
+                                <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <div style="font-weight: bold; color: white;">${date} ${time}</div>
+                                            <div style="font-size: 12px; color: rgba(255,255,255,0.6);">
+                                                ${s.totalStrokes} strokes • ${formatDuration(s.duration)}
+                                            </div>
+                                        </div>
+                                        <div style="text-align: right;">
+                                            <div style="font-size: 24px; font-weight: bold; color: #4CAF50;">${s.averageScore}</div>
+                                            <div style="font-size: 10px; color: rgba(255,255,255,0.6);">${s.consistency}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    });
+
+                    html += `</div></div>`;
+                }
+            }
+
+            document.getElementById('analyticsContent').innerHTML = html;
+            document.getElementById('analyticsModal').classList.add('visible');
+        }
+
+        function closeAnalytics() {
+            document.getElementById('analyticsModal').classList.remove('visible');
+        }
+
+        // ========================================
+        // Analysis Mode Functions
+        // ========================================
+
+        let currentMode = 'practice';
+        let analysisVideoElement = null;
+        let selectedStroke = null;
+
+        function switchMode(mode) {
+            currentMode = mode;
+
+            // Update button states
+            document.getElementById('practiceModeBtn').classList.toggle('active', mode === 'practice');
+            document.getElementById('analysisModeBtn').classList.toggle('active', mode === 'analysis');
+
+            // Toggle containers
+            const practiceElements = ['videoElement', 'canvasElement'];
+            const analysisContainer = document.getElementById('analysisModeContainer');
+
+            if (mode === 'practice') {
+                analysisContainer.classList.remove('active');
+                document.getElementById('videoElement').style.display = 'block';
+                document.getElementById('canvasElement').style.display = 'block';
+                document.querySelector('.coaching-panel').style.display = 'block';
+                document.querySelector('.controls').style.display = 'flex';
+            } else {
+                analysisContainer.classList.add('active');
+                document.getElementById('videoElement').style.display = 'none';
+                document.getElementById('canvasElement').style.display = 'none';
+                document.querySelector('.coaching-panel').style.display = 'none';
+                document.querySelector('.controls').style.display = 'none';
+
+                // Stop practice mode analysis if running
+                if (tennisAI && tennisAI.isAnalyzing) {
+                    tennisAI.stopAnalysis();
+                }
+            }
+        }
+
+        // Video Upload Handling
+        function initVideoUpload() {
+            const uploadZone = document.getElementById('videoUploadZone');
+            const fileInput = document.getElementById('videoFileInput');
+
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('video/')) {
+                    loadAnalysisVideo(file);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    loadAnalysisVideo(file);
+                }
+            });
+        }
+
+        async function loadAnalysisVideo(file) {
+            const uploadZone = document.getElementById('videoUploadZone');
+            const playerArea = document.getElementById('videoPlayerArea');
+            const video = document.getElementById('analysisVideo');
+            const progressOverlay = document.getElementById('analysisProgressOverlay');
+
+            // Show player area
+            uploadZone.classList.add('has-video');
+            playerArea.classList.add('active');
+
+            // Load video
+            const url = URL.createObjectURL(file);
+            video.src = url;
+            analysisVideoElement = video;
+
+            video.onloadedmetadata = async () => {
+                // Set up canvas size
+                const canvas = document.getElementById('analysisCanvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+
+                // Update timeline
+                updateTimelineDisplay();
+
+                // Start analysis
+                progressOverlay.classList.add('active');
+
+                try {
+                    await videoAnalyzer.initialize();
+                    await videoAnalyzer.loadVideo(file);
+
+                    const result = await videoAnalyzer.analyzeVideo((progress) => {
+                        document.getElementById('analysisProgressFill').style.width = progress + '%';
+                        document.getElementById('analysisProgressPercent').textContent = Math.round(progress) + '%';
+                    });
+
+                    // Add stroke markers to timeline
+                    renderStrokeMarkers(result.strokes);
+
+                    progressOverlay.classList.remove('active');
+                } catch (error) {
+                    console.error('Analysis failed:', error);
+                    progressOverlay.classList.remove('active');
+                    alert('Failed to analyze video: ' + error.message);
+                }
+            };
+
+            // Set up video time update
+            video.ontimeupdate = updateTimelineDisplay;
+        }
+
+        function updateTimelineDisplay() {
+            const video = document.getElementById('analysisVideo');
+            if (!video || !video.duration) return;
+
+            const current = video.currentTime;
+            const duration = video.duration;
+            const percent = (current / duration) * 100;
+
+            document.getElementById('timelineProgress').style.width = percent + '%';
+            document.getElementById('timelinePlayhead').style.left = percent + '%';
+            document.getElementById('timelineTime').textContent =
+                `${formatVideoTime(current)} / ${formatVideoTime(duration)}`;
+        }
+
+        function formatVideoTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function renderStrokeMarkers(strokes) {
+            const track = document.getElementById('timelineTrack');
+            const video = document.getElementById('analysisVideo');
+
+            // Remove existing markers
+            track.querySelectorAll('.stroke-marker').forEach(m => m.remove());
+
+            strokes.forEach((stroke, index) => {
+                const marker = document.createElement('div');
+                marker.className = `stroke-marker ${stroke.type}`;
+                marker.style.left = `calc(${(stroke.time / video.duration) * 100}% - 4px)`;
+                marker.title = `${stroke.type} - ${stroke.quality}`;
+                marker.dataset.strokeIndex = index;
+
+                marker.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    selectStroke(stroke, index);
+                });
+
+                track.appendChild(marker);
+            });
+        }
+
+        function selectStroke(stroke, index) {
+            selectedStroke = stroke;
+
+            // Update marker selection
+            document.querySelectorAll('.stroke-marker').forEach(m => m.classList.remove('selected'));
+            document.querySelector(`.stroke-marker[data-stroke-index="${index}"]`)?.classList.add('selected');
+
+            // Seek video to stroke time
+            const video = document.getElementById('analysisVideo');
+            video.currentTime = stroke.time;
+
+            // Show stroke details
+            const panel = document.getElementById('strokeDetailsPanel');
+            document.getElementById('strokeDetailType').textContent = stroke.type;
+            document.getElementById('strokeDetailScore').textContent = Math.round(stroke.quality);
+            document.getElementById('strokeDetailScore').style.color =
+                stroke.quality >= 80 ? '#4CAF50' :
+                stroke.quality >= 60 ? '#FF9800' : '#f44336';
+            document.getElementById('strokeDetailTime').textContent = formatVideoTime(stroke.time);
+            document.getElementById('strokeDetailVelocity').textContent =
+                (stroke.velocity * 100).toFixed(1);
+
+            panel.classList.add('visible');
+        }
+
+        function toggleVideoPlayback() {
+            const video = document.getElementById('analysisVideo');
+            const btn = document.getElementById('timelinePlayBtn');
+
+            if (video.paused) {
+                video.play();
+                btn.textContent = '⏸️';
+            } else {
+                video.pause();
+                btn.textContent = '▶️';
+            }
+        }
+
+        function clearAnalysisVideo() {
+            const video = document.getElementById('analysisVideo');
+            const uploadZone = document.getElementById('videoUploadZone');
+            const playerArea = document.getElementById('videoPlayerArea');
+            const strokePanel = document.getElementById('strokeDetailsPanel');
+
+            // Reset video
+            video.src = '';
+            video.pause();
+
+            // Hide player, show upload
+            playerArea.classList.remove('active');
+            uploadZone.classList.remove('has-video');
+            strokePanel.classList.remove('visible');
+
+            // Clear markers
+            document.querySelectorAll('.stroke-marker').forEach(m => m.remove());
+
+            // Clean up analyzer
+            videoAnalyzer.destroy();
+
+            selectedStroke = null;
+        }
+
+        // Timeline click to seek
+        function initTimelineInteraction() {
+            const track = document.getElementById('timelineTrack');
+
+            track.addEventListener('click', (e) => {
+                const video = document.getElementById('analysisVideo');
+                if (!video || !video.duration) return;
+
+                const rect = track.getBoundingClientRect();
+                const percent = (e.clientX - rect.left) / rect.width;
+                video.currentTime = percent * video.duration;
+            });
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            initVideoUpload();
+            initTimelineInteraction();
+            initCalibrationUpload();
+        });
+
+        // ========================================
+        // Calibration Functions
+        // ========================================
+
+        function openCalibrationModal() {
+            document.getElementById('calibrationModal').classList.add('visible');
+        }
+
+        function closeCalibrationModal() {
+            document.getElementById('calibrationModal').classList.remove('visible');
+            if (typeof calibrationTool !== 'undefined') {
+                calibrationTool.cancel();
+            }
+        }
+
+        function initCalibrationUpload() {
+            const uploadZone = document.getElementById('calibrationUploadZone');
+            const fileInput = document.getElementById('calibrationFileInput');
+
+            if (!uploadZone || !fileInput) return;
+
+            uploadZone.addEventListener('click', () => fileInput.click());
+
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.style.borderColor = '#4CAF50';
+            });
+
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.style.borderColor = 'rgba(255,255,255,0.3)';
+            });
+
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.style.borderColor = 'rgba(255,255,255,0.3)';
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('video/')) {
+                    startCalibration(file);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    startCalibration(file);
+                }
+            });
+        }
+
+        async function startCalibration(file) {
+            const label = document.getElementById('calibrationLabel').value;
+            const player = document.getElementById('calibrationPlayer').value || 'unknown';
+
+            // Show progress
+            document.getElementById('calibrationUploadZone').style.display = 'none';
+            document.getElementById('calibrationProgress').style.display = 'block';
+            document.getElementById('calibrationResults').style.display = 'none';
+
+            try {
+                // Initialize calibration tool
+                await calibrationTool.initialize();
+
+                // Run calibration
+                const results = await calibrationTool.calibrateFromVideo(file, {
+                    label: label,
+                    player: player,
+                    onProgress: (progress) => {
+                        document.getElementById('calibrationProgressBar').style.width = progress.progress + '%';
+                        document.getElementById('calibrationStatus').textContent =
+                            `Processing... ${progress.progress.toFixed(0)}%`;
+                        document.getElementById('calibrationStrokeCount').textContent =
+                            `${progress.strokesDetected} strokes detected`;
+                    },
+                    onStrokeDetected: (stroke, count) => {
+                        console.log(`Calibration stroke #${count}: ${stroke.type}`);
+                    }
+                });
+
+                // Show results
+                displayCalibrationResults(results);
+
+            } catch (error) {
+                console.error('Calibration failed:', error);
+                document.getElementById('calibrationStatus').textContent = 'Calibration failed: ' + error.message;
+            }
+        }
+
+        function displayCalibrationResults(results) {
+            document.getElementById('calibrationProgress').style.display = 'none';
+            document.getElementById('calibrationResults').style.display = 'block';
+
+            if (results.error) {
+                document.getElementById('calibrationResults').innerHTML = `
+                    <div style="color: #f44336; padding: 20px; text-align: center;">
+                        ${results.error}
+                    </div>
+                `;
+                return;
+            }
+
+            let html = `
+                <div class="summary-stats" style="margin-bottom: 20px;">
+                    <div class="summary-stat highlight">
+                        <div class="summary-stat-value">${results.totalStrokes}</div>
+                        <div class="summary-stat-label">Strokes Detected</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${results.label}</div>
+                        <div class="summary-stat-label">Skill Level</div>
+                    </div>
+                    <div class="summary-stat">
+                        <div class="summary-stat-value">${results.player}</div>
+                        <div class="summary-stat-label">Player</div>
+                    </div>
+                </div>
+            `;
+
+            // Key metrics
+            if (results.metrics) {
+                html += `<div class="summary-section"><div class="summary-section-title">Key Metrics</div>`;
+                html += `<div style="font-size: 13px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">`;
+
+                const metricsToShow = ['velocity', 'acceleration', 'rotation', 'elbowAngle', 'hipShoulderSeparation'];
+                for (const metric of metricsToShow) {
+                    if (results.metrics[metric]) {
+                        const m = results.metrics[metric];
+                        html += `<div style="margin-bottom: 8px;">
+                            <strong>${metric}:</strong>
+                            avg=${m.avg.toFixed(4)}, range=[${m.min.toFixed(4)} - ${m.max.toFixed(4)}]
+                        </div>`;
+                    }
+                }
+
+                html += `</div></div>`;
+            }
+
+            // Recommended thresholds
+            if (results.recommendedThresholds && Object.keys(results.recommendedThresholds).length > 0) {
+                html += `<div class="summary-section"><div class="summary-section-title">Recommended Thresholds</div>`;
+                html += `<div style="font-size: 12px; background: rgba(76,175,80,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(76,175,80,0.3);">`;
+
+                for (const [metric, data] of Object.entries(results.recommendedThresholds)) {
+                    if (data.recommended) {
+                        html += `<div style="margin-bottom: 8px;">
+                            <strong>${metric}:</strong><br>
+                            <span style="color: rgba(255,255,255,0.6);">Current:</span> ${JSON.stringify(data.current)}<br>
+                            <span style="color: #4CAF50;">Recommended:</span> ${JSON.stringify(data.recommended)}
+                        </div>`;
+                    }
+                }
+
+                html += `</div></div>`;
+            }
+
+            // Stroke type distribution
+            if (results.distributions?.strokeTypes) {
+                html += `<div class="summary-section"><div class="summary-section-title">Stroke Distribution</div>`;
+                html += `<div style="display: flex; gap: 8px; flex-wrap: wrap;">`;
+                for (const [type, count] of Object.entries(results.distributions.strokeTypes)) {
+                    html += `<span style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                        ${type}: ${count}
+                    </span>`;
+                }
+                html += `</div></div>`;
+            }
+
+            html += `
+                <button class="btn" onclick="resetCalibrationUI()" style="width: 100%; margin-top: 16px;">
+                    Calibrate Another Video
+                </button>
+            `;
+
+            document.getElementById('calibrationResults').innerHTML = html;
+
+            // Show threshold update section after successful calibration
+            showThresholdUpdateSection();
+        }
+
+        function resetCalibrationUI() {
+            document.getElementById('calibrationUploadZone').style.display = 'block';
+            document.getElementById('calibrationProgress').style.display = 'none';
+            document.getElementById('calibrationResults').style.display = 'none';
+            document.getElementById('calibrationProgressBar').style.width = '0%';
+            document.getElementById('calibrationFileInput').value = '';
+            // Reset threshold update section
+            document.getElementById('thresholdUpdateSection').style.display = 'none';
+            document.getElementById('thresholdApplyStatus').textContent = '';
+        }
+
+        function showCalibrationStats() {
+            if (typeof calibrationTool === 'undefined') return;
+
+            const stats = calibrationTool.getAggregateStats();
+            calibrationTool.printThresholdComparison();
+
+            if (stats.error) {
+                alert(stats.error);
+                return;
+            }
+
+            alert(`Calibration Stats:\n\nTotal Runs: ${stats.totalRuns}\nTotal Strokes: ${stats.totalStrokes}\nLabels: ${stats.labels.join(', ')}\nPlayers: ${stats.players.join(', ')}\n\nSee console for detailed metrics.`);
+        }
+
+        function exportCalibrationData() {
+            if (typeof calibrationTool !== 'undefined') {
+                calibrationTool.exportCalibrationData();
+            }
+        }
+
+        function applyThresholdsToApp() {
+            const statusEl = document.getElementById('thresholdApplyStatus');
+
+            if (typeof thresholdUpdater === 'undefined') {
+                statusEl.textContent = '❌ ThresholdUpdater not loaded';
+                statusEl.style.color = '#f44336';
+                return;
+            }
+
+            const result = thresholdUpdater.applyToRunningApp();
+
+            if (result.success) {
+                statusEl.innerHTML = `✅ Applied ${result.updatedModules.length} module updates!<br>` +
+                    result.updatedModules.map(m => `• ${m}`).join('<br>');
+                statusEl.style.color = '#4CAF50';
+            } else {
+                statusEl.textContent = `❌ Failed: ${result.error}`;
+                statusEl.style.color = '#f44336';
+            }
+        }
+
+        function exportThresholdUpdates() {
+            if (typeof thresholdUpdater === 'undefined') {
+                alert('ThresholdUpdater not loaded');
+                return;
+            }
+
+            thresholdUpdater.exportUpdates();
+        }
+
+        function showThresholdUpdateSection() {
+            const section = document.getElementById('thresholdUpdateSection');
+            if (section && calibrationTool && calibrationTool.calibrationRuns.length > 0) {
+                section.style.display = 'block';
+            }
+        }
+
+        function formatDuration(ms) {
+            const seconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            if (minutes === 0) return `${remainingSeconds}s`;
+            return `${minutes}m ${remainingSeconds}s`;
+        }
+
+        // Stroke quality flash function
+        function flashStrokeQuality(qualityScore) {
+            const overlay = document.getElementById('strokeFlashOverlay');
+
+            // Remove existing classes
+            overlay.classList.remove('flash', 'great', 'good', 'needs-work');
+
+            // Force reflow to restart animation
+            void overlay.offsetWidth;
+
+            // Add appropriate quality class
+            if (qualityScore >= 80) {
+                overlay.classList.add('great');
+            } else if (qualityScore >= 60) {
+                overlay.classList.add('good');
+            } else {
+                overlay.classList.add('needs-work');
+            }
+
+            // Trigger flash animation
+            overlay.classList.add('flash');
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space') {
+                event.preventDefault();
+                toggleAnalysis();
+            } else if (event.code === 'KeyR' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                resetSession();
+            }
+        });
+    </script>
+</body>
+</html>

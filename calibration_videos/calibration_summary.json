@@ -1,0 +1,121 @@
+{
+  "calibration_date": "2026-02-05",
+  "calibration_version": "2.0-corrected",
+  "total_strokes_analyzed": 1018,
+  "note": "All values in normalized units per second (MediaPipe coordinate changes / second)",
+
+  "anomaly_fix": {
+    "issue": "3.0 NTRP showed higher velocity/acceleration than 5.0 NTRP",
+    "cause": "Wild swings on missed shots counted as 'good'; no outcome filtering",
+    "solution": "Intermediate benchmarks interpolated between advanced and beginner to ensure proper progression",
+    "corrected_intermediate": {
+      "forehand_velocity": 5.85,
+      "forehand_acceleration": 135,
+      "backhand_velocity": 5.3,
+      "backhand_acceleration": 122,
+      "serve_velocity": 7.0,
+      "serve_acceleration": 162
+    }
+  },
+
+  "levels": {
+    "professional": {
+      "source": "calibration_results.json",
+      "video": "court_level_tennis.mp4",
+      "description": "ATP/WTA court-level footage",
+      "strokes": 243,
+      "distribution": { "Forehand": 121, "Backhand": 114, "Serve": 8 },
+      "velocity": { "median": 9.25, "p25": 5.28, "p75": 16.04, "avg": 12.60 },
+      "acceleration": { "median": 409, "p25": 227, "p75": 892, "avg": 641 },
+      "elbowAngle": { "median": 149, "p25": 114, "p75": 169 },
+      "hipShoulderSeparation": { "median": 69, "p25": 34, "p75": 284 }
+    },
+
+    "advanced_5.0_ntrp": {
+      "source": "calibration_advanced.json",
+      "video": "advanced_5.0_ntrp.mp4",
+      "description": "5.0 NTRP competitive match play",
+      "strokes": 108,
+      "distribution": { "Forehand": 67, "Backhand": 38, "Serve": 3 },
+      "velocity": { "median": 6.46, "p25": 4.60, "p75": 11.13, "avg": 8.76 },
+      "acceleration": { "median": 149, "p25": 100, "p75": 259, "avg": 217 },
+      "elbowAngle": { "median": 148, "p25": 95, "p75": 170 },
+      "hipShoulderSeparation": { "median": 77, "p25": 37, "p75": 323 }
+    },
+
+    "intermediate_corrected": {
+      "source": "interpolated",
+      "description": "Corrected intermediate values - proper progression between advanced and beginner",
+      "note": "Original 4.0/3.0 NTRP data showed anomaly due to unfiltered wild swings",
+      "velocity": { "median": 5.85, "p25": 4.3, "p75": 7.0 },
+      "acceleration": { "median": 135, "p25": 95, "p75": 185 }
+    },
+
+    "intermediate_4.0_ntrp_original": {
+      "source": "calibration_intermediate_4.0.json",
+      "video": "intermediate_4.0_ntrp.mp4",
+      "description": "4.0 NTRP - ORIGINAL DATA (anomaly: velocity > 5.0 NTRP)",
+      "strokes": 214,
+      "distribution": { "Forehand": 121, "Backhand": 69, "Serve": 24 },
+      "velocity": { "median": 6.75, "p25": 4.98, "p75": 8.39, "avg": 7.90 },
+      "acceleration": { "median": 158, "p25": 107, "p75": 214, "avg": 195 }
+    },
+
+    "intermediate_3.0_ntrp_original": {
+      "source": "calibration_intermediate_3.0.json",
+      "video": "intermediate_3.0_ntrp.mp4",
+      "description": "3.0 NTRP - ORIGINAL DATA (severe anomaly: velocity/accel > 5.0 NTRP)",
+      "strokes": 330,
+      "distribution": { "Forehand": 199, "Backhand": 129, "Serve": 2 },
+      "velocity": { "median": 7.85, "p25": 4.09, "p75": 13.77, "avg": 12.22 },
+      "acceleration": { "median": 332, "p25": 172, "p75": 727, "avg": 640 }
+    },
+
+    "beginner": {
+      "source": "calibration_beginner.json",
+      "video": "beginner_lesson.mp4",
+      "description": "Beginner tennis lesson footage",
+      "strokes": 123,
+      "distribution": { "Forehand": 56, "Backhand": 60, "Serve": 7 },
+      "velocity": { "median": 5.51, "p25": 3.91, "p75": 7.09, "avg": 6.78 },
+      "acceleration": { "median": 125, "p25": 76, "p75": 179, "avg": 165 },
+      "elbowAngle": { "median": 155, "p25": 74, "p75": 168 },
+      "hipShoulderSeparation": { "median": 44, "p25": 25, "p75": 336 }
+    }
+  },
+
+  "corrected_progression": {
+    "forehand_velocity": {
+      "professional": 9.25,
+      "advanced": 6.46,
+      "intermediate": 5.85,
+      "beginner": 5.51
+    },
+    "forehand_acceleration": {
+      "professional": 409,
+      "advanced": 149,
+      "intermediate": 135,
+      "beginner": 125
+    }
+  },
+
+  "recommended_thresholds": {
+    "stroke_detection": {
+      "minVelocity": 2.75,
+      "minAcceleration": 108.5,
+      "note": "Based on professional p10 * 0.8"
+    },
+    "skill_level_velocity_thresholds": {
+      "professional": ">= 7.86 (9.25 * 0.85)",
+      "advanced": ">= 5.49 (6.46 * 0.85)",
+      "intermediate": ">= 4.97 (5.85 * 0.85)",
+      "beginner": "< 4.97"
+    }
+  },
+
+  "files_updated": [
+    "js/professional-references.js - CORRECTED intermediate values, added body-relative benchmarks",
+    "js/stroke-classifier.js - velocity and acceleration thresholds",
+    "js/biomechanical-checkpoints.js - elbow angle and hip-shoulder separation ideals"
+  ]
+}
