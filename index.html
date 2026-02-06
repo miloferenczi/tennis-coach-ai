@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tennis Ace AI Coach</title>
-    <meta name="description" content="AI-powered tennis coaching using MediaPipe pose detection">
+    <title>ACE - AI Coach</title>
+    <meta name="description" content="AI-powered athletic coaching with real-time pose analysis">
     
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#1e3c72">
+    <meta name="theme-color" content="#0A0A0A">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Tennis Ace AI">
+    <meta name="apple-mobile-web-app-title" content="ACE">
+
+    <!-- Premium Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Link to manifest -->
     <link rel="manifest" href="manifest.json">
@@ -41,6 +46,46 @@
     <script src="js/video-analyzer.js"></script>
 
     <style>
+        /* ============================================
+           PREMIUM DESIGN SYSTEM - Nike/Athletic Aesthetic
+           ============================================ */
+
+        :root {
+            /* Color System */
+            --bg-primary: #0A0A0A;
+            --bg-secondary: #141414;
+            --bg-surface: rgba(255, 255, 255, 0.06);
+            --accent-volt: #CDFF00;
+            --text-primary: #F5F5F5;
+            --text-muted: #8A8A8A;
+            --text-subtle: #666666;
+            --danger: #FF3B30;
+            --success: #32D74B;
+            --warning: #FF9500;
+            --border-subtle: rgba(255, 255, 255, 0.08);
+
+            /* Glass Effect */
+            --glass-bg: rgba(10, 10, 10, 0.75);
+            --glass-blur: blur(20px);
+
+            /* Typography */
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+
+            /* Spacing */
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+
+            /* Border Radius */
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            --radius-xl: 20px;
+            --radius-full: 9999px;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -48,11 +93,27 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            color: white;
+            font-family: var(--font-family);
+            background: var(--bg-primary);
+            color: var(--text-primary);
             overflow: hidden;
             height: 100vh;
+            font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Noise/Grain Texture Overlay */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.03;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            z-index: 10000;
         }
 
         .container {
@@ -66,7 +127,7 @@
         .camera-container {
             position: relative;
             flex: 1;
-            background: #000;
+            background: var(--bg-primary);
             overflow: hidden;
         }
 
@@ -85,15 +146,18 @@
             top: 0;
             left: 0;
             pointer-events: none;
-}
+        }
 
+        /* ============================================
+           SCREENS (Permission, API Key, Loading)
+           ============================================ */
         .screen {
             position: absolute;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            background: var(--bg-primary);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -104,97 +168,165 @@
         }
 
         .screen-title {
-            font-size: 32px;
-            margin-bottom: 20px;
+            font-size: 56px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: -0.03em;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+
+        .screen-subtitle {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-bottom: 48px;
+            text-transform: lowercase;
         }
 
         .screen-text {
-            font-size: 18px;
-            margin-bottom: 30px;
-            opacity: 0.9;
+            font-size: 15px;
+            margin-bottom: 32px;
+            color: var(--text-muted);
             line-height: 1.5;
+            max-width: 320px;
         }
 
+        .powered-by {
+            position: absolute;
+            bottom: 40px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-primary);
+            opacity: 0.3;
+        }
+
+        /* ============================================
+           BUTTONS
+           ============================================ */
         .btn {
-            background: #4CAF50;
-            color: white;
+            background: var(--accent-volt);
+            color: var(--bg-primary);
             border: none;
-            padding: 16px 32px;
-            border-radius: 25px;
-            font-size: 16px;
-            font-weight: bold;
+            padding: 16px 40px;
+            border-radius: var(--radius-full);
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             cursor: pointer;
-            transition: background 0.3s ease;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+            font-family: var(--font-family);
         }
 
         .btn:hover {
-            background: #45a049;
+            opacity: 0.9;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
         }
 
         .btn-secondary {
-            background: rgba(255,255,255,0.2);
-            margin-top: 10px;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
         }
 
         .btn-secondary:hover {
-            background: rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        input[type="password"] {
-            width: 80%;
-            max-width: 400px;
-            padding: 12px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-radius: 8px;
-            background: rgba(255,255,255,0.1);
-            color: white;
-            font-size: 14px;
+        .btn-ghost {
+            background: transparent;
+            color: var(--text-muted);
+            padding: 12px 24px;
+        }
+
+        .btn-ghost:hover {
+            color: var(--text-primary);
+        }
+
+        /* ============================================
+           INPUTS
+           ============================================ */
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            max-width: 360px;
+            padding: 16px 20px;
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font-size: 15px;
+            font-family: var(--font-family);
             margin: 20px 0;
+            backdrop-filter: var(--glass-blur);
+            transition: border-color 0.2s ease;
         }
 
-        input[type="password"]::placeholder {
-            color: rgba(255,255,255,0.5);
+        input[type="password"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent-volt);
         }
 
+        input[type="password"]::placeholder,
+        input[type="text"]::placeholder {
+            color: var(--text-subtle);
+        }
+
+        /* ============================================
+           LOADING SCREEN
+           ============================================ */
         .loading-screen {
             z-index: 1000;
         }
 
         .loading-text {
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            margin-bottom: 24px;
         }
 
         .loading-progress {
-            width: 80%;
-            max-width: 300px;
-            height: 4px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px;
+            width: 200px;
+            height: 2px;
+            background: var(--bg-surface);
+            border-radius: var(--radius-full);
             overflow: hidden;
         }
 
         .loading-bar {
             height: 100%;
-            background: linear-gradient(90deg, #4CAF50, #8BC34A);
-            border-radius: 2px;
+            background: var(--accent-volt);
+            border-radius: var(--radius-full);
             width: 0%;
             transition: width 0.3s ease;
         }
 
+        /* ============================================
+           STATUS BAR (Top HUD)
+           ============================================ */
         .status-bar {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            right: 20px;
+            top: var(--space-md);
+            left: var(--space-md);
+            right: var(--space-md);
             display: flex;
             justify-content: space-between;
             z-index: 100;
-            background: rgba(0,0,0,0.7);
-            padding: 12px 16px;
-            border-radius: 12px;
-            backdrop-filter: blur(10px);
+            background: var(--glass-bg);
+            padding: 16px 20px;
+            border-radius: var(--radius-lg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-subtle);
         }
 
         .status-item {
@@ -203,19 +335,29 @@
         }
 
         .status-label {
-            font-size: 11px;
-            opacity: 0.8;
-            margin-bottom: 4px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-subtle);
+            margin-bottom: 6px;
         }
 
         .status-value {
-            font-size: 16px;
-            font-weight: bold;
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .status-value.muted {
+            color: var(--text-subtle);
         }
 
         .ai-status {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
         }
 
@@ -223,67 +365,86 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: #FF5722;
+            background: var(--text-subtle);
         }
 
         .status-dot.ready {
-            background: #FFC107;
+            background: var(--warning);
+            animation: pulse 2s infinite;
         }
 
         .status-dot.active {
-            background: #4CAF50;
-            animation: pulse 2s infinite;
+            background: var(--accent-volt);
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 12px rgba(205, 255, 0, 0.5);
         }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            50% { opacity: 0.4; }
         }
 
+        /* ============================================
+           ANALYSIS CARD
+           ============================================ */
         .analysis-card {
             position: absolute;
-            top: 130px;
-            right: 20px;
-            background: rgba(0,0,0,0.9);
-            border-radius: 16px;
-            padding: 16px;
-            min-width: 160px;
-            border-left: 4px solid #4CAF50;
-            backdrop-filter: blur(10px);
-            transform: scale(0);
-            transition: transform 0.3s ease;
-            max-height: 300px;
+            top: 100px;
+            right: var(--space-md);
+            background: var(--glass-bg);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+            min-width: 180px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-subtle);
+            transform: scale(0) translateY(-20px);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            max-height: 320px;
             overflow-y: auto;
             z-index: 100;
         }
 
         .analysis-card.visible {
-            transform: scale(1);
+            transform: scale(1) translateY(0);
+            opacity: 1;
         }
 
         .stroke-type {
-            color: #4CAF50;
-            font-size: 14px;
-            font-weight: bold;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent-volt);
             margin-bottom: 8px;
             text-align: center;
         }
 
         .technique-score {
-            color: white;
-            font-size: 28px;
-            font-weight: bold;
+            font-size: 48px;
+            font-weight: 800;
             text-align: center;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+            letter-spacing: -0.02em;
+        }
+
+        .score-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-subtle);
+            text-align: center;
+            margin-bottom: 16px;
         }
 
         .advanced-metrics {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid rgba(255,255,255,0.2);
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-subtle);
         }
 
         .metric-item {
@@ -292,109 +453,197 @@
 
         .metric-label {
             font-size: 9px;
-            color: #B0BEC5;
-            margin-bottom: 2px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-subtle);
+            margin-bottom: 4px;
         }
 
         .metric-value {
-            font-size: 11px;
-            color: white;
-            font-weight: bold;
+            font-size: 14px;
+            color: var(--text-primary);
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
         }
 
+        /* ============================================
+           COACHING PANEL
+           ============================================ */
         .coaching-panel {
             position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.9);
-            border-radius: 16px;
-            padding: 16px;
-            border-left: 4px solid #FF9800;
-            backdrop-filter: blur(10px);
-            max-height: 140px;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--glass-bg);
+            border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+            padding: 20px;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border-top: 1px solid var(--border-subtle);
+            max-height: 30vh;
             overflow-y: auto;
             z-index: 100;
         }
 
+        .coaching-drag-handle {
+            width: 36px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-full);
+            margin: 0 auto 16px;
+        }
+
+        .coaching-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
         .coaching-label {
-            color: #FF9800;
-            font-size: 12px;
-            font-weight: bold;
-            margin-bottom: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent-volt);
+        }
+
+        .coaching-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-volt);
+            animation: pulse 1.5s infinite;
         }
 
         .coaching-text {
-            color: white;
-            font-size: 14px;
-            line-height: 1.4;
+            font-size: 15px;
+            line-height: 1.5;
+            color: var(--text-primary);
+            font-weight: 400;
         }
 
+        /* ============================================
+           CONTROLS
+           ============================================ */
         .controls {
             position: absolute;
-            bottom: 180px;
+            bottom: calc(160px + env(safe-area-inset-bottom));
             left: 50%;
             transform: translateX(-50%);
             display: flex;
-            gap: 20px;
+            gap: 24px;
             z-index: 100;
         }
 
         .control-btn {
-            width: 60px;
-            height: 60px;
+            width: 56px;
+            height: 56px;
             border: none;
             border-radius: 50%;
-            font-size: 24px;
+            font-size: 20px;
             cursor: pointer;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            background: var(--glass-bg);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-primary);
         }
 
-        .play-btn {
-            background: rgba(76, 175, 80, 0.9);
-            color: white;
+        .control-btn:active {
+            transform: scale(0.95);
         }
 
-        .play-btn:hover {
-            background: rgba(76, 175, 80, 1);
-            transform: scale(1.1);
+        .control-btn.active {
+            box-shadow: 0 0 0 2px var(--accent-volt);
         }
 
-        .reset-btn {
-            background: rgba(255, 87, 34, 0.9);
-            color: white;
+        .control-btn-label {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-top: 8px;
+            position: absolute;
+            bottom: -24px;
+            white-space: nowrap;
         }
 
-        .reset-btn:hover {
-            background: rgba(255, 87, 34, 1);
-            transform: scale(1.1);
+        .play-btn.recording {
+            box-shadow: 0 0 0 2px var(--accent-volt), 0 0 20px rgba(205, 255, 0, 0.3);
         }
 
-        .analytics-btn {
-            background: rgba(33, 150, 243, 0.9);
-            color: white;
+        /* Icon styling */
+        .control-icon {
+            font-size: 22px;
+            line-height: 1;
         }
 
-        .analytics-btn:hover {
-            background: rgba(33, 150, 243, 1);
-            transform: scale(1.1);
+        /* ============================================
+           MODE SWITCHER (Tab Bar)
+           ============================================ */
+        .mode-switcher {
+            position: absolute;
+            top: calc(90px + var(--space-md));
+            left: var(--space-md);
+            display: flex;
+            background: var(--glass-bg);
+            border-radius: var(--radius-full);
+            padding: 4px;
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-subtle);
+            z-index: 100;
         }
 
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 16px;
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: var(--font-family);
+        }
+
+        .mode-btn.active {
+            background: var(--accent-volt);
+            color: var(--bg-primary);
+        }
+
+        .mode-btn:not(.active):hover {
+            color: var(--text-primary);
+        }
+
+        /* ============================================
+           ERROR MESSAGE
+           ============================================ */
         .error-message {
-            background: rgba(244, 67, 54, 0.9);
+            background: var(--danger);
             color: white;
-            padding: 12px;
-            border-radius: 8px;
+            padding: 16px 20px;
+            border-radius: var(--radius-md);
             margin: 10px;
             text-align: center;
             font-size: 14px;
+            font-weight: 500;
         }
 
-        /* Screen Border Flash for Stroke Quality */
+        /* ============================================
+           STROKE FLASH OVERLAY
+           ============================================ */
         .stroke-flash-overlay {
             position: fixed;
             top: 0;
@@ -402,44 +651,41 @@
             right: 0;
             bottom: 0;
             pointer-events: none;
-            z-index: 9999;
+            z-index: 9998;
             opacity: 0;
-            transition: opacity 0.1s ease-out;
         }
 
         .stroke-flash-overlay.flash {
-            animation: borderFlash 0.6s ease-out forwards;
+            animation: borderFlash 0.5s ease-out forwards;
         }
 
         .stroke-flash-overlay.great {
-            box-shadow: inset 0 0 100px 30px rgba(76, 175, 80, 0.8);
+            box-shadow: inset 0 0 120px 40px rgba(205, 255, 0, 0.6);
         }
 
         .stroke-flash-overlay.good {
-            box-shadow: inset 0 0 100px 30px rgba(255, 152, 0, 0.8);
+            box-shadow: inset 0 0 120px 40px rgba(255, 149, 0, 0.5);
         }
 
         .stroke-flash-overlay.needs-work {
-            box-shadow: inset 0 0 100px 30px rgba(244, 67, 54, 0.8);
+            box-shadow: inset 0 0 120px 40px rgba(255, 59, 48, 0.5);
         }
 
         @keyframes borderFlash {
-            0% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 0;
-            }
+            0% { opacity: 1; }
+            100% { opacity: 0; }
         }
 
-        /* Modal Styles */
+        /* ============================================
+           MODAL STYLES
+           ============================================ */
         .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.85);
+            background: rgba(0, 0, 0, 0.9);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -447,6 +693,8 @@
             opacity: 0;
             visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
         }
 
         .modal-overlay.visible {
@@ -455,47 +703,52 @@
         }
 
         .modal {
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            border-radius: 20px;
-            padding: 24px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xl);
+            padding: 28px;
             max-width: 480px;
             width: 90%;
             max-height: 85vh;
             overflow-y: auto;
-            transform: scale(0.9);
+            transform: scale(0.95) translateY(20px);
             transition: transform 0.3s ease;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border-subtle);
         }
 
         .modal-overlay.visible .modal {
-            transform: scale(1);
+            transform: scale(1) translateY(0);
         }
 
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 16px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border-subtle);
         }
 
         .modal-title {
-            font-size: 22px;
-            font-weight: bold;
-            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+            color: var(--text-primary);
         }
 
         .modal-close {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: white;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            color: var(--text-muted);
             width: 36px;
             height: 36px;
             border-radius: 50%;
-            font-size: 20px;
+            font-size: 18px;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .modal-close:hover {
@@ -542,7 +795,7 @@
         .summary-section-title {
             font-size: 14px;
             font-weight: bold;
-            color: #4CAF50;
+            color: var(--accent-volt, #CDFF00);
             margin-bottom: 12px;
             text-transform: uppercase;
         }
@@ -561,7 +814,7 @@
             background: rgba(0, 0, 0, 0.3);
             padding: 16px;
             border-radius: 12px;
-            border-left: 4px solid #4CAF50;
+            border-left: 4px solid var(--accent-volt, #CDFF00);
         }
 
         .drill-name {
@@ -580,7 +833,7 @@
 
         .drill-duration {
             font-size: 12px;
-            color: #4CAF50;
+            color: var(--accent-volt, #CDFF00);
         }
 
         .improvement-badge {
@@ -595,7 +848,7 @@
 
         .improvement-badge.positive {
             background: rgba(76, 175, 80, 0.3);
-            color: #4CAF50;
+            color: var(--accent-volt, #CDFF00);
         }
 
         .improvement-badge.negative {
@@ -634,12 +887,12 @@
         }
 
         .mode-btn.active {
-            background: #4CAF50;
-            color: white;
+            background: var(--accent-volt, #CDFF00);
+            color: #0A0A0A;
         }
 
         .mode-btn:hover:not(.active) {
-            color: white;
+            color: var(--text-primary, #F5F5F5);
         }
 
         /* Analysis Mode Container */
@@ -651,7 +904,7 @@
             bottom: 0;
             display: none;
             flex-direction: column;
-            background: #000;
+            background: var(--bg-primary, #0A0A0A);
         }
 
         .analysis-mode-container.active {
@@ -664,13 +917,17 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: var(--bg-secondary, #141414);
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.3s ease;
+            border: 2px dashed var(--border-subtle, rgba(255,255,255,0.1));
+            margin: 16px;
+            border-radius: var(--radius-lg, 16px);
         }
 
         .video-upload-zone.dragover {
-            background: linear-gradient(135deg, #2a2a4e 0%, #263658 100%);
+            border-color: var(--accent-volt, #CDFF00);
+            background: rgba(205, 255, 0, 0.05);
         }
 
         .video-upload-zone.has-video {
@@ -755,7 +1012,7 @@
             height: 40px;
             border-radius: 50%;
             border: none;
-            background: #4CAF50;
+            background: var(--accent-volt, #CDFF00);
             color: white;
             font-size: 16px;
             cursor: pointer;
@@ -784,7 +1041,7 @@
             top: 0;
             width: 3px;
             height: 100%;
-            background: #4CAF50;
+            background: var(--accent-volt, #CDFF00);
             border-radius: 2px;
             pointer-events: none;
         }
@@ -804,11 +1061,11 @@
         }
 
         .stroke-marker.forehand {
-            background: #4CAF50;
+            background: var(--accent-volt, #CDFF00);
         }
 
         .stroke-marker.backhand {
-            background: #2196F3;
+            background: var(--accent-volt, #CDFF00);
         }
 
         .stroke-marker.serve {
@@ -921,7 +1178,7 @@
 
         .analysis-progress-fill {
             height: 100%;
-            background: #4CAF50;
+            background: var(--accent-volt, #CDFF00);
             width: 0%;
             transition: width 0.2s;
         }
@@ -966,44 +1223,45 @@
     <div class="container">
         <!-- Permission Screen -->
         <div id="permissionScreen" class="screen">
-            <div class="screen-title">Tennis Ace AI</div>
+            <div class="screen-title">ACE</div>
+            <div class="screen-subtitle">ai-powered stroke analysis</div>
             <div class="screen-text">
-                AI-powered tennis coaching using computer vision.<br>
-                We need camera access to analyze your tennis strokes.
+                Real-time coaching powered by computer vision.<br>
+                Camera access required to analyze your form.
             </div>
             <button class="btn" onclick="requestCameraPermission()">
-                Enable Camera & Start Coaching
+                START SESSION →
             </button>
+            <div class="powered-by">powered by computer vision</div>
         </div>
 
         <!-- API Key Screen -->
         <div id="apiKeyScreen" class="screen" style="display: none;">
-            <div class="screen-title">Connect AI Coach</div>
+            <div class="screen-title">CONNECT</div>
+            <div class="screen-subtitle">enable voice coaching</div>
             <div class="screen-text">
-                Enter your OpenAI API key to enable GPT voice coaching.<br>
-                <small>Get your key at <a href="https://platform.openai.com/api-keys" target="_blank" style="color: #4CAF50;">platform.openai.com</a></small>
+                Enter your OpenAI API key for real-time voice feedback.<br>
+                <a href="https://platform.openai.com/api-keys" target="_blank" style="color: var(--accent-volt); text-decoration: none;">Get your key →</a>
             </div>
-            <input 
-                type="password" 
-                id="apiKeyInput" 
+            <input
+                type="password"
+                id="apiKeyInput"
                 placeholder="sk-..."
             />
             <button class="btn" onclick="connectGPTCoach()">
-                Connect AI Coach
+                CONNECT →
             </button>
-            <button class="btn btn-secondary" onclick="skipGPTCoach()">
-                Skip (use basic feedback)
+            <button class="btn-ghost" onclick="skipGPTCoach()" style="margin-top: 16px;">
+                Skip for now
             </button>
         </div>
 
         <!-- Loading Screen -->
         <div id="loadingScreen" class="screen loading-screen" style="display: none;">
-            <div class="loading-text">Loading AI Coach...</div>
+            <div class="screen-title" style="font-size: 32px; margin-bottom: 32px;">ACE</div>
+            <div class="loading-text" id="loadingStatus">INITIALIZING</div>
             <div class="loading-progress">
                 <div id="loadingBar" class="loading-bar"></div>
-            </div>
-            <div id="loadingStatus" style="margin-top: 20px; font-size: 14px; opacity: 0.8;">
-                Initializing tennis analysis engine...
             </div>
         </div>
 
@@ -1015,20 +1273,20 @@
             <!-- Status Bar -->
             <div class="status-bar">
                 <div class="status-item">
-                    <div class="status-label">Strokes</div>
+                    <div class="status-label">STROKES</div>
                     <div class="status-value" id="strokeCount">0</div>
                 </div>
                 <div class="status-item">
-                    <div class="status-label">Avg Score</div>
-                    <div class="status-value" id="avgScore">--</div>
+                    <div class="status-label">AVG SCORE</div>
+                    <div class="status-value muted" id="avgScore">--</div>
                 </div>
                 <div class="status-item">
-                    <div class="status-label">Consistency</div>
-                    <div class="status-value" id="consistencyScore">--</div>
+                    <div class="status-label">CONSISTENCY</div>
+                    <div class="status-value muted" id="consistencyScore">--</div>
                 </div>
                 <div class="status-item">
+                    <div class="status-label">AI COACH</div>
                     <div class="ai-status">
-                        <div class="status-label">AI Coach</div>
                         <div id="aiStatusDot" class="status-dot"></div>
                     </div>
                 </div>
@@ -1036,52 +1294,66 @@
 
             <!-- Analysis Card -->
             <div id="analysisCard" class="analysis-card">
-                <div id="strokeType" class="stroke-type">Forehand</div>
-                <div id="techniqueScore" class="technique-score">85/100</div>
+                <div id="strokeType" class="stroke-type">FOREHAND</div>
+                <div id="techniqueScore" class="technique-score">85</div>
+                <div class="score-label">SCORE</div>
 
                 <div class="advanced-metrics">
                     <div class="metric-item">
-                        <div class="metric-label">Elbow Angle</div>
+                        <div class="metric-label">ELBOW</div>
                         <div class="metric-value" id="elbowAngleMetric">--</div>
                     </div>
                     <div class="metric-item">
-                        <div class="metric-label">Hip-Shoulder</div>
+                        <div class="metric-label">ROTATION</div>
                         <div class="metric-value" id="hipSepMetric">--</div>
                     </div>
                     <div class="metric-item">
-                        <div class="metric-label">Stance</div>
+                        <div class="metric-label">STANCE</div>
                         <div class="metric-value" id="stanceMetric">--</div>
                     </div>
                     <div class="metric-item">
-                        <div class="metric-label">Weight</div>
+                        <div class="metric-label">WEIGHT</div>
                         <div class="metric-value" id="weightMetric">--</div>
                     </div>
 
                     <div class="metric-item" style="grid-column: span 2;">
-                        <div class="metric-label">Level</div>
-                        <div class="metric-value" id="skillLevelMetric" style="color: #4CAF50;">--</div>
+                        <div class="metric-label">LEVEL</div>
+                        <div class="metric-value" id="skillLevelMetric" style="color: var(--accent-volt);">--</div>
                     </div>
                 </div>
             </div>
 
             <!-- Controls -->
             <div class="controls">
-                <button class="control-btn analytics-btn" onclick="showAnalytics()" title="View History">
-                    📊
-                </button>
-                <button id="playBtn" class="control-btn play-btn" onclick="toggleAnalysis()">
-                    ▶️
-                </button>
-                <button class="control-btn reset-btn" onclick="resetSession()">
-                    🔄
-                </button>
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                    <button class="control-btn" onclick="showAnalytics()" title="View History">
+                        <span class="control-icon">📊</span>
+                    </button>
+                    <span class="control-btn-label">STATS</span>
+                </div>
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                    <button id="playBtn" class="control-btn play-btn" onclick="toggleAnalysis()">
+                        <span class="control-icon">▶</span>
+                    </button>
+                    <span class="control-btn-label">RECORD</span>
+                </div>
+                <div style="position: relative; display: flex; flex-direction: column; align-items: center;">
+                    <button class="control-btn" onclick="resetSession()">
+                        <span class="control-icon">↺</span>
+                    </button>
+                    <span class="control-btn-label">RESET</span>
+                </div>
             </div>
 
             <!-- Coaching Panel -->
             <div class="coaching-panel">
-                <div class="coaching-label">AI Tennis Coach</div>
+                <div class="coaching-drag-handle"></div>
+                <div class="coaching-header">
+                    <span class="coaching-label">AI COACH</span>
+                    <span class="coaching-dot"></span>
+                </div>
                 <div id="coachingText" class="coaching-text">
-                    AI is ready! Stand in front of the camera and make tennis strokes to get coaching feedback.
+                    Ready. Stand in frame and swing to begin analysis.
                 </div>
             </div>
 
@@ -1129,7 +1401,7 @@
                     <div class="stroke-details-panel" id="strokeDetailsPanel">
                         <div class="stroke-details-header">
                             <span class="stroke-details-type" id="strokeDetailType">Forehand</span>
-                            <span class="stroke-details-score" id="strokeDetailScore" style="color: #4CAF50;">85</span>
+                            <span class="stroke-details-score" id="strokeDetailScore" style="color: var(--accent-volt, #CDFF00);">85</span>
                         </div>
                         <div class="stroke-details-metrics">
                             <div class="stroke-metric">
@@ -1232,7 +1504,7 @@
                             <span id="calibrationStrokeCount">0 strokes</span>
                         </div>
                         <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
-                            <div id="calibrationProgressBar" style="height: 100%; background: #4CAF50; width: 0%; transition: width 0.3s;"></div>
+                            <div id="calibrationProgressBar" style="height: 100%; background: var(--accent-volt, #CDFF00); width: 0%; transition: width 0.3s;"></div>
                         </div>
                     </div>
 
@@ -1256,7 +1528,7 @@
                             Apply calibrated thresholds to improve stroke detection accuracy.
                         </p>
                         <div style="display: flex; gap: 12px;">
-                            <button class="btn" onclick="applyThresholdsToApp()" style="flex: 1; background: #4CAF50;">
+                            <button class="btn" onclick="applyThresholdsToApp()" style="flex: 1; background: var(--accent-volt, #CDFF00);">
                                 Apply Now
                             </button>
                             <button class="btn btn-secondary" onclick="exportThresholdUpdates()" style="flex: 1;">
@@ -1370,12 +1642,17 @@
                 if (results.poseLandmarks) {
 
                 // Draw pose overlay
+                // Volt accent skeleton with glow effect
+                this.ctx.shadowColor = 'rgba(205, 255, 0, 0.4)';
+                this.ctx.shadowBlur = 8;
                 drawConnectors(this.ctx, results.poseLandmarks, POSE_CONNECTIONS, {
-                    color: '#00FF00', 
+                    color: 'rgba(205, 255, 0, 0.7)',
                     lineWidth: 2
                 });
+                this.ctx.shadowBlur = 0;
                 drawLandmarks(this.ctx, results.poseLandmarks, {
-                    color: '#FF0000', 
+                    color: '#FFFFFF',
+                    fillColor: 'rgba(205, 255, 0, 0.9)', 
                     lineWidth: 1,
                     radius: 3
                 });
@@ -1753,7 +2030,7 @@
                                             </div>
                                         </div>
                                         <div style="text-align: right;">
-                                            <div style="font-size: 24px; font-weight: bold; color: #4CAF50;">${s.averageScore}</div>
+                                            <div style="font-size: 24px; font-weight: bold; color: var(--accent-volt, #CDFF00);">${s.averageScore}</div>
                                             <div style="font-size: 10px; color: rgba(255,255,255,0.6);">${s.consistency}</div>
                                         </div>
                                     </div>
@@ -1956,7 +2233,7 @@
             document.getElementById('strokeDetailType').textContent = stroke.type;
             document.getElementById('strokeDetailScore').textContent = Math.round(stroke.quality);
             document.getElementById('strokeDetailScore').style.color =
-                stroke.quality >= 80 ? '#4CAF50' :
+                stroke.quality >= 80 ? 'var(--accent-volt, #CDFF00)' :
                 stroke.quality >= 60 ? '#FF9800' : '#f44336';
             document.getElementById('strokeDetailTime').textContent = formatVideoTime(stroke.time);
             document.getElementById('strokeDetailVelocity').textContent =
@@ -2048,7 +2325,7 @@
 
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                uploadZone.style.borderColor = '#4CAF50';
+                uploadZone.style.borderColor = 'var(--accent-volt, #CDFF00)';
             });
 
             uploadZone.addEventListener('dragleave', () => {
@@ -2169,7 +2446,7 @@
                         html += `<div style="margin-bottom: 8px;">
                             <strong>${metric}:</strong><br>
                             <span style="color: rgba(255,255,255,0.6);">Current:</span> ${JSON.stringify(data.current)}<br>
-                            <span style="color: #4CAF50;">Recommended:</span> ${JSON.stringify(data.recommended)}
+                            <span style="color: var(--accent-volt, #CDFF00);">Recommended:</span> ${JSON.stringify(data.recommended)}
                         </div>`;
                     }
                 }
@@ -2246,7 +2523,7 @@
             if (result.success) {
                 statusEl.innerHTML = `✅ Applied ${result.updatedModules.length} module updates!<br>` +
                     result.updatedModules.map(m => `• ${m}`).join('<br>');
-                statusEl.style.color = '#4CAF50';
+                statusEl.style.color = 'var(--accent-volt, #CDFF00)';
             } else {
                 statusEl.textContent = `❌ Failed: ${result.error}`;
                 statusEl.style.color = '#f44336';
