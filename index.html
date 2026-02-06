@@ -41,6 +41,7 @@
 
     <!-- Application Scripts -->
     <script src="js/session-storage.js"></script>
+    <script src="js/player-profile.js"></script>
     <script src="js/enhanced-tennis-analyzer.js"></script>
     <script src="js/gpt-voice-coach.js"></script>
     <script src="js/video-analyzer.js"></script>
@@ -1100,6 +1101,16 @@
             transform: translateX(0);
         }
 
+        #comparisonPanel {
+            left: 20px;
+            right: auto;
+            transform: translateX(-320px);
+        }
+
+        #comparisonPanel.visible {
+            transform: translateX(0);
+        }
+
         .stroke-details-header {
             display: flex;
             justify-content: space-between;
@@ -1387,9 +1398,17 @@
                         <div class="timeline-controls">
                             <button class="timeline-playback-btn" id="timelinePlayBtn" onclick="toggleVideoPlayback()">▶️</button>
                             <span class="timeline-time" id="timelineTime">0:00 / 0:00</span>
-                            <button class="btn btn-secondary" onclick="clearAnalysisVideo()" style="margin-left: auto; padding: 8px 16px;">
-                                New Video
-                            </button>
+                            <div style="margin-left: auto; display: flex; gap: 8px;">
+                                <button class="btn btn-secondary" onclick="exportHighlightReel()" style="padding: 8px 12px; font-size: 11px;" title="Export best 5 strokes">
+                                    Best 5
+                                </button>
+                                <button class="btn btn-secondary" onclick="exportBlooperReel()" style="padding: 8px 12px; font-size: 11px;" title="Export worst 5 for learning">
+                                    Learn 5
+                                </button>
+                                <button class="btn btn-secondary" onclick="clearAnalysisVideo()" style="padding: 8px 12px; font-size: 11px;">
+                                    New
+                                </button>
+                            </div>
                         </div>
                         <div class="timeline-track" id="timelineTrack">
                             <div class="timeline-progress" id="timelineProgress"></div>
@@ -1414,6 +1433,27 @@
                                 <div class="stroke-metric-label">Velocity</div>
                             </div>
                         </div>
+                        <div style="margin-top: 12px; display: flex; gap: 8px;">
+                            <button class="btn btn-secondary" onclick="addToComparison()" style="flex: 1; padding: 8px; font-size: 11px;" id="compareBtn">
+                                + Compare
+                            </button>
+                            <button class="btn btn-secondary" onclick="hideStrokeDetails()" style="padding: 8px 12px; font-size: 11px;">
+                                ×
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Comparison Panel -->
+                    <div class="stroke-details-panel" id="comparisonPanel" style="left: 20px; right: auto; transform: translateX(-320px);">
+                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 12px; color: var(--accent-volt);">
+                            Comparing 2 Strokes
+                        </div>
+                        <div id="comparisonContent">
+                            <!-- Dynamic comparison content -->
+                        </div>
+                        <button class="btn btn-secondary" onclick="clearComparison()" style="width: 100%; margin-top: 12px; padding: 8px; font-size: 11px;">
+                            Clear Comparison
+                        </button>
                     </div>
 
                     <!-- Analysis Progress Overlay -->
@@ -1756,10 +1796,23 @@
                 if (typeof sessionStorage !== 'undefined' && sessionStorage.endSession) {
                     const endedSession = sessionStorage.endSession();
                     if (endedSession && endedSession.summary && endedSession.summary.totalStrokes > 0) {
+                        // Record session in player profile for cross-session tracking
+                        if (typeof playerProfile !== 'undefined') {
+                            const milestones = playerProfile.recordSession(endedSession.summary);
+                            // Show milestones if any achieved
+                            if (milestones && milestones.length > 0) {
+                                endedSession.summary.milestones = milestones;
+                            }
+                        }
                         showSessionSummary(endedSession.summary);
                     }
                     // Create new session
                     sessionStorage.createSession();
+                }
+
+                // Reset GPT coach session state
+                if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.resetSession) {
+                    gptVoiceCoach.resetSession();
                 }
 
                 this.enhancedAnalyzer.resetSession();
@@ -1933,6 +1986,22 @@
                 `;
             }
 
+            // Show milestones if any achieved
+            if (summary.milestones && summary.milestones.length > 0) {
+                html += `
+                    <div class="summary-section">
+                        <div class="summary-section-title">Milestones Achieved!</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            ${summary.milestones.map(m => `
+                                <span style="background: linear-gradient(135deg, var(--accent-volt), #a0cc00); color: #0A0A0A; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px;">
+                                    🏆 ${m.label}
+                                </span>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
             document.getElementById('sessionSummaryContent').innerHTML = html;
             document.getElementById('sessionSummaryModal').classList.add('visible');
         }
@@ -1950,6 +2019,12 @@
 
             const stats = sessionStorage.getAggregatedStats();
             const history = sessionStorage.getSessionHistory();
+
+            // Get player profile stats
+            let profileStats = null;
+            if (typeof playerProfile !== 'undefined') {
+                profileStats = playerProfile.getPlayerStats();
+            }
 
             let html = '';
 
@@ -2005,6 +2080,63 @@
                             </div>
                         </div>
                     `;
+                }
+
+                // Player Profile: Milestones
+                if (profileStats && profileStats.milestones && profileStats.milestones.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">Milestones</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                ${profileStats.milestones.slice(0, 6).map(m => `
+                                    <span style="background: rgba(205, 255, 0, 0.2); color: var(--accent-volt); padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;">
+                                        🏆 ${m.label}
+                                    </span>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Player Profile: Areas to Improve
+                if (profileStats && profileStats.weaknesses && profileStats.weaknesses.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">Focus Areas</div>
+                            ${profileStats.weaknesses.slice(0, 3).map(w => `
+                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 6px;">
+                                    <span style="color: white;">${w.name}</span>
+                                    <span style="font-size: 12px; color: ${w.improving ? 'var(--accent-volt)' : 'rgba(255,255,255,0.5)'};">
+                                        ${w.improving ? '↑ Improving' : `${w.count} sessions`}
+                                    </span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    `;
+                }
+
+                // Player Profile: Stroke Proficiency
+                if (profileStats && profileStats.strokeProficiency) {
+                    const strokes = Object.entries(profileStats.strokeProficiency)
+                        .filter(([_, data]) => data.attempts > 0)
+                        .sort((a, b) => b[1].avgScore - a[1].avgScore);
+
+                    if (strokes.length > 0) {
+                        html += `
+                            <div class="summary-section">
+                                <div class="summary-section-title">Stroke Proficiency</div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                    ${strokes.map(([type, data]) => `
+                                        <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; text-align: center;">
+                                            <div style="font-size: 20px; font-weight: bold; color: var(--accent-volt);">${Math.round(data.avgScore)}</div>
+                                            <div style="font-size: 12px; color: white;">${type}</div>
+                                            <div style="font-size: 10px; color: rgba(255,255,255,0.5);">${data.attempts} strokes</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
                 }
 
                 // Recent Sessions
@@ -2218,8 +2350,11 @@
             });
         }
 
+        let comparisonStrokes = [];
+
         function selectStroke(stroke, index) {
             selectedStroke = stroke;
+            selectedStroke._index = index;
 
             // Update marker selection
             document.querySelectorAll('.stroke-marker').forEach(m => m.classList.remove('selected'));
@@ -2240,7 +2375,171 @@
             document.getElementById('strokeDetailVelocity').textContent =
                 (stroke.velocity * 100).toFixed(1);
 
+            // Update compare button state
+            const isInComparison = comparisonStrokes.some(s => s._index === index);
+            document.getElementById('compareBtn').textContent = isInComparison ? '✓ Added' : '+ Compare';
+
             panel.classList.add('visible');
+        }
+
+        function hideStrokeDetails() {
+            document.getElementById('strokeDetailsPanel').classList.remove('visible');
+        }
+
+        function addToComparison() {
+            if (!selectedStroke) return;
+
+            // Check if already in comparison
+            const existingIndex = comparisonStrokes.findIndex(s => s._index === selectedStroke._index);
+            if (existingIndex >= 0) {
+                // Remove from comparison
+                comparisonStrokes.splice(existingIndex, 1);
+                document.getElementById('compareBtn').textContent = '+ Compare';
+            } else if (comparisonStrokes.length < 2) {
+                // Add to comparison
+                comparisonStrokes.push({ ...selectedStroke });
+                document.getElementById('compareBtn').textContent = '✓ Added';
+            }
+
+            // Update comparison panel
+            if (comparisonStrokes.length === 2) {
+                showComparison();
+            } else if (comparisonStrokes.length < 2) {
+                document.getElementById('comparisonPanel').classList.remove('visible');
+            }
+        }
+
+        function showComparison() {
+            const s1 = comparisonStrokes[0];
+            const s2 = comparisonStrokes[1];
+
+            const scoreDiff = s2.quality - s1.quality;
+            const velocityDiff = ((s2.velocity - s1.velocity) / s1.velocity * 100).toFixed(0);
+
+            const html = `
+                <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center;">
+                    <!-- Stroke 1 -->
+                    <div style="text-align: center; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Stroke 1</div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--accent-volt);">${Math.round(s1.quality)}</div>
+                        <div style="font-size: 11px; color: white; text-transform: capitalize;">${s1.type}</div>
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5);">${formatVideoTime(s1.time)}</div>
+                    </div>
+
+                    <!-- VS / Diff -->
+                    <div style="text-align: center; padding: 8px;">
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5);">DIFF</div>
+                        <div style="font-size: 16px; font-weight: bold; color: ${scoreDiff >= 0 ? 'var(--accent-volt)' : '#f44336'};">
+                            ${scoreDiff >= 0 ? '+' : ''}${Math.round(scoreDiff)}
+                        </div>
+                    </div>
+
+                    <!-- Stroke 2 -->
+                    <div style="text-align: center; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Stroke 2</div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--accent-volt);">${Math.round(s2.quality)}</div>
+                        <div style="font-size: 11px; color: white; text-transform: capitalize;">${s2.type}</div>
+                        <div style="font-size: 10px; color: rgba(255,255,255,0.5);">${formatVideoTime(s2.time)}</div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 12px; font-size: 11px; color: rgba(255,255,255,0.7);">
+                    Velocity: ${velocityDiff >= 0 ? '+' : ''}${velocityDiff}%
+                </div>
+            `;
+
+            document.getElementById('comparisonContent').innerHTML = html;
+            document.getElementById('comparisonPanel').classList.add('visible');
+        }
+
+        function clearComparison() {
+            comparisonStrokes = [];
+            document.getElementById('comparisonPanel').classList.remove('visible');
+            document.getElementById('compareBtn').textContent = '+ Compare';
+        }
+
+        function exportHighlightReel() {
+            const strokes = videoAnalyzer.detectedStrokes;
+            if (!strokes || strokes.length === 0) {
+                alert('No strokes detected to export');
+                return;
+            }
+
+            // Get best 5 strokes
+            const best5 = [...strokes]
+                .sort((a, b) => b.quality - a.quality)
+                .slice(0, 5);
+
+            showExportModal('Best 5 Strokes', best5);
+        }
+
+        function exportBlooperReel() {
+            const strokes = videoAnalyzer.detectedStrokes;
+            if (!strokes || strokes.length === 0) {
+                alert('No strokes detected to export');
+                return;
+            }
+
+            // Get worst 5 strokes (for learning)
+            const worst5 = [...strokes]
+                .sort((a, b) => a.quality - b.quality)
+                .slice(0, 5);
+
+            showExportModal('Strokes to Improve', worst5);
+        }
+
+        function showExportModal(title, strokes) {
+            const html = `
+                <div style="max-height: 60vh; overflow-y: auto;">
+                    <div style="font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 16px;">
+                        Click on any stroke to jump to that moment in the video.
+                    </div>
+                    ${strokes.map((stroke, i) => `
+                        <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; display: flex; justify-content: space-between; align-items: center;"
+                             onclick="jumpToStroke(${stroke.time})">
+                            <div>
+                                <div style="font-weight: bold; color: white;">#${i + 1} - ${stroke.type}</div>
+                                <div style="font-size: 12px; color: rgba(255,255,255,0.6);">${formatVideoTime(stroke.time)}</div>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 24px; font-weight: bold; color: ${stroke.quality >= 70 ? 'var(--accent-volt)' : stroke.quality >= 50 ? '#FF9800' : '#f44336'};">${Math.round(stroke.quality)}</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);">
+                    <button class="btn" onclick="copyStrokeSummary(${JSON.stringify(strokes).replace(/"/g, '&quot;')})" style="width: 100%;">
+                        Copy Summary to Clipboard
+                    </button>
+                </div>
+            `;
+
+            // Use session summary modal for this
+            document.getElementById('sessionSummaryContent').innerHTML = `
+                <div style="text-align: center; margin-bottom: 16px;">
+                    <div style="font-size: 18px; font-weight: bold; color: var(--accent-volt);">${title}</div>
+                </div>
+                ${html}
+            `;
+            document.querySelector('#sessionSummaryModal .modal-title').textContent = 'Export';
+            document.querySelector('#sessionSummaryModal .btn').style.display = 'none';
+            document.getElementById('sessionSummaryModal').classList.add('visible');
+        }
+
+        function jumpToStroke(time) {
+            const video = document.getElementById('analysisVideo');
+            video.currentTime = time;
+            closeSessionSummary();
+        }
+
+        function copyStrokeSummary(strokes) {
+            const summary = strokes.map((s, i) =>
+                `${i + 1}. ${s.type} at ${formatVideoTime(s.time)} - Score: ${Math.round(s.quality)}`
+            ).join('\n');
+
+            navigator.clipboard.writeText(summary).then(() => {
+                alert('Summary copied to clipboard!');
+            });
         }
 
         function toggleVideoPlayback() {

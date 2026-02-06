@@ -7,6 +7,9 @@ class GPTVoiceCoach {
     this.conversationHistory = [];
     this.isConnected = false;
     this.sessionId = null;
+    this.sessionStartTime = null;
+    this.fatigueDetected = false;
+    this.lastQualityScores = [];
   }
   
   async initialize(apiKey) {
@@ -49,9 +52,16 @@ class GPTVoiceCoach {
       await this.connectWebRTC(ephemeralKey);
       
       this.isConnected = true;
+      this.sessionStartTime = Date.now();
       console.log('GPT Voice Coach connected via WebRTC');
-      
-      this.speak("Hey! I'm your elite tennis coach. Let's work on your technique today.");
+
+      // Use player profile for personalized welcome
+      let welcomeMessage = "Hey! I'm your elite tennis coach. Let's work on your technique today.";
+      if (typeof playerProfile !== 'undefined') {
+        welcomeMessage = playerProfile.generateWelcomeMessage();
+        playerProfile.startSession();
+      }
+      this.speak(welcomeMessage);
       
     } catch (error) {
       console.error('Connection failed:', error);
@@ -60,8 +70,37 @@ class GPTVoiceCoach {
   }
   
   getCoachingInstructions() {
-    return `You are an expert tennis coach with 20 years of experience coaching players from beginners to pros.
+    // Get player profile context if available
+    let profileContext = '';
+    if (typeof playerProfile !== 'undefined') {
+      const ctx = playerProfile.getCoachingContext();
+      if (ctx.isReturningPlayer) {
+        profileContext = `
+PLAYER CONTEXT:
+- Returning player (${ctx.sessionsPlayed} sessions total)
+- Current skill level: ${ctx.skillLevel}
+- Days since last session: ${ctx.daysSinceLastSession || 'unknown'}
+`;
+        if (ctx.primaryWeaknesses.length > 0) {
+          profileContext += `- Known weaknesses: ${ctx.primaryWeaknesses.map(w => w.name).join(', ')}\n`;
+        }
+        if (ctx.improvingAreas.length > 0) {
+          profileContext += `- Improving areas: ${ctx.improvingAreas.join(', ')} (celebrate these!)\n`;
+        }
+        if (ctx.strongestStroke) {
+          profileContext += `- Strongest stroke: ${ctx.strongestStroke.type} (avg ${ctx.strongestStroke.avgScore})\n`;
+        }
+        if (ctx.currentGoal) {
+          profileContext += `- Today's goal: ${ctx.currentGoal.description}\n`;
+        }
+        if (ctx.lastSession) {
+          profileContext += `- Last session: ${ctx.lastSession.avgScore} avg, weaknesses: ${(ctx.lastSession.weaknesses || []).join(', ') || 'none'}\n`;
+        }
+      }
+    }
 
+    return `You are an expert tennis coach with 20 years of experience coaching players from beginners to pros.
+${profileContext}
 Your coaching style:
 - Direct, actionable feedback like a real courtside coach
 - Encouraging but honest about areas to improve
@@ -71,6 +110,14 @@ Your coaching style:
 - When faults are detected, address the highest-priority fault first
 - Give ONE actionable cue per stroke - don't overwhelm
 - Celebrate measurable improvements
+- For returning players, reference their history ("last time we worked on..." or "you've been improving your...")
+- When a player fixes a known weakness, celebrate it explicitly
+
+ADAPTIVE COACHING:
+- If player is fatigued (quality declining), be MORE encouraging and suggest simpler cues
+- If player is on a hot streak, push them to maintain intensity
+- Reference the session goal when relevant
+- Celebrate when they fix previously identified weaknesses
 
 When analyzing a stroke, focus on:
 1. What they did well (always start positive)
@@ -86,7 +133,8 @@ You receive comprehensive data including:
 - Skill level (beginner/intermediate/advanced/professional)
 - Percentile ranking (how they compare to other players)
 - Professional comparison ratios
-- Recommended drills
+- Player history and cross-session context
+- Fatigue indicators
 
 IMPORTANT: When biomechanical faults are detected, they are prioritized by importance:
 - Priority 10 = Foundation issues (must fix first)
@@ -221,6 +269,49 @@ Use this context to provide personalized, progressive coaching. Reference their 
   
   formatEnhancedStrokePrompt(data) {
     let prompt = `Stroke #${data.session.strokeCount}: ${data.strokeType}\n\n`;
+
+    // Track quality for fatigue detection
+    this.lastQualityScores.push(data.quality.overall);
+    if (this.lastQualityScores.length > 15) {
+      this.lastQualityScores.shift();
+    }
+
+    // Fatigue detection
+    const fatigueInfo = this.detectFatigue();
+    if (fatigueInfo.fatigued) {
+      prompt += `⚠️ FATIGUE DETECTED: Quality has dropped ${fatigueInfo.dropPercent}% over the last ${fatigueInfo.strokeWindow} strokes.\n`;
+      prompt += `Coaching tone: Be more encouraging, suggest simpler cues, consider suggesting a short break.\n\n`;
+    }
+
+    // Cross-session context
+    if (typeof playerProfile !== 'undefined') {
+      const ctx = playerProfile.getCoachingContext();
+
+      // Check if player fixed a known weakness
+      if (ctx.primaryWeaknesses.length > 0) {
+        const currentWeaknesses = data.biomechanical?.detectedFaults?.map(f => f.name) || [];
+        for (const weakness of ctx.primaryWeaknesses) {
+          if (weakness.improving || !currentWeaknesses.some(w => w.includes(weakness.name))) {
+            prompt += `🎉 IMPROVEMENT: Player's ${weakness.name} has been improving! Celebrate this!\n\n`;
+            break;
+          }
+        }
+      }
+
+      // Reference session goal
+      if (ctx.currentGoal && ctx.currentGoal.target) {
+        prompt += `📎 Session Goal: ${ctx.currentGoal.description}\n\n`;
+      }
+
+      // Last session reference (if within a week)
+      if (ctx.lastSession && ctx.daysSinceLastSession && ctx.daysSinceLastSession < 7) {
+        const ref = playerProfile.generateSessionReference();
+        if (ref && ref.weaknesses && ref.weaknesses.length > 0) {
+          prompt += `📝 Last session (${ref.timeRef}): Worked on ${ref.weaknesses.join(', ')}\n\n`;
+        }
+      }
+    }
+
     
     // Check if we have orchestrator feedback
     if (data.orchestratorFeedback) {
@@ -449,6 +540,55 @@ Use this context to provide personalized, progressive coaching. Reference their 
     this.fallbackSpeak(feedback);
   }
   
+  /**
+   * Detect fatigue based on quality score decline
+   */
+  detectFatigue() {
+    if (this.lastQualityScores.length < 10) {
+      return { fatigued: false };
+    }
+
+    // Compare first half to second half of recent scores
+    const midpoint = Math.floor(this.lastQualityScores.length / 2);
+    const firstHalf = this.lastQualityScores.slice(0, midpoint);
+    const secondHalf = this.lastQualityScores.slice(midpoint);
+
+    const firstAvg = firstHalf.reduce((a, b) => a + b, 0) / firstHalf.length;
+    const secondAvg = secondHalf.reduce((a, b) => a + b, 0) / secondHalf.length;
+
+    const dropPercent = ((firstAvg - secondAvg) / firstAvg) * 100;
+
+    // Fatigue threshold: 15% drop
+    if (dropPercent > 15) {
+      this.fatigueDetected = true;
+
+      // Record fatigue point for player profile
+      if (typeof playerProfile !== 'undefined' && this.sessionStartTime) {
+        const minutesIntoSession = (Date.now() - this.sessionStartTime) / (1000 * 60);
+        playerProfile.recordFatiguePoint(minutesIntoSession);
+      }
+
+      return {
+        fatigued: true,
+        dropPercent: Math.round(dropPercent),
+        strokeWindow: this.lastQualityScores.length,
+        firstAvg: Math.round(firstAvg),
+        secondAvg: Math.round(secondAvg)
+      };
+    }
+
+    return { fatigued: false };
+  }
+
+  /**
+   * Reset session state
+   */
+  resetSession() {
+    this.lastQualityScores = [];
+    this.fatigueDetected = false;
+    this.sessionStartTime = Date.now();
+  }
+
   disconnect() {
     if (this.pc) {
       this.pc.close();
