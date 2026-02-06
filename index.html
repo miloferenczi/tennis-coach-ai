@@ -42,6 +42,9 @@
     <!-- Sport Configuration -->
     <script src="js/sport-loader.js"></script>
 
+    <!-- Ball/Court Tracking -->
+    <script src="js/ball-tracking-client.js"></script>
+
     <!-- Application Scripts -->
     <script src="js/session-storage.js"></script>
     <script src="js/player-profile.js"></script>
@@ -932,6 +935,69 @@
             line-height: 1.5;
             color: var(--text-primary);
             font-weight: 400;
+        }
+
+        .phase-indicator {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .phase-step {
+            flex: 1;
+            text-align: center;
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            padding: 4px 2px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .phase-step.active {
+            background: rgba(205, 255, 0, 0.2);
+            color: var(--accent-volt);
+            box-shadow: 0 0 8px rgba(205, 255, 0, 0.15);
+        }
+
+        .phase-step.completed {
+            background: rgba(205, 255, 0, 0.08);
+            color: rgba(205, 255, 0, 0.5);
+        }
+
+        .fault-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .fault-chip {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: rgba(255, 59, 48, 0.15);
+            color: #FF3B30;
+            border: 1px solid rgba(255, 59, 48, 0.3);
+        }
+
+        .fault-chip.low-priority {
+            background: rgba(255, 159, 10, 0.15);
+            color: #FF9F0A;
+            border-color: rgba(255, 159, 10, 0.3);
+        }
+
+        .strength-chip {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 10px;
+            background: rgba(48, 209, 88, 0.15);
+            color: #30D158;
+            border: 1px solid rgba(48, 209, 88, 0.3);
         }
 
         /* ============================================
@@ -1948,7 +2014,17 @@
                 left: 10px;
                 right: 10px;
                 padding: 12px;
-                max-height: 120px;
+                max-height: 160px;
+            }
+
+            .phase-step {
+                font-size: 8px;
+                padding: 3px 1px;
+            }
+
+            .fault-chip, .strength-chip {
+                font-size: 9px;
+                padding: 2px 6px;
             }
 
             .controls {
@@ -2189,6 +2265,14 @@
                     <span class="coaching-label">AI COACH</span>
                     <span class="coaching-dot"></span>
                 </div>
+                <div id="phaseIndicator" class="phase-indicator" style="display: none;">
+                    <div class="phase-step" data-phase="preparation">PREP</div>
+                    <div class="phase-step" data-phase="loading">LOAD</div>
+                    <div class="phase-step" data-phase="acceleration">ACCEL</div>
+                    <div class="phase-step" data-phase="contact">HIT</div>
+                    <div class="phase-step" data-phase="followThrough">FINISH</div>
+                </div>
+                <div id="faultChips" class="fault-chips"></div>
                 <div id="coachingText" class="coaching-text">
                     Ready. Stand in frame and swing to begin analysis.
                 </div>
@@ -2510,15 +2594,33 @@
                 this.camera = null;
                 this.isReady = false;
                 this.isAnalyzing = false;
-                
+
                 // Enhanced Analysis Engine
                 this.enhancedAnalyzer = new EnhancedTennisAnalyzer();
-                
+
+                // Ball Tracking (in-browser color detection, no server needed)
+                this.ballTracker = new BallTrackingClient({
+                    onShotAnalyzed: this.onShotAnalyzed.bind(this)
+                });
+
+                // Fault-to-landmark mapping for visual highlighting
+                this.faultLandmarkMap = {
+                    latePreparation: [11, 12],
+                    armOnlySwing: [11, 12, 23, 24],
+                    collapsingElbow: [13, 14],
+                    hittingOffBackFoot: [27, 28],
+                    abbreviatedFollowThrough: [15, 16],
+                    inconsistentContactPoint: [15, 16],
+                    noKneeBend: [25, 26],
+                    rushingTheSwing: [11, 12, 23, 24]
+                };
+                this.faultHighlightDuration = 3000;
+
                 // DOM elements
                 this.video = document.getElementById('videoElement');
                 this.canvas = document.getElementById('canvasElement');
                 this.ctx = this.canvas.getContext('2d');
-                
+
                 this.initializeLoadingSequence();
             }
 
@@ -2536,9 +2638,13 @@
                     this.updateLoadingProgress(80, 'Configuring camera...');
                     await this.setupCamera();
                     
+                    this.updateLoadingProgress(90, 'Connecting ball tracking...');
+                    this.ballTracker.startCapture(this.video);
+                    await this.sleep(300);
+
                     this.updateLoadingProgress(100, 'Ready to coach!');
                     await this.sleep(500);
-                    
+
                     this.completeInitialization();
                     
                 } catch (error) {
@@ -2612,14 +2718,22 @@
                 this.ctx.shadowBlur = 0;
                 drawLandmarks(this.ctx, results.poseLandmarks, {
                     color: '#FFFFFF',
-                    fillColor: 'rgba(205, 255, 0, 0.9)', 
+                    fillColor: 'rgba(205, 255, 0, 0.9)',
                     lineWidth: 1,
                     radius: 3
                 });
-                
+
+                // Draw fault highlights on affected joints
+                if (this.isAnalyzing) {
+                    this.drawFaultHighlights(results.poseLandmarks);
+                }
+
                 // Only analyze pose when user has pressed play
                 if (this.isAnalyzing) {
                     const poseData = this.enhancedAnalyzer.analyzePose(results.poseLandmarks, Date.now());
+
+                    // Capture frame for ball tracking (runs in background)
+                    this.ballTracker.onFrame();
 
                     // Draw swing trail
                     if (this.enhancedAnalyzer.poseHistory.length > 2) {
@@ -2648,10 +2762,13 @@
             }
 
             drawSwingTrail() {
-                const path = this.enhancedAnalyzer.poseHistory.map(p => ({
-                    x: p.joints.rightWrist.x * this.canvas.width,
-                    y: p.joints.rightWrist.y * this.canvas.height
-                }));
+                const path = this.enhancedAnalyzer.poseHistory.map(p => {
+                    const wrist = p.joints.dominantWrist || p.joints.rightWrist;
+                    return {
+                        x: wrist.x * this.canvas.width,
+                        y: wrist.y * this.canvas.height
+                    };
+                });
 
                 if (path.length < 2) return;
 
@@ -2669,6 +2786,54 @@
                     this.ctx.stroke();
                 }
 
+                this.ctx.restore();
+            }
+
+            drawFaultHighlights(landmarks) {
+                const now = Date.now();
+                const faults = this.enhancedAnalyzer.activeFaults;
+                if (!faults || faults.length === 0) return;
+
+                const highlighted = new Set();
+
+                this.ctx.save();
+                for (const fault of faults) {
+                    const age = now - fault.timestamp;
+                    if (age > this.faultHighlightDuration) continue;
+
+                    const indices = this.faultLandmarkMap[fault.id];
+                    if (!indices) continue;
+
+                    const alpha = 1 - (age / this.faultHighlightDuration);
+                    const pulse = 0.5 + 0.5 * Math.sin(now / 150);
+
+                    for (const idx of indices) {
+                        if (highlighted.has(idx)) continue;
+                        highlighted.add(idx);
+
+                        const lm = landmarks[idx];
+                        if (!lm) continue;
+
+                        const x = lm.x * this.canvas.width;
+                        const y = lm.y * this.canvas.height;
+                        const radius = 8 + pulse * 4;
+
+                        // Outer glow
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, radius + 6, 0, Math.PI * 2);
+                        this.ctx.fillStyle = `rgba(255, 59, 48, ${alpha * pulse * 0.3})`;
+                        this.ctx.fill();
+
+                        // Inner circle
+                        this.ctx.beginPath();
+                        this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+                        this.ctx.fillStyle = `rgba(255, 59, 48, ${alpha * 0.8})`;
+                        this.ctx.fill();
+                        this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.6})`;
+                        this.ctx.lineWidth = 2;
+                        this.ctx.stroke();
+                    }
+                }
                 this.ctx.restore();
             }
 
@@ -2783,6 +2948,85 @@
                 document.getElementById('analysisCard').classList.remove('visible');
             }
 
+            /**
+             * Called asynchronously when ball tracking backend returns shot outcome
+             */
+            onShotAnalyzed(shotOutcome, originalStroke) {
+                const outcome = shotOutcome.outcome;
+                if (!outcome || outcome.confidence < 0.2) return;
+
+                // Build follow-up coaching based on shot outcome
+                const outcomeContext = {
+                    type: 'shot_outcome',
+                    in_court: outcome.in_court,
+                    ball_direction: outcome.ball_direction,
+                    net_clearance: outcome.net_clearance,
+                    landed_position: outcome.landed_position,
+                    confidence: outcome.confidence,
+                    strokeType: shotOutcome.strokeType,
+                    ballDetectionRate: shotOutcome.ballDetectionRate
+                };
+
+                // Send outcome to GPT coach as follow-up context
+                if (typeof gptVoiceCoach !== 'undefined' && outcome.confidence >= 0.4) {
+                    const followUp = this.buildOutcomeCoachingMessage(outcomeContext, originalStroke);
+                    if (followUp) {
+                        gptVoiceCoach.analyzeStroke({
+                            type: 'shot_outcome_followup',
+                            ...followUp
+                        });
+                    }
+                }
+
+                // Update coaching panel with outcome
+                const panel = document.getElementById('coachingText');
+                if (panel && outcome?.in_court !== null && outcome?.in_court !== undefined) {
+                    const tag = outcome.in_court ? 'IN' : 'OUT';
+                    const current = panel.textContent;
+                    panel.textContent = `[${tag}] ${current}`;
+                }
+            }
+
+            /**
+             * Build coaching follow-up message based on shot outcome
+             */
+            buildOutcomeCoachingMessage(outcomeContext, stroke) {
+                // Only follow up if there's something notable to say
+                const quality = stroke.quality?.overall || 0;
+
+                // Good form but ball went out = important coaching moment
+                if (quality >= 70 && outcomeContext.in_court === false) {
+                    return {
+                        strokeType: outcomeContext.strokeType,
+                        message: 'Good technique but the ball went out. Consider reducing swing speed slightly or adjusting contact angle.',
+                        quality: { overall: quality },
+                        shotOutcome: outcomeContext
+                    };
+                }
+
+                // Bad form but ball went in = acknowledge but keep coaching form
+                if (quality < 50 && outcomeContext.in_court === true) {
+                    return {
+                        strokeType: outcomeContext.strokeType,
+                        message: 'The ball landed in, but the technique needs work for consistency. Keep focusing on form.',
+                        quality: { overall: quality },
+                        shotOutcome: outcomeContext
+                    };
+                }
+
+                // Great form + ball in = positive reinforcement
+                if (quality >= 80 && outcomeContext.in_court === true) {
+                    return {
+                        strokeType: outcomeContext.strokeType,
+                        message: 'Great shot! Technique and placement both excellent.',
+                        quality: { overall: quality },
+                        shotOutcome: outcomeContext
+                    };
+                }
+
+                return null; // Don't follow up for unremarkable outcomes
+            }
+
             completeInitialization() {
                 const loadingScreen = document.getElementById('loadingScreen');
                 const cameraContainer = document.getElementById('cameraContainer');
@@ -2837,6 +3081,7 @@
                     'Initializing pose detection...': { phase: 'DETECTING', detail: 'Configuring MediaPipe Holistic', progress: 30 },
                     'Setting up tennis analysis...': { phase: 'ANALYZING', detail: 'Loading stroke analysis engine', progress: 60 },
                     'Configuring camera...': { phase: 'CAMERA', detail: 'Requesting camera access', progress: 80 },
+                    'Connecting ball tracking...': { phase: 'TRACKING', detail: 'Connecting to ball detection server', progress: 90 },
                     'Ready to coach!': { phase: 'READY', detail: "Let's go.", progress: 100 }
                 };
 
@@ -2872,6 +3117,7 @@
 
         // Global application state
         let tennisAI = null;
+        window.tennisAI = null; // Exposed for cross-module access (ball tracking)
 
         // ============================================
         // PREMIUM SCREEN TRANSITIONS
@@ -2954,6 +3200,7 @@
 
                 // Start tennis AI initialization
                 tennisAI = new TennisAI();
+                window.tennisAI = tennisAI;
             });
         }
 
@@ -2964,6 +3211,7 @@
 
                 // Start tennis AI initialization
                 tennisAI = new TennisAI();
+                window.tennisAI = tennisAI;
             });
         }
 

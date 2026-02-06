@@ -31,6 +31,15 @@ class EnhancedTennisAnalyzer {
 
     // Last detected stroke (for calibration tool access)
     this.lastStrokeData = null;
+
+    // Handedness detection
+    this.dominantHand = null; // 'right' or 'left', null = assume right
+    this.handednessVotes = { left: 0, right: 0 };
+    this.handednessLocked = false;
+
+    // Active faults and phase for UI overlay
+    this.activeFaults = [];
+    this.lastDetectedPhase = null;
   }
 
   /**
@@ -51,6 +60,8 @@ class EnhancedTennisAnalyzer {
     this.physicsAnalyzer.reset();
     this.coachingOrchestrator.reset();
     this.poseHistory = [];
+    this.activeFaults = [];
+    this.lastDetectedPhase = null;
     console.log('Session reset complete');
   }
   
@@ -89,7 +100,28 @@ class EnhancedTennisAnalyzer {
     };
     
     this.poseHistory.push(poseData);
-    
+
+    // Detect handedness by comparing wrist speeds over time
+    if (!this.handednessLocked && this.poseHistory.length > 1) {
+      const prev = this.poseHistory[this.poseHistory.length - 2];
+      const rDx = landmarks[16].x - prev.landmarks[16].x;
+      const rDy = landmarks[16].y - prev.landmarks[16].y;
+      const lDx = landmarks[15].x - prev.landmarks[15].x;
+      const lDy = landmarks[15].y - prev.landmarks[15].y;
+      const rSpeed = Math.sqrt(rDx * rDx + rDy * rDy);
+      const lSpeed = Math.sqrt(lDx * lDx + lDy * lDy);
+      if (rSpeed > 0.01 || lSpeed > 0.01) {
+        if (rSpeed > lSpeed) this.handednessVotes.right++;
+        else this.handednessVotes.left++;
+      }
+      const totalVotes = this.handednessVotes.left + this.handednessVotes.right;
+      if (totalVotes >= 30) {
+        this.dominantHand = this.handednessVotes.right >= this.handednessVotes.left ? 'right' : 'left';
+        this.handednessLocked = true;
+        console.log('Handedness detected:', this.dominantHand);
+      }
+    }
+
     // Keep last 60 frames (2 seconds at 30fps)
     if (this.poseHistory.length > 60) {
       this.poseHistory.shift();
@@ -105,7 +137,13 @@ class EnhancedTennisAnalyzer {
   }
   
   extractJointPositions(landmarks) {
+    const isLeft = this.dominantHand === 'left';
     return {
+      // Dominant side (adapts to detected handedness)
+      dominantWrist: landmarks[isLeft ? 15 : 16],
+      dominantElbow: landmarks[isLeft ? 13 : 14],
+      dominantShoulder: landmarks[isLeft ? 11 : 12],
+      // Legacy names (preserved for backward compatibility)
       rightWrist: landmarks[16],
       rightElbow: landmarks[14],
       rightShoulder: landmarks[12],
@@ -255,11 +293,15 @@ class EnhancedTennisAnalyzer {
     const contactIndex = this.poseHistory.length - contactIndexFromEnd;
     const contactFrame = this.poseHistory[contactIndex];
     
+    // Flip rotation sign for left-handed players (forehand/backhand are mirrored)
+    const classificationRotation = this.dominantHand === 'left'
+      ? -contactFrame.rotation : contactFrame.rotation;
+
     // USE SOPHISTICATED CLASSIFIER (not naive left/right heuristic!)
     const strokeType = this.strokeClassifier.classifyStroke(
       contactFrame.velocity,
       contactFrame.acceleration,
-      contactFrame.rotation,
+      classificationRotation,
       contactFrame.verticalMotion
     );
     
@@ -290,35 +332,35 @@ class EnhancedTennisAnalyzer {
       smoothness: smoothness
     }, strokeType);
     
-    return {
+    const strokeData = {
       type: strokeType,
       timestamp: contactFrame.timestamp,
-      
+
       // Physics data
       velocity: contactFrame.velocity,
       acceleration: contactFrame.acceleration,
       rotation: contactFrame.rotation,
       verticalMotion: contactFrame.verticalMotion,
-      
+
       // Quality assessment
       quality: qualityAssessment,
       smoothness: smoothness,
       estimatedBallSpeed: estimatedBallSpeed,
-      
+
       // Professional comparison
       proComparison: proComparison,
-      
+
       // Swing analysis
       swingPath: swingPath,
-      
-      // Contact point data (for UI compatibility)
+
+      // Contact point data (uses dominant hand)
       contactPoint: {
-        height: contactFrame.joints.rightWrist.y,
-        distance: contactFrame.joints.rightWrist.x,
+        height: (contactFrame.joints.dominantWrist || contactFrame.joints.rightWrist).y,
+        distance: (contactFrame.joints.dominantWrist || contactFrame.joints.rightWrist).x,
         angles: contactFrame.angles
       },
       contactPointVariance: contactPointVariance,
-      
+
       // Technique details (for UI display)
       technique: {
         elbowAngleAtContact: contactFrame.angles.elbowAngle,
@@ -332,8 +374,8 @@ class EnhancedTennisAnalyzer {
       // Phase-by-phase analysis (from motion sequence analyzer)
       sequenceAnalysis: this.analyzeMotionSequence(strokeType),
 
-      // Biomechanical checkpoint evaluation
-      biomechanicalEvaluation: null  // Will be populated after sequenceAnalysis
+      // Biomechanical checkpoint evaluation (populated below)
+      biomechanicalEvaluation: null
     };
 
     // Run biomechanical evaluation if we have sequence analysis
@@ -343,13 +385,25 @@ class EnhancedTennisAnalyzer {
         strokeData.sequenceAnalysis
       );
 
-      // Log checkpoint results for debugging
       if (strokeData.biomechanicalEvaluation) {
         console.log('Biomechanical Evaluation:', {
           overall: strokeData.biomechanicalEvaluation.overall,
           faults: strokeData.biomechanicalEvaluation.detectedFaults.map(f => f.name),
           primaryFeedback: strokeData.biomechanicalEvaluation.primaryFeedback?.message
         });
+
+        // Expose detected faults for UI overlay highlighting
+        this.activeFaults = strokeData.biomechanicalEvaluation.detectedFaults.map(f => ({
+          ...f,
+          timestamp: Date.now()
+        }));
+      } else {
+        this.activeFaults = [];
+      }
+
+      // Expose phase data for UI
+      if (strokeData.sequenceAnalysis?.phases) {
+        this.lastDetectedPhase = strokeData.sequenceAnalysis.phases;
       }
     }
 
@@ -428,10 +482,11 @@ class EnhancedTennisAnalyzer {
    * Calculate contact point variance for consistency tracking
    */
   calculateContactPointVariance(currentFrame) {
+    const wrist = currentFrame.joints.dominantWrist || currentFrame.joints.rightWrist;
     const currentContact = {
-      x: currentFrame.joints.rightWrist.x,
-      y: currentFrame.joints.rightWrist.y,
-      z: currentFrame.joints.rightWrist.z || 0
+      x: wrist.x,
+      y: wrist.y,
+      z: wrist.z || 0
     };
     
     // Store in history
@@ -466,6 +521,13 @@ class EnhancedTennisAnalyzer {
   onStrokeDetected(strokeData, currentPose) {
     // Store for calibration tool access
     this.lastStrokeData = strokeData;
+
+    // Trigger ball tracking to capture post-stroke frames for shot outcome
+    if (typeof ballTrackingClient !== 'undefined' && ballTrackingClient.isConnected) {
+      ballTrackingClient.onStrokeDetected(strokeData);
+    } else if (typeof window.tennisAI !== 'undefined' && window.tennisAI.ballTracker) {
+      window.tennisAI.ballTracker.onStrokeDetected(strokeData);
+    }
 
     // End ghost recording and check if this is the best stroke
     if (typeof ghostOverlay !== 'undefined' && ghostOverlay.isRecording) {
@@ -539,9 +601,10 @@ class EnhancedTennisAnalyzer {
 
   /**
    * Build player metrics object for coaching orchestrator
+   * Includes phase-level data from motion sequence analysis and biomechanical evaluation
    */
   buildPlayerMetrics(strokeData) {
-    return {
+    const metrics = {
       velocity: strokeData.velocity,
       acceleration: strokeData.acceleration,
       rotation: strokeData.rotation,
@@ -557,6 +620,62 @@ class EnhancedTennisAnalyzer {
       armExtension: this.estimateArmExtension(strokeData),
       followThroughComplete: this.checkFollowThroughComplete(strokeData)
     };
+
+    // Enrich with phase-level data from motion sequence analysis
+    const seq = strokeData.sequenceAnalysis;
+    if (seq) {
+      // Override estimates with actual measured values from phase analysis
+      if (seq.phaseAnalysis) {
+        const pa = seq.phaseAnalysis;
+        if (pa.preparation) {
+          metrics.preparationTime = pa.preparation.duration >= 8 ? 0.5 : 0.9;
+          metrics.splitStepDetected = pa.preparation.splitStepDetected;
+        }
+        if (pa.acceleration) {
+          metrics.forwardMomentum = pa.acceleration.forwardMomentum || metrics.forwardMomentum;
+          metrics.accelerationSmoothness = pa.acceleration.accelerationSmoothness;
+          metrics.maxHipShoulderSeparation = pa.acceleration.maxHipShoulderSeparation;
+        }
+        if (pa.loading) {
+          metrics.backFootWeight = pa.loading.weightOnBackFoot || metrics.backFootWeight;
+          metrics.loadingRotationGain = pa.loading.rotationGain;
+        }
+        if (pa.followThrough) {
+          metrics.followThroughComplete = pa.followThrough.quality > 60;
+          metrics.followThroughDuration = pa.followThrough.duration;
+        }
+      }
+
+      // Phase durations
+      if (seq.phases?.durations) {
+        metrics.phaseDurations = seq.phases.durations;
+      }
+
+      // Kinetic chain quality
+      if (seq.kineticChain) {
+        metrics.kineticChainQuality = seq.kineticChain.chainQuality;
+        metrics.kineticChainViolations = seq.kineticChain.violations;
+      }
+
+      // Overall sequence quality
+      if (seq.sequenceQuality) {
+        metrics.sequenceQualityOverall = seq.sequenceQuality.overall;
+      }
+    }
+
+    // Enrich with biomechanical fault data
+    const bio = strokeData.biomechanicalEvaluation;
+    if (bio) {
+      metrics.biomechanicalScore = bio.overall;
+      metrics.detectedFaults = bio.detectedFaults.map(f => ({
+        name: f.name,
+        priority: f.priority,
+        fix: f.fix
+      }));
+      metrics.primaryBiomechanicalFeedback = bio.primaryFeedback;
+    }
+
+    return metrics;
   }
   
   /**
@@ -679,11 +798,13 @@ class EnhancedTennisAnalyzer {
     
     // Add orchestrator coaching if available
     if (coachingRecommendation) {
+      const strengths = coachingRecommendation.strengths || [];
       if (coachingRecommendation.type === 'excellence') {
         baseContext.orchestratorFeedback = {
           type: 'excellence',
           message: coachingRecommendation.message,
-          trend: coachingRecommendation.sessionContext.recentQualityTrend
+          trend: coachingRecommendation.sessionContext.recentQualityTrend,
+          strengths: strengths
         };
       } else if (coachingRecommendation.issue) {
         baseContext.orchestratorFeedback = {
@@ -695,9 +816,11 @@ class EnhancedTennisAnalyzer {
           expectedImprovement: coachingRecommendation.expectedImprovement,
           playerLevel: coachingRecommendation.playerLevel,
           criticalSituation: coachingRecommendation.criticalSituation,
-          consecutiveOccurrences: coachingRecommendation.consecutiveOccurrences
+          consecutiveOccurrences: coachingRecommendation.consecutiveOccurrences,
+          strengths: strengths
         };
       }
+      baseContext.strengths = strengths;
     }
 
     // Add sequence analysis if available (phase-by-phase insights)
@@ -770,27 +893,68 @@ class EnhancedTennisAnalyzer {
     document.getElementById('strokeCount').textContent = context.session.strokeCount;
     document.getElementById('avgScore').textContent = context.quality.overall.toFixed(0);
     document.getElementById('consistencyScore').textContent = context.session.consistency;
-    
+
     // Update analysis card
-    const strokeTypeText = context.strokeType.charAt(0).toUpperCase() + 
+    const strokeTypeText = context.strokeType.charAt(0).toUpperCase() +
                           context.strokeType.slice(1);
     document.getElementById('strokeType').textContent = strokeTypeText;
-    document.getElementById('techniqueScore').textContent = 
+    document.getElementById('techniqueScore').textContent =
       `${context.quality.overall.toFixed(0)}/100`;
-    
+
     // Update advanced metrics
-    document.getElementById('elbowAngleMetric').textContent = 
+    document.getElementById('elbowAngleMetric').textContent =
       `${context.technique.elbowAngleAtContact.toFixed(0)}°`;
-    document.getElementById('hipSepMetric').textContent = 
+    document.getElementById('hipSepMetric').textContent =
       `${context.technique.hipShoulderSeparation.toFixed(0)}°`;
     document.getElementById('stanceMetric').textContent = context.technique.stance;
     document.getElementById('weightMetric').textContent = context.technique.weightTransfer;
-    
+
     // Show card
     const card = document.getElementById('analysisCard');
     card.classList.add('visible');
     setTimeout(() => {
       card.classList.remove('visible');
     }, 4000);
+
+    // Update phase indicator
+    const phaseIndicator = document.getElementById('phaseIndicator');
+    if (phaseIndicator && context.sequenceAnalysis?.phaseDurations) {
+      phaseIndicator.style.display = 'flex';
+      const steps = phaseIndicator.querySelectorAll('.phase-step');
+      const phases = ['preparation', 'loading', 'acceleration', 'contact', 'followThrough'];
+      const durations = context.sequenceAnalysis.phaseDurations;
+      steps.forEach((step, i) => {
+        step.className = 'phase-step';
+        // Contact phase has no explicit duration - it's always present if acceleration was detected
+        const detected = phases[i] === 'contact'
+          ? (durations.acceleration > 0)
+          : (durations[phases[i]] > 0);
+        if (detected) {
+          step.classList.add('completed');
+        }
+      });
+    }
+
+    // Update fault and strength chips
+    const faultChips = document.getElementById('faultChips');
+    if (faultChips) {
+      faultChips.innerHTML = '';
+      // Strength chips
+      const strengths = context.strengths || [];
+      strengths.slice(0, 2).forEach(s => {
+        const chip = document.createElement('span');
+        chip.className = 'strength-chip';
+        chip.textContent = s;
+        faultChips.appendChild(chip);
+      });
+      // Fault chips
+      const faults = context.biomechanical?.detectedFaults || [];
+      faults.forEach(f => {
+        const chip = document.createElement('span');
+        chip.className = f.priority >= 8 ? 'fault-chip' : 'fault-chip low-priority';
+        chip.textContent = f.name;
+        faultChips.appendChild(chip);
+      });
+    }
   }
 }

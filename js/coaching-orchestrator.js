@@ -270,6 +270,11 @@ class CoachingOrchestrator {
             return 'excellent_execution';
         }
 
+        // Good execution worth acknowledging (breaks cooldown after 2+ strokes)
+        if (strokeData.quality.overall >= 80 && this.strokesSinceLastFeedback >= 2) {
+            return 'good_execution';
+        }
+
         // Check if current stroke shows breakthrough
         if (this.detectBreakthrough(strokeData)) {
             return 'breakthrough_opportunity';
@@ -376,7 +381,7 @@ class CoachingOrchestrator {
     buildCoachingContext(issue, strokeData, metrics, criticalSituation) {
         // Determine skill level for cue selection
         const skillLevel = this.determineSkillLevel(metrics);
-        
+
         // Get appropriate coaching cue
         const cue = issue.cueSelection[skillLevel] || issue.cueSelection.intermediate;
 
@@ -397,6 +402,7 @@ class CoachingOrchestrator {
             playerLevel: skillLevel,
             criticalSituation: criticalSituation,
             consecutiveOccurrences: this.consecutiveIssues[issue.id] || 1,
+            strengths: this.findStrengths(metrics),
             sessionContext: {
                 strokesSinceLastFeedback: this.strokesSinceLastFeedback,
                 recentQualityTrend: this.getQualityTrend(),
@@ -474,16 +480,52 @@ class CoachingOrchestrator {
      */
     buildExcellenceFeedback(strokeData, metrics) {
         this.strokesSinceLastFeedback = 0;
-        
+
         return {
             type: 'excellence',
             strokeData: strokeData,
             message: this.getExcellenceMessage(strokeData, metrics),
+            strengths: this.findStrengths(metrics),
             sessionContext: {
                 recentQualityTrend: this.getQualityTrend(),
                 averageQuality: this.lastQualityScores.reduce((a, b) => a + b, 0) / this.lastQualityScores.length
             }
         };
+    }
+
+    /**
+     * Identify what the player is doing well right now.
+     * Used for sandwich coaching: praise -> correction -> encouragement
+     */
+    findStrengths(playerMetrics) {
+        const strengths = [];
+
+        if ((playerMetrics.velocity?.magnitude || 0) > 8) {
+            strengths.push('Good racquet speed');
+        }
+        if (Math.abs(playerMetrics.rotation || 0) > 20) {
+            strengths.push('Strong body rotation');
+        }
+        if ((playerMetrics.smoothness || 0) > 75) {
+            strengths.push('Smooth swing path');
+        }
+        if ((playerMetrics.kineticChainQuality || 0) > 70) {
+            strengths.push('Good kinetic chain');
+        }
+        if (playerMetrics.splitStepDetected) {
+            strengths.push('Good split step');
+        }
+        if ((playerMetrics.biomechanicalScore || 0) > 70) {
+            strengths.push('Strong biomechanics');
+        }
+        if ((playerMetrics.quality || 0) > 80) {
+            strengths.push('Solid technique');
+        }
+        if (playerMetrics.followThroughComplete !== false && (playerMetrics.smoothness || 0) > 60) {
+            strengths.push('Complete follow-through');
+        }
+
+        return strengths;
     }
 
     /**

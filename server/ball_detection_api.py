@@ -27,10 +27,15 @@ for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER]:
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
 
+# Resolve model paths relative to project root
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BALL_MODEL_PATH = os.path.join(PROJECT_ROOT, 'model_weights', 'model_best.pt')
+COURT_MODEL_PATH = os.path.join(PROJECT_ROOT, 'model_weights', 'model_tennis_court_det.pt')
+
 # Initialize models
 device = 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
-ball_detector = BallDetector('ball_Detection_weights.pt', device)
-court_detector = CourtDetectorNet('model_tennis_court_det.pt', device)  # Add court model path
+ball_detector = BallDetector(BALL_MODEL_PATH, device)
+court_detector = CourtDetectorNet(COURT_MODEL_PATH, device)
 court_reference = CourtReference()
 
 # Frame buffers
@@ -418,6 +423,159 @@ def download_video(video_id):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/analyze_shot', methods=['POST'])
+def analyze_shot():
+    """Analyze a batch of frames after a stroke to determine shot outcome.
+    Expects JSON with:
+      - frames: array of base64-encoded frames (post-stroke, capturing ball flight)
+      - stroke_type: string (forehand, backhand, serve, etc.)
+      - court_calibration: optional cached court homography matrix
+    Returns:
+      - ball_trajectory: array of {x, y, frame_index} detections
+      - court_detected: boolean
+      - shot_outcome: {in_court, landed_position, estimated_speed_mph, confidence}
+    """
+    try:
+        data = request.json
+        frames_b64 = data.get('frames', [])
+        stroke_type = data.get('stroke_type', 'unknown')
+        cached_court = data.get('court_calibration')
+
+        if len(frames_b64) < 3:
+            return jsonify({'error': 'Need at least 3 frames'}), 400
+
+        # Decode frames
+        frames = []
+        for fb64 in frames_b64:
+            frame = base64_to_cv2(fb64)
+            if frame is not None:
+                frames.append(frame)
+
+        if len(frames) < 3:
+            return jsonify({'error': 'Could not decode enough frames'}), 400
+
+        # Run ball detection on all frames
+        ball_track = ball_detector.infer_model(frames)
+
+        # Run court detection on first frame (court doesn't move)
+        court_matrix = None
+        court_kps = None
+        if cached_court is not None:
+            court_matrix = np.array(cached_court, dtype=np.float64)
+        else:
+            try:
+                matrices, keypoints = court_detector.infer_model([frames[0]])
+                court_matrix = matrices[0]
+                court_kps = keypoints[0]
+            except Exception as e:
+                print(f"Court detection failed: {e}")
+
+        # Build ball trajectory
+        trajectory = []
+        for i, (bx, by) in enumerate(ball_track):
+            if bx is not None and by is not None:
+                trajectory.append({
+                    'x': float(bx),
+                    'y': float(by),
+                    'frame_index': i
+                })
+
+        # Classify shot outcome from trajectory
+        shot_outcome = classify_shot_outcome(
+            trajectory, court_matrix, court_reference, frames[0].shape
+        )
+
+        # Format court keypoints for caching
+        formatted_court = None
+        if court_matrix is not None:
+            formatted_court = court_matrix.tolist()
+
+        return jsonify({
+            'ball_trajectory': trajectory,
+            'ball_detection_rate': len(trajectory) / max(len(ball_track), 1),
+            'court_detected': court_matrix is not None,
+            'court_calibration': formatted_court,
+            'shot_outcome': shot_outcome,
+            'frames_analyzed': len(frames),
+            'stroke_type': stroke_type
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"Shot analysis error: {traceback.format_exc()}")
+        return jsonify({'error': str(e)}), 500
+
+
+def classify_shot_outcome(trajectory, court_matrix, court_ref, frame_shape):
+    """Determine if a shot landed in or out based on ball trajectory and court geometry."""
+    result = {
+        'in_court': None,
+        'landed_position': None,
+        'ball_direction': None,
+        'net_clearance': None,
+        'confidence': 0.0
+    }
+
+    if len(trajectory) < 3:
+        result['confidence'] = 0.0
+        return result
+
+    # Analyze ball direction (is it moving away from player?)
+    first_detections = trajectory[:min(5, len(trajectory))]
+    last_detections = trajectory[max(0, len(trajectory)-5):]
+
+    avg_start_y = sum(d['y'] for d in first_detections) / len(first_detections)
+    avg_end_y = sum(d['y'] for d in last_detections) / len(last_detections)
+
+    # In most camera setups, ball moving "up" in frame = traveling toward far court
+    # Ball moving "down" = traveling toward camera/near court
+    y_delta = avg_end_y - avg_start_y
+    result['ball_direction'] = 'away' if y_delta < -20 else 'toward' if y_delta > 20 else 'lateral'
+
+    # Estimate if ball crossed the net (approximate: net is typically at ~40-50% of frame height)
+    frame_height = frame_shape[0]
+    net_y = frame_height * 0.45  # Approximate net position
+
+    # Check if any detection crosses the net region
+    crossed_net = False
+    for det in trajectory:
+        if det['y'] < net_y and avg_start_y > net_y:
+            crossed_net = True
+            break
+    result['net_clearance'] = crossed_net
+
+    # If we have court homography, determine real-world landing position
+    if court_matrix is not None and len(last_detections) > 0:
+        try:
+            last_ball = last_detections[-1]
+            ball_px = np.array([[[last_ball['x'], last_ball['y']]]], dtype=np.float64)
+
+            # Transform pixel coordinates to court coordinates (meters)
+            inv_matrix = cv2.invert(court_matrix)[1]
+            if inv_matrix is not None:
+                court_pos = cv2.perspectiveTransform(ball_px, inv_matrix)
+                cx, cy = float(court_pos[0][0][0]), float(court_pos[0][0][1])
+                result['landed_position'] = {'x_meters': cx, 'y_meters': cy}
+
+                # Tennis court: 23.77m long, singles 8.23m wide, doubles 10.97m wide
+                in_length = 0 <= cy <= 23.77
+                in_width = -5.485 <= cx <= 5.485  # doubles width / 2
+                result['in_court'] = in_length and in_width
+                result['confidence'] = 0.6  # Moderate confidence with homography
+            else:
+                result['confidence'] = 0.2
+        except Exception as e:
+            print(f"Court transform error: {e}")
+            result['confidence'] = 0.2
+    else:
+        # Without court detection, use heuristic: ball detected in reasonable area
+        result['confidence'] = 0.3
+        if crossed_net and result['ball_direction'] == 'away':
+            result['in_court'] = True  # Best guess
+
+    return result
+
 
 @app.route('/health', methods=['GET'])
 def health_check():

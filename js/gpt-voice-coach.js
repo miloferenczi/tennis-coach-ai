@@ -247,7 +247,32 @@ Use this context to provide personalized, progressive coaching. Reference their 
       this.fallbackCoaching(strokeData);
       return;
     }
-    
+
+    // Handle shot outcome follow-up (async result from ball tracking)
+    if (strokeData.type === 'shot_outcome_followup') {
+      const outcome = strokeData.shotOutcome;
+      let prompt = `SHOT OUTCOME UPDATE for the last ${strokeData.strokeType}:\n`;
+      if (outcome.in_court === true) {
+        prompt += `The ball landed IN the court.`;
+        if (outcome.landed_position) {
+          prompt += ` Position: ${outcome.landed_position.x_meters?.toFixed(1)}m across, ${outcome.landed_position.y_meters?.toFixed(1)}m deep.`;
+        }
+      } else if (outcome.in_court === false) {
+        prompt += `The ball went OUT.`;
+        if (!outcome.net_clearance) prompt += ' It may have hit the net.';
+      }
+      prompt += `\nConfidence: ${(outcome.confidence * 100).toFixed(0)}%\n`;
+      prompt += `\n${strokeData.message}\n`;
+      prompt += `\nBriefly acknowledge the shot outcome (1-2 sentences). If the ball went out despite good form, suggest a specific adjustment.`;
+
+      this.dataChannel.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: prompt }] }
+      }));
+      this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+      return;
+    }
+
     const prompt = this.formatEnhancedStrokePrompt(strokeData);
     
     this.dataChannel.send(JSON.stringify({
@@ -318,8 +343,12 @@ Use this context to provide personalized, progressive coaching. Reference their 
       if (data.orchestratorFeedback.type === 'excellence') {
         // Excellence feedback - celebrate!
         prompt += `EXCELLENT EXECUTION\n`;
-        prompt += `Trend: ${data.orchestratorFeedback.trend}\n\n`;
-        prompt += `Keep it brief - celebrate this stroke and encourage maintaining this quality.\n`;
+        prompt += `Trend: ${data.orchestratorFeedback.trend}\n`;
+        const exStrengths = data.orchestratorFeedback.strengths || [];
+        if (exStrengths.length > 0) {
+          prompt += `Strengths: ${exStrengths.join(', ')}\n`;
+        }
+        prompt += `\nKeep it brief - celebrate this stroke and mention a specific strength. Be genuine, not generic.\n`;
         return prompt;
       } else if (data.orchestratorFeedback.type === 'coaching') {
         // Structured coaching from decision tree
@@ -366,7 +395,13 @@ Use this context to provide personalized, progressive coaching. Reference their 
           prompt += `\n`;
         }
         
-        prompt += `YOUR TASK: Deliver the coaching cue naturally in under 15 seconds. Reference the specific metrics. Be direct and actionable like a real coach.\n`;
+        // Include strengths for sandwich coaching (positive → correction → encouragement)
+        const strengths = data.orchestratorFeedback.strengths || [];
+        if (strengths.length > 0) {
+          prompt += `PLAYER STRENGTHS: ${strengths.join(', ')}\n\n`;
+        }
+
+        prompt += `YOUR TASK: Use sandwich coaching - briefly acknowledge a strength, deliver the correction cue, then encourage. Under 15 seconds. Be direct and actionable like a real coach.\n`;
         return prompt;
       }
     }

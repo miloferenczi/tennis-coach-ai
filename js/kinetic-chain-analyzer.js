@@ -67,15 +67,16 @@ class KineticChainAnalyzer {
 
     /**
      * Find when each body segment reaches peak velocity
+     * Pre-calculates velocities from position deltas between consecutive frames
      */
     findSegmentPeakTimings(accelerationPhase) {
         const timings = {};
 
         for (const segment of this.chainSequence) {
-            const peakFrame = this.findSegmentPeak(accelerationPhase, segment);
+            const { peakFrame, peakVelocity } = this.findSegmentPeak(accelerationPhase, segment);
             timings[segment] = {
                 frame: peakFrame,
-                velocity: peakFrame !== -1 ? this.getSegmentVelocity(accelerationPhase[peakFrame], segment) : 0
+                velocity: peakVelocity
             };
         }
 
@@ -84,78 +85,92 @@ class KineticChainAnalyzer {
 
     /**
      * Find peak velocity frame for a specific body segment
+     * Calculates velocity from position deltas between consecutive frames
      */
     findSegmentPeak(phaseData, segment) {
         let peakFrame = -1;
         let peakVelocity = 0;
 
-        for (let i = 0; i < phaseData.length; i++) {
-            const velocity = this.getSegmentVelocity(phaseData[i], segment);
+        for (let i = 1; i < phaseData.length; i++) {
+            const velocity = this.getSegmentVelocity(phaseData[i], phaseData[i - 1], segment);
             if (velocity > peakVelocity) {
                 peakVelocity = velocity;
                 peakFrame = i;
             }
         }
 
-        return peakFrame;
+        return { peakFrame, peakVelocity };
     }
 
     /**
-     * Calculate velocity of a specific body segment
+     * Calculate velocity of a specific body segment between two consecutive frames
      */
-    getSegmentVelocity(poseData, segment) {
-        const joints = poseData.joints;
-        
+    getSegmentVelocity(currentFrame, previousFrame, segment) {
+        const current = currentFrame.joints;
+        const previous = previousFrame.joints;
+
+        if (!current || !previous) return 0;
+
         switch (segment) {
             case 'ankle':
-                return this.calculatePointVelocity(joints.rightAnkle, joints.leftAnkle);
-            
+                return this.averagePointVelocity(
+                    [current.rightAnkle, current.leftAnkle],
+                    [previous.rightAnkle, previous.leftAnkle]
+                );
+
             case 'knee':
-                return this.calculatePointVelocity(joints.rightKnee);
-            
+                return this.pointVelocity(current.rightKnee, previous.rightKnee);
+
             case 'hip':
-                return this.calculatePointVelocity(joints.rightHip, joints.leftHip);
-            
+                return this.averagePointVelocity(
+                    [current.rightHip, current.leftHip],
+                    [previous.rightHip, previous.leftHip]
+                );
+
             case 'torso':
-                // Average of shoulder velocities
-                return (this.calculatePointVelocity(joints.rightShoulder) + 
-                       this.calculatePointVelocity(joints.leftShoulder)) / 2;
-            
+                return this.averagePointVelocity(
+                    [current.rightShoulder, current.leftShoulder],
+                    [previous.rightShoulder, previous.leftShoulder]
+                );
+
             case 'shoulder':
-                return this.calculatePointVelocity(joints.rightShoulder);
-            
+                return this.pointVelocity(current.rightShoulder, previous.rightShoulder);
+
             case 'elbow':
-                return this.calculatePointVelocity(joints.rightElbow);
-            
+                return this.pointVelocity(current.rightElbow, previous.rightElbow);
+
             case 'wrist':
-                return this.calculatePointVelocity(joints.rightWrist);
-            
+                return this.pointVelocity(current.rightWrist, previous.rightWrist);
+
             default:
                 return 0;
         }
     }
 
     /**
-     * Calculate velocity magnitude for a point
+     * Calculate velocity magnitude between two positions of a single point
      */
-    calculatePointVelocity(...points) {
-        // If multiple points, average them
-        if (points.length > 1) {
-            const velocities = points.map(p => this.calculatePointVelocity(p));
-            return velocities.reduce((a, b) => a + b, 0) / velocities.length;
+    pointVelocity(current, previous) {
+        if (!current || !previous) return 0;
+        const dx = current.x - previous.x;
+        const dy = current.y - previous.y;
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    /**
+     * Average velocity across multiple point pairs (e.g. left+right ankle)
+     */
+    averagePointVelocity(currentPoints, previousPoints) {
+        let total = 0;
+        let count = 0;
+        for (let i = 0; i < currentPoints.length; i++) {
+            const v = this.pointVelocity(currentPoints[i], previousPoints[i]);
+            if (v > 0) {
+                total += v;
+                count++;
+            }
         }
-
-        const point = points[0];
-        if (!point) return 0;
-
-        // Use velocity components if available
-        if (point.vx !== undefined && point.vy !== undefined) {
-            return Math.sqrt(point.vx * point.vx + point.vy * point.vy);
-        }
-
-        // Otherwise estimate from position (if we had previous frame data)
-        // For now, return 0 as we'd need frame deltas
-        return 0;
+        return count > 0 ? total / count : 0;
     }
 
     /**
