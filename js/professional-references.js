@@ -673,20 +673,38 @@ class ProfessionalReferences {
 
     /**
      * Compare user metrics with professional standards
+     * @param {object} userMetrics - User's stroke metrics
+     * @param {string} strokeType - Type of stroke
+     * @param {boolean} normalized - Whether metrics are body-relative (torso-lengths/sec)
      */
-    compareWithProfessional(userMetrics, strokeType) {
+    compareWithProfessional(userMetrics, strokeType, normalized = false) {
         const proReference = this.getReference(strokeType, 'professional');
         if (!proReference) return null;
 
+        // When normalized, use bodyRelativeBenchmarks for velocity comparison
+        let velocityRef, accelerationRef;
+        if (normalized && this.bodyRelativeBenchmarks[strokeType]) {
+            const brPro = this.bodyRelativeBenchmarks[strokeType].professional;
+            velocityRef = brPro.velocity;
+            accelerationRef = proReference.averageAcceleration; // acceleration benchmarks stay raw for now
+        } else {
+            velocityRef = proReference.averageVelocity;
+            accelerationRef = proReference.averageAcceleration;
+        }
+
         const comparison = {
-            velocityRatio: this.calculateRatio(userMetrics.velocity, proReference.averageVelocity),
-            accelerationRatio: this.calculateRatio(userMetrics.acceleration, proReference.averageAcceleration),
+            velocityRatio: this.calculateRatio(userMetrics.velocity, velocityRef),
+            accelerationRatio: this.calculateRatio(userMetrics.acceleration, accelerationRef),
             rotationRatio: this.calculateRatio(Math.abs(userMetrics.rotation), Math.abs(proReference.averageRotation)),
             overallSimilarity: 0,
             strengths: [],
             improvements: [],
-            skillLevel: this.estimateSkillLevel(userMetrics, strokeType),
-            percentile: this.calculatePercentile(userMetrics, strokeType)
+            skillLevel: normalized
+                ? this.assessWithBodyRelativeMetrics(userMetrics.velocity, strokeType).skillLevel
+                : this.estimateSkillLevel(userMetrics, strokeType),
+            percentile: normalized
+                ? this.assessWithBodyRelativeMetrics(userMetrics.velocity, strokeType).percentile
+                : this.calculatePercentile(userMetrics, strokeType)
         };
 
         // Calculate overall similarity

@@ -51,9 +51,11 @@
 
     <!-- Application Scripts -->
     <script src="js/session-storage.js"></script>
+    <script src="js/improvement-tracker.js"></script>
     <script src="js/player-profile.js"></script>
     <script src="js/ghost-overlay.js"></script>
     <script src="js/challenge-mode.js"></script>
+    <script src="js/coach-notebook.js"></script>
     <script src="js/enhanced-tennis-analyzer.js"></script>
     <script src="js/gpt-voice-coach.js"></script>
     <script src="js/video-analyzer.js"></script>
@@ -2612,6 +2614,7 @@
 
                 // Enhanced Analysis Engine
                 this.enhancedAnalyzer = new EnhancedTennisAnalyzer();
+                this.enhancedAnalyzer.setLandmarkFilter(this.landmarkFilter);
 
                 // Ball Tracking (in-browser color detection, no server needed)
                 this.ballTracker = new BallTrackingClient({
@@ -2928,7 +2931,7 @@
                     'Analysis paused. Tap play to resume.';
             }
 
-            resetSession() {
+            async resetSession() {
                 // End current session and show summary if strokes were recorded
                 if (typeof sessionStorage !== 'undefined' && sessionStorage.endSession) {
                     const endedSession = sessionStorage.endSession();
@@ -2941,6 +2944,54 @@
                                 endedSession.summary.milestones = milestones;
                             }
                         }
+
+                        // Record metrics in improvement tracker
+                        if (typeof improvementTracker !== 'undefined') {
+                            improvementTracker.recordSession(endedSession.strokes, endedSession.summary);
+                        }
+
+                        // Synthesize notebook entry (while GPT connection still alive)
+                        if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.synthesizeNotebookEntry) {
+                            try {
+                                const coachNotes = await gptVoiceCoach.synthesizeNotebookEntry(endedSession.summary);
+                                if (typeof coachNotebook !== 'undefined' && coachNotes) {
+                                    coachNotebook.saveEntry({
+                                        date: Date.now(),
+                                        sessionNumber: playerProfile?.profile?.totalSessions || 0,
+                                        summary: {
+                                            totalStrokes: endedSession.summary.totalStrokes,
+                                            avgScore: endedSession.summary.averageScore,
+                                            weaknesses: endedSession.summary.weaknesses,
+                                            improvement: endedSession.summary.improvement,
+                                            skillLevel: endedSession.summary.skillLevel,
+                                            strokeTypeBreakdowns: endedSession.summary.strokeTypeBreakdowns
+                                        },
+                                        coachNotes: coachNotes,
+                                        transcriptSnippets: gptVoiceCoach.sessionTranscript?.length || 0
+                                    });
+                                }
+                                endedSession.summary.coachNotes = coachNotes;
+                            } catch (e) {
+                                console.error('Notebook synthesis failed:', e);
+                            }
+                        }
+
+                        // Synthesize coaching plan update
+                        if (typeof improvementTracker !== 'undefined' && typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.synthesizeCoachingPlan) {
+                            try {
+                                const plan = await gptVoiceCoach.synthesizeCoachingPlan(
+                                    endedSession.summary,
+                                    improvementTracker
+                                );
+                                if (plan) {
+                                    improvementTracker.updateCoachingPlan(plan);
+                                    endedSession.summary.coachingPlan = plan;
+                                }
+                            } catch (e) {
+                                console.error('Plan synthesis failed:', e);
+                            }
+                        }
+
                         showSessionSummary(endedSession.summary);
                     }
                     // Create new session
@@ -3390,6 +3441,45 @@
                             <div class="drill-description">${summary.drillRecommendation.description}</div>
                             <div class="drill-duration">${summary.drillRecommendation.duration}</div>
                         </div>
+                    </div>
+                `;
+            }
+
+            // Show coach's notebook notes
+            if (summary.coachNotes) {
+                html += `
+                    <div class="summary-section">
+                        <div class="summary-section-title">Coach's Notes</div>
+                        <div style="font-style: italic; color: rgba(255,255,255,0.8); font-size: 14px;
+                                    line-height: 1.6; padding: 12px 16px; background: rgba(255,255,255,0.05);
+                                    border-radius: 8px; border-left: 3px solid var(--accent-volt);">
+                            "${summary.coachNotes}"
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Show coaching plan / next session goal
+            const plan = summary.coachingPlan || (typeof improvementTracker !== 'undefined' ? improvementTracker.getCoachingPlan() : null);
+            if (plan?.focusAreas?.length > 0) {
+                html += `
+                    <div class="summary-section">
+                        <div class="summary-section-title">Improvement Plan</div>
+                        ${plan.focusAreas.map(f => `
+                            <div style="padding: 10px 14px; margin-bottom: 8px; background: rgba(255,255,255,0.05);
+                                        border-radius: 8px; border-left: 3px solid #4FC3F7;">
+                                <div style="font-weight: 600; color: #4FC3F7; font-size: 14px; margin-bottom: 4px;">${f.area}</div>
+                                <div style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.4;">
+                                    ${f.why || ''}${f.drill ? ` Drill: ${f.drill}` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                        ${plan.sessionGoal ? `
+                            <div style="margin-top: 10px; padding: 10px 14px; background: rgba(200,230,255,0.08);
+                                        border-radius: 8px; font-size: 14px; color: rgba(255,255,255,0.9);">
+                                Next session goal: ${plan.sessionGoal}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }

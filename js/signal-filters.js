@@ -150,6 +150,10 @@ class LandmarkFilter {
         this.calibrated = false;
         this.frameCount = 0;
 
+        // Torso length calibration (shoulder-midpoint to hip-midpoint)
+        this.torsoLength = null;
+        this.torsoSamples = [];
+
         for (const bone of BONE_DEFINITIONS) {
             this.boneSamples[bone.name] = [];
         }
@@ -203,6 +207,25 @@ class LandmarkFilter {
             }
         }
 
+        // Sample torso length: distance from shoulder midpoint to hip midpoint
+        const lShoulder = landmarks[11];
+        const rShoulder = landmarks[12];
+        const lHip = landmarks[23];
+        const rHip = landmarks[24];
+        if (lShoulder.visibility >= 0.5 && rShoulder.visibility >= 0.5 &&
+            lHip.visibility >= 0.5 && rHip.visibility >= 0.5) {
+            const shoulderMidX = (lShoulder.x + rShoulder.x) / 2;
+            const shoulderMidY = (lShoulder.y + rShoulder.y) / 2;
+            const hipMidX = (lHip.x + rHip.x) / 2;
+            const hipMidY = (lHip.y + rHip.y) / 2;
+            const dx = shoulderMidX - hipMidX;
+            const dy = shoulderMidY - hipMidY;
+            const torso = Math.sqrt(dx * dx + dy * dy);
+            if (torso > 0.01) {
+                this.torsoSamples.push(torso);
+            }
+        }
+
         if (this.frameCount >= this.calibrationFrames) {
             // Calculate median bone lengths
             for (const bone of BONE_DEFINITIONS) {
@@ -214,6 +237,15 @@ class LandmarkFilter {
             }
             this.calibrated = true;
             this.boneSamples = {}; // Free memory
+
+            // Compute median torso length
+            if (this.torsoSamples.length >= 10) {
+                this.torsoSamples.sort((a, b) => a - b);
+                this.torsoLength = this.torsoSamples[Math.floor(this.torsoSamples.length / 2)];
+                console.log('LandmarkFilter: Torso calibration complete, length:', this.torsoLength.toFixed(4));
+            }
+            this.torsoSamples = []; // Free memory
+
             console.log('LandmarkFilter: Bone calibration complete', this.boneLengths);
         }
     }
@@ -290,9 +322,19 @@ class LandmarkFilter {
         this.boneSamples = {};
         this.calibrated = false;
         this.frameCount = 0;
+        this.torsoLength = null;
+        this.torsoSamples = [];
         for (const bone of BONE_DEFINITIONS) {
             this.boneSamples[bone.name] = [];
         }
+    }
+
+    /**
+     * Get calibrated torso length (shoulder-midpoint to hip-midpoint distance)
+     * Returns null if not yet calibrated or insufficient samples
+     */
+    getTorsoLength() {
+        return this.torsoLength;
     }
 
     /**

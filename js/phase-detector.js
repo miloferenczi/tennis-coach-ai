@@ -6,6 +6,9 @@
 
 class PhaseDetector {
     constructor() {
+        // Scale factor for body-relative normalization (1.0 = raw mode)
+        this.thresholdScale = 1.0;
+
         // Velocity thresholds for phase detection (normalized 0-1 scale)
         this.thresholds = {
             preparation: {
@@ -30,6 +33,16 @@ class PhaseDetector {
                 minDuration: 8 // frames
             }
         };
+    }
+
+    /**
+     * Set body-relative scale for threshold adjustment
+     * @param {number} torsoLength - Calibrated torso length in normalized coords
+     */
+    setBodyRelativeScale(torsoLength) {
+        if (torsoLength && torsoLength > 0.01) {
+            this.thresholdScale = 1.0 / torsoLength;
+        }
     }
 
     /**
@@ -88,14 +101,16 @@ class PhaseDetector {
         let peakIndex = -1;
         let peakValue = 0;
 
+        const scale = this.thresholdScale;
+
         // Find peak velocity in the sequence
         for (let i = 5; i < velocities.length - 5; i++) {
-            if (velocities[i] > peakValue && velocities[i] > 0.025) {
+            if (velocities[i] > peakValue && velocities[i] > 0.025 * scale) {
                 // Confirm it's a true peak (higher than neighbors)
                 if (velocities[i] > velocities[i-1] && velocities[i] > velocities[i+1]) {
                     // Confirm there was acceleration leading to it
-                    const hasAcceleration = accelerations[i] > 0.008 || 
-                                          accelerations[i-1] > 0.008;
+                    const hasAcceleration = accelerations[i] > 0.008 * scale ||
+                                          accelerations[i-1] > 0.008 * scale;
                     if (hasAcceleration) {
                         peakValue = velocities[i];
                         peakIndex = i;
@@ -117,7 +132,7 @@ class PhaseDetector {
             const rotation = Math.abs(poseHistory[i].rotation || 0);
             
             // Loading characterized by low velocity and building rotation
-            if (velocity < 0.015) {
+            if (velocity < 0.015 * this.thresholdScale) {
                 // Check if rotation is increasing (coiling)
                 const prevRotation = Math.abs(poseHistory[i-2]?.rotation || 0);
                 if (rotation > prevRotation) {
@@ -139,7 +154,7 @@ class PhaseDetector {
             const velocity = poseHistory[i].velocity.magnitude;
             
             // Preparation is very low velocity (ready position)
-            if (velocity < 0.010) {
+            if (velocity < 0.010 * this.thresholdScale) {
                 return i;
             }
         }
@@ -158,7 +173,7 @@ class PhaseDetector {
             const acceleration = poseHistory[i].acceleration?.magnitude || 0;
             
             // Acceleration phase: rapid velocity increase
-            if (velocity > 0.020 && acceleration > 0.010) {
+            if (velocity > 0.020 * this.thresholdScale && acceleration > 0.010 * this.thresholdScale) {
                 return i;
             }
         }
@@ -178,7 +193,7 @@ class PhaseDetector {
             const velocity = poseHistory[i].velocity.magnitude;
             
             // Follow-through ends when velocity drops significantly
-            if (velocity < 0.015) {
+            if (velocity < 0.015 * this.thresholdScale) {
                 return i;
             }
         }

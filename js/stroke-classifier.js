@@ -16,7 +16,10 @@ class StrokeClassifier {
             rotationThreshold: 15
         };
 
-        // Quality assessment weights
+        // Whether velocities are body-relative (torso-lengths/sec) vs raw
+        this.normalized = false;
+
+        // Quality assessment weights (legacy fallback formula)
         this.qualityWeights = {
             velocity: 0.35,
             acceleration: 0.25,
@@ -45,6 +48,34 @@ class StrokeClassifier {
             'Overhead': { average: 450, good: 250, excellent: 981 },      // 1.1x forehand
             'Groundstroke': { average: 409, good: 227, excellent: 892 }
         };
+
+        // Body-relative velocity thresholds (torso-lengths/sec)
+        // Derived from bodyRelativeBenchmarks: beginner=good, intermediate=average, professional=excellent
+        this.bodyRelativeVelocityThresholds = {
+            'Forehand':     { good: 70,  average: 100, excellent: 180 },
+            'Backhand':     { good: 65,  average: 90,  excellent: 160 },
+            'Serve':        { good: 85,  average: 120, excellent: 220 },
+            'Volley':       { good: 30,  average: 50,  excellent: 80 },
+            'Overhead':     { good: 80,  average: 110, excellent: 200 },
+            'Groundstroke': { good: 70,  average: 100, excellent: 180 }
+        };
+
+        // Body-relative acceleration thresholds (torso-lengths/sec²)
+        this.bodyRelativeAccelerationThresholds = {
+            'Forehand':     { good: 1500, average: 2700, excellent: 5900 },
+            'Backhand':     { good: 1350, average: 2400, excellent: 5300 },
+            'Serve':        { good: 1800, average: 3200, excellent: 7100 },
+            'Volley':       { good: 800,  average: 1300, excellent: 2600 },
+            'Overhead':     { good: 1650, average: 3000, excellent: 6500 },
+            'Groundstroke': { good: 1500, average: 2700, excellent: 5900 }
+        };
+    }
+
+    /**
+     * Set whether inputs are body-relative normalized (torso-lengths/sec)
+     */
+    setNormalized(isNormalized) {
+        this.normalized = isNormalized;
     }
 
     /**
@@ -71,19 +102,22 @@ class StrokeClassifier {
      * Stroke type detection methods
      */
     isServe(velocity, verticalMotion) {
-        return verticalMotion > this.strokeThresholds.serveVerticalThreshold && 
-               velocity.magnitude > 0.04;
+        const velThreshold = this.normalized ? 4.0 : 0.04;
+        return verticalMotion > this.strokeThresholds.serveVerticalThreshold &&
+               velocity.magnitude > velThreshold;
     }
 
     isOverhead(velocity, verticalMotion) {
-        return verticalMotion > this.strokeThresholds.overheadVerticalThreshold && 
-               velocity.magnitude > 0.03;
+        const velThreshold = this.normalized ? 3.0 : 0.03;
+        return verticalMotion > this.strokeThresholds.overheadVerticalThreshold &&
+               velocity.magnitude > velThreshold;
     }
 
     isVolley(velocity, verticalMotion) {
-        return verticalMotion < this.strokeThresholds.volleyVerticalThreshold && 
+        const maxThreshold = this.normalized ? 4.5 : 0.045;
+        return verticalMotion < this.strokeThresholds.volleyVerticalThreshold &&
                velocity.magnitude > this.strokeThresholds.minVelocity &&
-               velocity.magnitude < 0.045; // Volleys are typically more compact
+               velocity.magnitude < maxThreshold;
     }
 
     isForehand(rotation, velocity) {
@@ -127,10 +161,53 @@ class StrokeClassifier {
     }
 
     /**
+     * Quality assessment blending biomechanics with power metrics
+     * 60% biomechanical form score + 40% power (velocity/acceleration)
+     * Falls back to legacy 4-weight formula when biomechanics unavailable
+     */
+    assessStrokeQualityWithBiomechanics(strokeType, velocity, acceleration, rotation, swingPath, biomechanicalEval) {
+        if (!biomechanicalEval || biomechanicalEval.overall == null) {
+            // Fallback to legacy formula
+            return this.assessStrokeQuality(strokeType, velocity, acceleration, rotation, swingPath);
+        }
+
+        const velScore = this.assessVelocity(velocity.magnitude, strokeType);
+        const accelScore = this.assessAcceleration(acceleration.magnitude, strokeType);
+        const powerScore = velScore * 0.6 + accelScore * 0.4;
+
+        const overallScore = 0.60 * biomechanicalEval.overall + 0.40 * powerScore;
+
+        const technique = this.assessTechnique(strokeType, velocity, acceleration, rotation);
+        const finalScore = Math.min(100, overallScore + technique);
+
+        return {
+            overall: Math.round(finalScore),
+            breakdown: {
+                velocity: velScore,
+                acceleration: accelScore,
+                power: powerScore,
+                biomechanical: biomechanicalEval.overall,
+                rotation: this.assessRotation(rotation, strokeType),
+                smoothness: this.assessSmoothness(swingPath),
+                technique: technique,
+                usedBiomechanics: true
+            },
+            feedback: this.generateQualityFeedback({
+                velocity: velScore,
+                acceleration: accelScore,
+                rotation: this.assessRotation(rotation, strokeType),
+                smoothness: this.assessSmoothness(swingPath),
+                technique: technique
+            }, strokeType)
+        };
+    }
+
+    /**
      * Velocity assessment
      */
     assessVelocity(magnitude, strokeType) {
-        const thresholds = this.velocityThresholds[strokeType] || this.velocityThresholds['Groundstroke'];
+        const thresholdSet = this.normalized ? this.bodyRelativeVelocityThresholds : this.velocityThresholds;
+        const thresholds = thresholdSet[strokeType] || thresholdSet['Groundstroke'];
         
         if (magnitude >= thresholds.excellent) return 100;
         if (magnitude >= thresholds.good) {
@@ -147,7 +224,8 @@ class StrokeClassifier {
      * Acceleration assessment
      */
     assessAcceleration(magnitude, strokeType) {
-        const thresholds = this.accelerationThresholds[strokeType] || this.accelerationThresholds['Groundstroke'];
+        const thresholdSet = this.normalized ? this.bodyRelativeAccelerationThresholds : this.accelerationThresholds;
+        const thresholds = thresholdSet[strokeType] || thresholdSet['Groundstroke'];
         
         if (magnitude >= thresholds.excellent) return 100;
         if (magnitude >= thresholds.good) {
@@ -253,48 +331,53 @@ class StrokeClassifier {
      */
     assessTechnique(strokeType, velocity, acceleration, rotation) {
         let bonus = 0;
-        
+        const vy = velocity.vy ?? velocity.components?.y ?? 0;
+        const vx = velocity.vx ?? velocity.components?.x ?? 0;
+
+        // Scale thresholds for body-relative mode
+        const s = this.normalized ? 100 : 1;
+
         switch (strokeType) {
             case 'Serve':
                 // Reward upward motion and explosive acceleration
-                if (velocity.components.y < -0.02 && acceleration.magnitude > 0.015) {
+                if (vy < -0.02 * s && acceleration.magnitude > 0.015 * s) {
                     bonus += 10;
                 }
                 break;
-                
+
             case 'Forehand':
                 // Reward proper rotation and follow-through
-                if (rotation > 18 && velocity.magnitude > 0.04) {
+                if (rotation > 18 && velocity.magnitude > 0.04 * s) {
                     bonus += 10;
                 }
                 // Reward forward motion
-                if (velocity.components.x > 0.02) {
+                if (vx > 0.02 * s) {
                     bonus += 5;
                 }
                 break;
-                
+
             case 'Backhand':
                 // Reward controlled power and rotation
-                if (rotation < -18 && acceleration.magnitude > 0.012) {
+                if (rotation < -18 && acceleration.magnitude > 0.012 * s) {
                     bonus += 10;
                 }
                 break;
-                
+
             case 'Volley':
                 // Reward compact, controlled motion
-                if (velocity.magnitude > 0.02 && velocity.magnitude < 0.04 && acceleration.magnitude > 0.008) {
+                if (velocity.magnitude > 0.02 * s && velocity.magnitude < 0.04 * s && acceleration.magnitude > 0.008 * s) {
                     bonus += 10;
                 }
                 break;
-                
+
             case 'Overhead':
                 // Reward aggressive downward motion
-                if (velocity.components.y > 0.03 && acceleration.magnitude > 0.015) {
+                if (vy > 0.03 * s && acceleration.magnitude > 0.015 * s) {
                     bonus += 10;
                 }
                 break;
         }
-        
+
         return bonus;
     }
 

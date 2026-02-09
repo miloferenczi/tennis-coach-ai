@@ -85,7 +85,12 @@ class SessionStorage {
         percentile: strokeData.proComparison.percentile,
         overallSimilarity: strokeData.proComparison.overallSimilarity
       } : null,
-      estimatedBallSpeed: strokeData.estimatedBallSpeed
+      estimatedBallSpeed: strokeData.estimatedBallSpeed,
+      biomechanical: strokeData.biomechanicalEvaluation ? {
+        overall: strokeData.biomechanicalEvaluation.overall,
+        faults: strokeData.biomechanicalEvaluation.detectedFaults?.map(f => f.name) || []
+      } : null,
+      normalizedToTorso: !!strokeData.velocity?.normalizedToTorso
     };
 
     session.strokes.push(strokeRecord);
@@ -177,6 +182,22 @@ class SessionStorage {
       ? recentWithLevel[recentWithLevel.length - 1].proComparison.skillLevel
       : 'beginner';
 
+    // Per-stroke-type breakdowns for improvement tracking
+    const strokeTypeBreakdowns = {};
+    for (const [type, count] of Object.entries(strokeTypes)) {
+      const typeStrokes = strokes.filter(s => s.type === type);
+      strokeTypeBreakdowns[type] = {
+        count,
+        avgQuality: this.avg(typeStrokes.map(s => s.quality)),
+        avgFormScore: this.avg(typeStrokes.map(s => s.qualityBreakdown?.biomechanical).filter(Boolean)),
+        avgRotation: this.avg(typeStrokes.map(s => Math.abs(s.physics?.rotation || 0))),
+        avgHipSep: this.avg(typeStrokes.map(s => s.technique?.hipShoulderSeparation).filter(v => v != null)),
+        avgElbowAngle: this.avg(typeStrokes.map(s => s.technique?.elbowAngle).filter(v => v != null)),
+        avgSmoothness: this.avg(typeStrokes.map(s => s.physics?.smoothness).filter(v => v != null)),
+        faults: typeStrokes.flatMap(s => s.biomechanical?.faults || [])
+      };
+    }
+
     return {
       duration: session.endTime - session.startTime,
       totalStrokes: strokes.length,
@@ -185,6 +206,7 @@ class SessionStorage {
       bestStrokeType: bestStroke?.type,
       dominantStrokeType,
       strokeDistribution: strokeTypes,
+      strokeTypeBreakdowns,
       consistency,
       improvement: Math.round(improvement),
       weaknesses,
@@ -328,6 +350,14 @@ class SessionStorage {
       } : null,
       recentSessions: history.slice(0, 10)
     };
+  }
+
+  /**
+   * Compute average of an array, returning 0 for empty arrays.
+   */
+  avg(values) {
+    if (!values || values.length === 0) return 0;
+    return Math.round(values.reduce((a, b) => a + b, 0) / values.length);
   }
 
   /**

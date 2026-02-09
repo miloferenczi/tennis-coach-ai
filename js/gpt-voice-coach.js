@@ -10,6 +10,9 @@ class GPTVoiceCoach {
     this.sessionStartTime = null;
     this.fatigueDetected = false;
     this.lastQualityScores = [];
+    this.sessionTranscript = [];
+    this.awaitingNotebook = false;
+    this.notebookResolve = null;
   }
   
   async initialize(apiKey) {
@@ -99,12 +102,46 @@ PLAYER CONTEXT:
       }
     }
 
+    // Get coach notebook context if available
+    let notebookContext = '';
+    if (typeof coachNotebook !== 'undefined') {
+      notebookContext = coachNotebook.formatForSystemPrompt();
+    }
+
+    // Get improvement tracker context if available
+    let trackerContext = '';
+    let formTargetsBlock = '';
+    if (typeof improvementTracker !== 'undefined') {
+      trackerContext = improvementTracker.formatForSystemPrompt();
+      // Get skill level for form targets
+      let skillLevel = 'intermediate';
+      if (typeof playerProfile !== 'undefined') {
+        const ctx = playerProfile.getCoachingContext();
+        if (ctx.skillLevel) skillLevel = ctx.skillLevel;
+      }
+      const targets = improvementTracker.getFormTargets(skillLevel);
+      formTargetsBlock = `
+FORM TARGETS FOR THIS PLAYER (${skillLevel} level):
+- Body rotation: aim for >${targets.rotation}deg
+- Hip-shoulder separation: aim for >${targets.hipSep}deg
+- Elbow angle at contact: aim for >${targets.elbowAngle}deg
+- Swing smoothness: aim for >${targets.smoothness}/100
+`;
+    }
+
     return `You are ACE, an expert AI tennis coach with deep biomechanical knowledge. You are coaching a player in real time on a tennis court via their phone camera.
-${profileContext}
+${profileContext}${notebookContext}
+SCORING SYSTEM:
+- Quality Score = 60% biomechanical form + 40% power (velocity + acceleration)
+- Biomechanical form is phase-by-phase evaluation: preparation, loading, acceleration, follow-through
+- Velocities are in body-relative units (torso-lengths/sec) -- camera-independent
+- Power alone doesn't make a good stroke. Proper form generates power naturally.
+${formTargetsBlock}${trackerContext}
 YOUR IDENTITY:
 - You are their personal tennis coach, not a generic AI assistant
 - You speak naturally like a real courtside coach - confident, direct, warm
-- You remember what you've worked on together (use the player context above)
+- You remember what you've worked on together (use the player context and your notebook above)
+- You have a coaching notebook with your own notes from past sessions — reference your observations naturally
 - If the player tells you what they want to focus on, prioritize that for the session
 
 COACHING STYLE:
@@ -128,11 +165,18 @@ When you receive stroke data, respond with:
 3. A simple, memorable cue they can use on the next stroke
 
 DATA YOU RECEIVE:
-- Quality scores (0-100) with phase breakdown
+- Quality scores (0-100) = 60% form + 40% power, with form details per stroke
 - Biomechanical faults with priority (10 = foundation, 7-9 = power, 4-6 = refinement)
-- Kinetic chain quality, sequence analysis, player strengths
+- Specific angles: hip-shoulder separation, elbow angle, body rotation
+- Improvement plan progress: current vs target metrics per stroke type
 - Skill level, percentile ranking, professional comparison
 - Player history, fatigue indicators, shot outcomes
+
+COACHING WITH METRICS:
+- Reference specific angles and metrics when coaching ("your hip-shoulder separation was 22 degrees -- try to get that closer to 40")
+- Track progress toward the improvement plan goals
+- Celebrate measurable improvements with specific numbers ("your rotation improved from 14 to 18 degrees -- that's real progress")
+- When giving form corrections, describe the body movement, not just the metric ("lead with your hip before your shoulders unwind")
 
 IMPORTANT: Always stay in character as their tennis coach. Never break character or discuss being an AI.`;
   }
@@ -157,6 +201,31 @@ IMPORTANT: Always stay in character as their tennis coach. Never break character
           greetingPrompt += ` Improving: ${ctx.improvingAreas.join(', ')}.`;
         }
         greetingPrompt += '\n\nGreet them warmly, reference what you worked on last time, and ask what they want to focus on today. Keep it to 2-3 sentences.';
+      }
+    }
+
+    // Inject coach's own notes from last session
+    if (typeof coachNotebook !== 'undefined') {
+      const ctx = coachNotebook.getPromptContext();
+      if (ctx.mostRecent) {
+        greetingPrompt += `\nYour notes from last session: "${ctx.mostRecent.coachNotes}"`;
+        greetingPrompt += `\nReference something specific from your notes in the greeting.`;
+      }
+    }
+
+    // Inject improvement plan context
+    if (typeof improvementTracker !== 'undefined') {
+      const plan = improvementTracker.getCoachingPlan();
+      if (plan?.focusAreas?.length > 0) {
+        greetingPrompt += `\nYour improvement plan focus: ${plan.focusAreas.map(f => f.area).join(', ')}.`;
+        if (plan.sessionGoal) {
+          greetingPrompt += `\nSession goal from last time: "${plan.sessionGoal}"`;
+        }
+        const progress = improvementTracker.getTopProgress();
+        if (progress) {
+          greetingPrompt += `\nProgress update: ${progress}`;
+        }
+        greetingPrompt += `\nMention the plan and progress naturally. Ask if they want to continue the same focus or try something different.`;
       }
     }
 
@@ -257,6 +326,17 @@ IMPORTANT: Always stay in character as their tennis coach. Never break character
         });
         if (message.response.output_text) {
           console.log('GPT response:', message.response.output_text);
+          // Route to notebook resolver or capture in session transcript
+          if (this.awaitingNotebook && this.notebookResolve) {
+            this.awaitingNotebook = false;
+            this.notebookResolve(message.response.output_text);
+            this.notebookResolve = null;
+          } else {
+            this.sessionTranscript.push({
+              text: message.response.output_text,
+              timestamp: Date.now()
+            });
+          }
         }
         break;
         
@@ -373,7 +453,9 @@ IMPORTANT: Always stay in character as their tennis coach. Never break character
         if (exStrengths.length > 0) {
           prompt += `Strengths: ${exStrengths.join(', ')}\n`;
         }
-        prompt += `\nKeep it brief - celebrate this stroke and mention a specific strength. Be genuine, not generic.\n`;
+        // Add plan progress so GPT can celebrate toward a goal
+        prompt += this.buildFormDetailsBlock(data);
+        prompt += `\nKeep it brief - celebrate this stroke and mention a specific strength with numbers. Be genuine, not generic.\n`;
         return prompt;
       } else if (data.orchestratorFeedback.type === 'coaching') {
         // Structured coaching from decision tree
@@ -420,13 +502,16 @@ IMPORTANT: Always stay in character as their tennis coach. Never break character
           prompt += `\n`;
         }
         
-        // Include strengths for sandwich coaching (positive → correction → encouragement)
+        // Include strengths for sandwich coaching (positive -> correction -> encouragement)
         const strengths = data.orchestratorFeedback.strengths || [];
         if (strengths.length > 0) {
           prompt += `PLAYER STRENGTHS: ${strengths.join(', ')}\n\n`;
         }
 
-        prompt += `YOUR TASK: Use sandwich coaching - briefly acknowledge a strength, deliver the correction cue, then encourage. Under 15 seconds. Be direct and actionable like a real coach.\n`;
+        // Form details with plan progress
+        prompt += this.buildFormDetailsBlock(data);
+
+        prompt += `YOUR TASK: Use sandwich coaching - briefly acknowledge a strength, deliver the correction cue, then encourage. Reference specific angles/metrics. Under 15 seconds. Be direct and actionable like a real coach.\n`;
         return prompt;
       }
     }
@@ -439,97 +524,39 @@ IMPORTANT: Always stay in character as their tennis coach. Never break character
       prompt += `Pro Similarity: ${data.comparison.overallSimilarity}% match to professional form\n\n`;
     }
     
-    // Quality assessment
-    prompt += `Quality Score: ${data.quality.overall}/100\n`;
-    prompt += `Performance Trend: ${data.quality.trend}\n`;
-    if (data.quality.estimatedBallSpeed) {
-      prompt += `Estimated Ball Speed: ${data.quality.estimatedBallSpeed} mph\n`;
-    }
-    prompt += `\n`;
-    
-    // Quality breakdown
-    if (data.quality.breakdown) {
-      prompt += `Quality Breakdown:\n`;
-      prompt += `- Velocity: ${data.quality.breakdown.velocity.toFixed(0)}/100\n`;
-      prompt += `- Acceleration: ${data.quality.breakdown.acceleration.toFixed(0)}/100\n`;
-      prompt += `- Rotation: ${data.quality.breakdown.rotation.toFixed(0)}/100\n`;
-      prompt += `- Smoothness: ${data.quality.breakdown.smoothness.toFixed(0)}/100\n\n`;
-    }
-    
-    // Professional comparison details
+    // Quality with new format
+    prompt += this.buildFormDetailsBlock(data);
+
+    // Player level context
     if (data.comparison) {
-      prompt += `Comparison to Pro Standards:\n`;
-      prompt += `- Racquet Speed: ${data.comparison.velocityRatio}% of pro average\n`;
-      prompt += `- Acceleration: ${data.comparison.accelerationRatio}% of pro average\n`;
-      prompt += `- Body Rotation: ${data.comparison.rotationRatio}% of pro average\n`;
-      
+      prompt += `PLAYER LEVEL: ${data.comparison.skillLevel.toUpperCase()} | ${data.comparison.percentile}th percentile\n`;
       if (data.comparison.strengths.length > 0) {
-        prompt += `\nSTRENGTHS: ${data.comparison.strengths.join(', ')}\n`;
+        prompt += `Strengths: ${data.comparison.strengths.join(', ')}\n`;
       }
-      
       if (data.comparison.improvements.length > 0) {
-        prompt += `FOCUS AREAS: ${data.comparison.improvements.join(', ')}\n`;
+        prompt += `Focus areas: ${data.comparison.improvements.join(', ')}\n`;
       }
       prompt += `\n`;
     }
-    
-    // Technique details
-    prompt += `Technique Specifics:\n`;
-    prompt += `- Elbow Angle: ${data.technique.elbowAngleAtContact.toFixed(0)}°\n`;
-    prompt += `- Hip-Shoulder Separation: ${data.technique.hipShoulderSeparation.toFixed(0)}°\n`;
-    prompt += `- Knee Bend: ${data.technique.kneeBend.toFixed(0)}°\n`;
-    prompt += `- Stance: ${data.technique.stance}\n`;
-    prompt += `- Weight Transfer: ${data.technique.weightTransfer}\n\n`;
 
-    // Biomechanical evaluation (if available)
+    // Biomechanical faults (if available)
     if (data.biomechanical) {
-      prompt += `BIOMECHANICAL ANALYSIS:\n`;
-      prompt += `Overall Biomechanical Score: ${data.biomechanical.overallScore}/100\n`;
-
-      if (data.biomechanical.phaseScores) {
-        prompt += `Phase Scores: `;
-        const phases = Object.entries(data.biomechanical.phaseScores)
-          .map(([phase, score]) => `${phase}: ${score}`)
-          .join(', ');
-        prompt += `${phases}\n`;
-      }
-
       if (data.biomechanical.detectedFaults && data.biomechanical.detectedFaults.length > 0) {
-        prompt += `\nDETECTED FAULTS (by priority):\n`;
+        prompt += `DETECTED FAULTS (by priority):\n`;
         data.biomechanical.detectedFaults.forEach(fault => {
           prompt += `- ${fault.name}: ${fault.fix}\n`;
         });
+        prompt += `\n`;
       }
-
       if (data.biomechanical.primaryFeedback) {
-        prompt += `\nPRIMARY FOCUS: ${data.biomechanical.primaryFeedback.message}\n`;
+        prompt += `PRIMARY FOCUS: ${data.biomechanical.primaryFeedback.message}\n\n`;
       }
-
-      if (data.biomechanical.drillRecommendations && data.biomechanical.drillRecommendations.length > 0) {
-        prompt += `\nRECOMMENDED DRILLS: ${data.biomechanical.drillRecommendations.slice(0, 2).join(', ')}\n`;
-      }
-      prompt += `\n`;
-    }
-
-    // Sequence analysis (if available)
-    if (data.sequenceAnalysis) {
-      prompt += `📐 SEQUENCE ANALYSIS:\n`;
-      prompt += `Sequence Quality: ${data.sequenceAnalysis.sequenceQuality}/100\n`;
-      prompt += `Kinetic Chain: ${data.sequenceAnalysis.kineticChainQuality}/100\n`;
-      if (data.sequenceAnalysis.phaseDurations) {
-        const durations = data.sequenceAnalysis.phaseDurations;
-        prompt += `Phase Timing: prep=${durations.preparation}f, load=${durations.loading}f, accel=${durations.acceleration}f, follow=${durations.followThrough}f\n`;
-      }
-      prompt += `\n`;
     }
 
     // Session context
-    prompt += `Session Stats:\n`;
-    prompt += `- Total Strokes: ${data.session.strokeCount}\n`;
-    prompt += `- Average Quality: ${data.session.averageScore.toFixed(0)}/100\n`;
-    prompt += `- Consistency: ${data.session.consistency}\n`;
+    prompt += `Session: ${data.session.strokeCount} strokes, ${data.session.averageScore.toFixed(0)} avg, ${data.session.consistency} consistency\n`;
 
-    prompt += `\nProvide personalized coaching in under 15 seconds. If biomechanical faults are detected, prioritize the highest-priority fault. Reference their percentile and skill level to motivate. Focus on closing the gap to the next level.`;
+    prompt += `\nProvide personalized coaching in under 15 seconds. Reference specific angles and metrics. If biomechanical faults are detected, prioritize the highest-priority fault.`;
 
     return prompt;
   }
@@ -641,12 +668,279 @@ IMPORTANT: Always stay in character as their tennis coach. Never break character
   }
 
   /**
+   * Synthesize a notebook entry by asking GPT to write coaching notes.
+   * Returns a Promise resolving to the coach's free-text notes string.
+   * Falls back to a stats-only entry if GPT is disconnected or times out.
+   */
+  synthesizeNotebookEntry(sessionSummary) {
+    // If GPT not connected, use fallback immediately
+    if (!this.isConnected || !this.dataChannel || this.dataChannel.readyState !== 'open') {
+      return Promise.resolve(this.buildFallbackNotebookEntry(sessionSummary));
+    }
+
+    // Build transcript summary (first 5 + last 10 if >20)
+    let transcriptSummary = '';
+    if (this.sessionTranscript.length > 0) {
+      let snippets = this.sessionTranscript;
+      if (snippets.length > 20) {
+        snippets = [...snippets.slice(0, 5), ...snippets.slice(-10)];
+      }
+      transcriptSummary = snippets.map(s => s.text).join('\n---\n');
+    }
+
+    // Get previous notebook entry for continuity
+    let previousNotes = '';
+    if (typeof coachNotebook !== 'undefined') {
+      const ctx = coachNotebook.getPromptContext();
+      if (ctx.mostRecent) {
+        previousNotes = ctx.mostRecent.coachNotes;
+      }
+    }
+
+    // Build per-type breakdown string
+    let breakdownStr = '';
+    if (sessionSummary.strokeTypeBreakdowns) {
+      for (const [type, bd] of Object.entries(sessionSummary.strokeTypeBreakdowns)) {
+        breakdownStr += `  ${type}: ${bd.count} strokes, quality=${bd.avgQuality}`;
+        if (bd.avgFormScore) breakdownStr += `, form=${bd.avgFormScore}`;
+        if (bd.avgHipSep) breakdownStr += `, hipSep=${bd.avgHipSep}deg`;
+        if (bd.avgRotation) breakdownStr += `, rotation=${bd.avgRotation}deg`;
+        breakdownStr += `\n`;
+      }
+    }
+
+    const prompt = `SESSION COMPLETE - Write your coaching notebook entry.
+
+Session stats:
+- Total strokes: ${sessionSummary.totalStrokes || 0}
+- Average score: ${sessionSummary.averageScore || 0}/100
+- Best score: ${sessionSummary.bestScore || 0}
+- Weaknesses identified: ${(sessionSummary.weaknesses || []).join(', ') || 'none'}
+- Improvement trend: ${sessionSummary.improvement > 0 ? '+' + sessionSummary.improvement : sessionSummary.improvement || 0} points
+${breakdownStr ? `\nPer-stroke-type breakdown:\n${breakdownStr}` : ''}
+${transcriptSummary ? `Your coaching responses this session:\n${transcriptSummary}\n` : ''}
+${previousNotes ? `Your notes from last session: "${previousNotes}"\n` : ''}
+Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 characters. Include: what you worked on, what improved (reference specific metrics like hip-shoulder separation or rotation angles), what to focus on next session, and any personal observations about this player. Do NOT use any prefix or label — just write the notes directly. Be specific, not generic.`;
+
+    return new Promise((resolve) => {
+      this.awaitingNotebook = true;
+
+      // 10-second timeout
+      const timeout = setTimeout(() => {
+        if (this.awaitingNotebook) {
+          this.awaitingNotebook = false;
+          this.notebookResolve = null;
+          resolve(this.buildFallbackNotebookEntry(sessionSummary));
+        }
+      }, 10000);
+
+      this.notebookResolve = (text) => {
+        clearTimeout(timeout);
+        resolve(text);
+      };
+
+      // Send synthesis request via data channel
+      this.dataChannel.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: prompt }]
+        }
+      }));
+      this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+    });
+  }
+
+  /**
+   * Build a basic stats-only notebook entry when GPT is unavailable.
+   */
+  buildFallbackNotebookEntry(sessionSummary) {
+    const strokes = sessionSummary.totalStrokes || 0;
+    const avg = sessionSummary.averageScore || 0;
+    const weaknesses = (sessionSummary.weaknesses || []).join(', ') || 'none identified';
+    const trend = sessionSummary.improvement > 0 ? 'improving' :
+                  sessionSummary.improvement < 0 ? 'declining' : 'steady';
+    return `Session: ${strokes} strokes, ${avg} avg score, ${trend} trend. Areas to work on: ${weaknesses}.`;
+  }
+
+  /**
+   * Build a form details block for per-stroke prompts.
+   * Used by both orchestrator and legacy paths.
+   */
+  buildFormDetailsBlock(data) {
+    let block = '';
+    const bd = data.quality?.breakdown;
+    const tech = data.technique;
+
+    block += `FORM DETAILS:\n`;
+    block += `- Quality: ${data.quality?.overall || '?'}/100`;
+    if (bd?.usedBiomechanics) {
+      block += ` (Form: ${Math.round(bd.biomechanical)}, Power: ${Math.round(bd.power)})`;
+    }
+    block += `\n`;
+
+    if (tech) {
+      if (tech.hipShoulderSeparation != null) {
+        block += `- Hip-shoulder separation: ${tech.hipShoulderSeparation.toFixed(0)}deg`;
+        // Add target from tracker if available
+        if (typeof improvementTracker !== 'undefined') {
+          let skillLevel = 'intermediate';
+          if (typeof playerProfile !== 'undefined') {
+            const ctx = playerProfile.getCoachingContext();
+            if (ctx.skillLevel) skillLevel = ctx.skillLevel;
+          }
+          const targets = improvementTracker.getFormTargets(skillLevel);
+          block += ` (target: >${targets.hipSep}deg)`;
+        }
+        block += `\n`;
+      }
+      if (tech.shoulderRotation != null) {
+        block += `- Body rotation: ${Math.abs(tech.shoulderRotation).toFixed(0)}deg\n`;
+      }
+      if (tech.elbowAngleAtContact != null) {
+        block += `- Elbow angle at contact: ${tech.elbowAngleAtContact.toFixed(0)}deg\n`;
+      }
+    }
+
+    if (data.smoothness != null) {
+      block += `- Swing smoothness: ${Math.round(data.smoothness)}/100\n`;
+    } else if (bd?.smoothness != null) {
+      block += `- Swing smoothness: ${Math.round(bd.smoothness)}/100\n`;
+    }
+
+    if (data.velocity?.magnitude != null) {
+      block += `- Racquet speed: ${data.velocity.magnitude.toFixed(1)}`;
+      if (data.velocity.normalizedToTorso) block += ` torso-lengths/sec`;
+      block += `\n`;
+    }
+
+    // Plan progress line
+    if (typeof improvementTracker !== 'undefined' && data.strokeType) {
+      const currentMetrics = {
+        hipShoulderSeparation: tech?.hipShoulderSeparation,
+        rotation: tech?.shoulderRotation ? Math.abs(tech.shoulderRotation) : null,
+        elbowAngle: tech?.elbowAngleAtContact,
+        smoothness: data.smoothness ?? bd?.smoothness
+      };
+      const planLine = improvementTracker.formatForStrokePrompt(data.strokeType, currentMetrics);
+      if (planLine) {
+        block += `\n${planLine}\n`;
+      }
+    }
+
+    block += `\n`;
+    return block;
+  }
+
+  /**
+   * Synthesize a coaching plan update at session end.
+   * Sends a structured prompt to GPT, parses the JSON response.
+   * Returns the parsed plan object or null on failure.
+   */
+  synthesizeCoachingPlan(sessionSummary, tracker) {
+    if (!this.isConnected || !this.dataChannel || this.dataChannel.readyState !== 'open') {
+      return Promise.resolve(null);
+    }
+    if (!tracker) return Promise.resolve(null);
+
+    // Build context for plan synthesis
+    const currentPlan = tracker.getCoachingPlan();
+    const currentFocusAreas = currentPlan?.focusAreas || [];
+
+    // Build cross-session trend data
+    let trendData = '';
+    for (const type of Object.keys(tracker.data.strokeMetrics)) {
+      const progress = tracker.getProgressForStroke(type);
+      if (progress && progress.sessions.length >= 1) {
+        const latest = progress.sessions[progress.sessions.length - 1];
+        trendData += `${type}: quality=${latest.avgQuality}, formScore=${latest.avgFormScore || '?'}, `;
+        trendData += `hipSep=${latest.avgHipSep || '?'}, rotation=${latest.avgRotation || '?'}, `;
+        trendData += `elbowAngle=${latest.avgElbowAngle || '?'}, smoothness=${latest.avgSmoothness || '?'}, `;
+        trendData += `trend=${progress.trend}, velocity=${progress.velocityPerSession}/session\n`;
+      }
+    }
+
+    const breakdowns = sessionSummary.strokeTypeBreakdowns
+      ? JSON.stringify(sessionSummary.strokeTypeBreakdowns)
+      : 'not available';
+
+    const prompt = `Based on this session's data and your coaching observations, update the improvement plan.
+
+Current plan: ${JSON.stringify(currentFocusAreas)}
+Session stroke breakdowns: ${breakdowns}
+Cross-session trends:
+${trendData || 'First session -- no prior data'}
+
+Output a JSON object with this exact structure (nothing else):
+{"focusAreas": [{"area": "...", "why": "...", "drill": "...", "metric": "...", "strokeType": "...", "target": 0}], "sessionGoal": "..."}
+
+Rules:
+- Maximum 3 focus areas
+- Each must reference a specific body movement and a measurable target
+- "metric" must be one of: hipShoulderSeparation, rotation, elbowAngle, smoothness
+- "strokeType" must be one of: Forehand, Backhand, Serve, Volley
+- Drills must be specific and practical (can be done at home or on court)
+- Session goal should be one clear sentence for next session
+- Keep what's working from the current plan, update what changed
+- Output ONLY the JSON object, no other text`;
+
+    return new Promise((resolve) => {
+      this.awaitingNotebook = true;
+
+      // 8-second timeout — preserve existing plan on failure
+      const timeout = setTimeout(() => {
+        if (this.awaitingNotebook) {
+          this.awaitingNotebook = false;
+          this.notebookResolve = null;
+          console.warn('Plan synthesis timed out, preserving existing plan');
+          resolve(null);
+        }
+      }, 8000);
+
+      this.notebookResolve = (text) => {
+        clearTimeout(timeout);
+        try {
+          // Extract JSON from response (handle markdown code blocks)
+          let jsonStr = text.trim();
+          if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+          }
+          const plan = JSON.parse(jsonStr);
+          if (plan.focusAreas && Array.isArray(plan.focusAreas)) {
+            resolve(plan);
+          } else {
+            console.warn('Plan synthesis returned invalid structure:', plan);
+            resolve(null);
+          }
+        } catch (e) {
+          console.error('Plan synthesis JSON parse failed:', e, 'Raw:', text);
+          resolve(null);
+        }
+      };
+
+      this.dataChannel.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: prompt }]
+        }
+      }));
+      this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+    });
+  }
+
+  /**
    * Reset session state
    */
   resetSession() {
     this.lastQualityScores = [];
     this.fatigueDetected = false;
     this.sessionStartTime = Date.now();
+    this.sessionTranscript = [];
+    this.awaitingNotebook = false;
+    this.notebookResolve = null;
   }
 
   disconnect() {

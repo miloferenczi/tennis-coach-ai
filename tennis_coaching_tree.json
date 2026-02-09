@@ -339,22 +339,22 @@
 },
 "skillLevelThresholds": {
 "beginner": {
-"velocity": { "max": 0.032 },
+"velocity": { "max": 70 },
 "consistency": { "max": 65 },
 "quality": { "max": 60 }
 },
 "intermediate": {
-"velocity": { "min": 0.032, "max": 0.047 },
+"velocity": { "min": 70, "max": 130 },
 "consistency": { "min": 65, "max": 80 },
 "quality": { "min": 60, "max": 75 }
 },
 "advanced": {
-"velocity": { "min": 0.047, "max": 0.055 },
+"velocity": { "min": 130, "max": 180 },
 "consistency": { "min": 80, "max": 88 },
 "quality": { "min": 75, "max": 82 }
 },
 "elite": {
-"velocity": { "min": 0.055 },
+"velocity": { "min": 180 },
 "consistency": { "min": 88 },
 "quality": { "min": 82 }
 }

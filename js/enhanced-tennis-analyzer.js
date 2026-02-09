@@ -46,6 +46,10 @@ class EnhancedTennisAnalyzer {
     // Active faults and phase for UI overlay
     this.activeFaults = [];
     this.lastDetectedPhase = null;
+
+    // Body-relative normalization
+    this.landmarkFilter = null;  // Set externally via setLandmarkFilter()
+    this.torsoLength = null;     // Cached once calibrated
   }
 
   /**
@@ -53,6 +57,13 @@ class EnhancedTennisAnalyzer {
    */
   getLastStrokeData() {
     return this.lastStrokeData;
+  }
+
+  /**
+   * Set reference to LandmarkFilter for torso-length normalization
+   */
+  setLandmarkFilter(filter) {
+    this.landmarkFilter = filter;
   }
 
     resetSession() {
@@ -69,6 +80,13 @@ class EnhancedTennisAnalyzer {
     this.poseHistory = [];
     this.activeFaults = [];
     this.lastDetectedPhase = null;
+    this.torsoLength = null; // Re-calibrate on next session
+    if (this.strokeClassifier) {
+      this.strokeClassifier.setNormalized(false);
+    }
+    if (this.phaseDetector) {
+      this.phaseDetector.thresholdScale = 1.0;
+    }
     console.log('Session reset complete');
   }
   
@@ -124,6 +142,43 @@ class EnhancedTennisAnalyzer {
         ax: wristEstimate.ax,
         ay: wristEstimate.ay
       };
+    }
+
+    // Body-relative normalization: divide velocity/acceleration by torso length
+    if (!this.torsoLength && this.landmarkFilter?.isCalibrated()) {
+      this.torsoLength = this.landmarkFilter.getTorsoLength();
+      if (this.torsoLength && this.torsoLength > 0.01) {
+        console.log('EnhancedTennisAnalyzer: Torso calibration applied, length:', this.torsoLength.toFixed(4));
+        // Propagate to subsystems
+        if (this.phaseDetector) {
+          this.phaseDetector.setBodyRelativeScale(this.torsoLength);
+        }
+        if (this.strokeClassifier) {
+          this.strokeClassifier.setNormalized(true);
+        }
+      } else {
+        this.torsoLength = null; // Invalid, stay in raw mode
+      }
+    }
+
+    if (this.torsoLength && this.torsoLength > 0.01) {
+      // Store originals before normalization
+      poseData.rawVelocity = { ...poseData.velocity };
+      poseData.rawAcceleration = { ...poseData.acceleration };
+
+      // Normalize magnitudes and components by torso length
+      const tl = this.torsoLength;
+      poseData.velocity = {
+        magnitude: poseData.velocity.magnitude / tl,
+        vx: (poseData.velocity.vx || 0) / tl,
+        vy: (poseData.velocity.vy || 0) / tl
+      };
+      poseData.acceleration = {
+        magnitude: poseData.acceleration.magnitude / tl,
+        ax: (poseData.acceleration.ax || 0) / tl,
+        ay: (poseData.acceleration.ay || 0) / tl
+      };
+      poseData.normalizedToTorso = true;
     }
 
     this.poseHistory.push(poseData);
@@ -240,8 +295,9 @@ class EnhancedTennisAnalyzer {
     const maxVelocity = Math.max(...recentVelocities);
     const peakIndex = recentVelocities.indexOf(maxVelocity);
 
-    // Basic velocity threshold check (lowered for phone camera angles)
-    if (maxVelocity < 0.015 || peakIndex <= 5 || peakIndex >= windowSize - 5) {
+    // Adaptive velocity threshold: scale for body-relative normalization
+    const detectionThreshold = this.torsoLength ? (0.015 / this.torsoLength) : 0.015;
+    if (maxVelocity < detectionThreshold || peakIndex <= 5 || peakIndex >= windowSize - 5) {
       return null;
     }
 
@@ -357,12 +413,13 @@ class EnhancedTennisAnalyzer {
     const contactPointVariance = this.calculateContactPointVariance(contactFrame);
     
     // Compare with professional standards
+    const isNormalized = contactFrame.normalizedToTorso || false;
     const proComparison = this.proReferences.compareWithProfessional({
       velocity: contactFrame.velocity.magnitude,
       acceleration: contactFrame.acceleration.magnitude,
       rotation: contactFrame.rotation,
       smoothness: smoothness
-    }, strokeType);
+    }, strokeType, isNormalized);
     
     const strokeData = {
       type: strokeType,
@@ -418,6 +475,16 @@ class EnhancedTennisAnalyzer {
       );
 
       if (strokeData.biomechanicalEvaluation) {
+        // Recompute quality with biomechanics blended in
+        strokeData.quality = this.strokeClassifier.assessStrokeQualityWithBiomechanics(
+          strokeData.type,
+          contactFrame.velocity,
+          contactFrame.acceleration,
+          contactFrame.rotation,
+          contactFrame.swingPath,
+          strokeData.biomechanicalEvaluation
+        );
+
         console.log('Biomechanical Evaluation:', {
           overall: strokeData.biomechanicalEvaluation.overall,
           faults: strokeData.biomechanicalEvaluation.detectedFaults.map(f => f.name),
@@ -650,7 +717,8 @@ class EnhancedTennisAnalyzer {
       forwardMomentum: this.estimateForwardMomentum(),
       backFootWeight: this.estimateBackFootWeight(),
       armExtension: this.estimateArmExtension(strokeData),
-      followThroughComplete: this.checkFollowThroughComplete(strokeData)
+      followThroughComplete: this.checkFollowThroughComplete(strokeData),
+      normalizedToTorso: !!this.torsoLength
     };
 
     // Enrich with phase-level data from motion sequence analysis

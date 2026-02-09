@@ -426,31 +426,41 @@ class CoachingOrchestrator {
 
     /**
      * Determine player skill level from metrics
+     * When not body-relative normalized, skip velocity check (thresholds are body-relative)
+     * and fall back to quality + consistency only
      */
     determineSkillLevel(metrics) {
         const thresholds = this.decisionTree.skillLevelThresholds;
-        
+
         const velocity = metrics.velocity?.magnitude || 0;
         const consistency = metrics.consistency || 0;
         const quality = metrics.quality || 0;
+        const useVelocity = metrics.normalizedToTorso === true;
 
         // Check elite
-        if (velocity >= thresholds.elite.velocity.min &&
+        if ((!useVelocity || velocity >= thresholds.elite.velocity.min) &&
             consistency >= thresholds.elite.consistency.min &&
             quality >= thresholds.elite.quality.min) {
             return 'elite';
         }
 
         // Check advanced
-        if (velocity >= thresholds.advanced.velocity.min &&
+        if ((!useVelocity || velocity >= thresholds.advanced.velocity.min) &&
             consistency >= thresholds.advanced.consistency.min &&
             quality >= thresholds.advanced.quality.min) {
             return 'advanced';
         }
 
         // Check intermediate
-        if (velocity >= thresholds.intermediate.velocity.min) {
-            return 'intermediate';
+        if (useVelocity) {
+            if (velocity >= thresholds.intermediate.velocity.min) {
+                return 'intermediate';
+            }
+        } else {
+            // Fallback: use quality only when velocity isn't normalized
+            if (quality >= thresholds.intermediate.quality.min) {
+                return 'intermediate';
+            }
         }
 
         return 'beginner';
@@ -500,7 +510,8 @@ class CoachingOrchestrator {
     findStrengths(playerMetrics) {
         const strengths = [];
 
-        if ((playerMetrics.velocity?.magnitude || 0) > 8) {
+        const velThreshold = playerMetrics.normalizedToTorso ? 120 : 8;
+        if ((playerMetrics.velocity?.magnitude || 0) > velThreshold) {
             strengths.push('Good racquet speed');
         }
         if (Math.abs(playerMetrics.rotation || 0) > 20) {
