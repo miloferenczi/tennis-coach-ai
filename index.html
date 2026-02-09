@@ -26,6 +26,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
         
+        <!-- Signal processing filters (must load before physics/analysis) -->
+    <script src="js/signal-filters.js"></script>
+    <script src="js/kalman-velocity-estimator.js"></script>
+
         <!-- Add these new scripts in order -->
     <script src="js/physics-analyzer.js"></script>
     <script src="js/stroke-classifier.js"></script>
@@ -2595,6 +2599,17 @@
                 this.isReady = false;
                 this.isAnalyzing = false;
 
+                // Signal processing: adaptive low-pass filter + bone constraints
+                this.landmarkFilter = new LandmarkFilter({
+                    frequency: 30,
+                    minCutoff: 1.0,
+                    beta: 80.0,
+                    dCutoff: 1.0,
+                    enableBoneConstraints: true,
+                    boneDeviationThreshold: 0.15,
+                    calibrationFrames: 30
+                });
+
                 // Enhanced Analysis Engine
                 this.enhancedAnalyzer = new EnhancedTennisAnalyzer();
 
@@ -2730,7 +2745,10 @@
 
                 // Only analyze pose when user has pressed play
                 if (this.isAnalyzing) {
-                    const poseData = this.enhancedAnalyzer.analyzePose(results.poseLandmarks, Date.now());
+                    // Filter landmarks for analysis (raw landmarks still used above for skeleton drawing)
+                    const timestamp = Date.now();
+                    const filteredLandmarks = this.landmarkFilter.filterLandmarks(results.poseLandmarks, timestamp);
+                    const poseData = this.enhancedAnalyzer.analyzePose(filteredLandmarks, timestamp);
 
                     // Capture frame for ball tracking (runs in background)
                     this.ballTracker.onFrame();
@@ -2935,6 +2953,7 @@
                 }
 
                 this.enhancedAnalyzer.resetSession();
+                this.landmarkFilter.reset();
 
                 document.getElementById('strokeCount').textContent = '0';
                 document.getElementById('avgScore').textContent = '--';

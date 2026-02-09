@@ -14,6 +14,12 @@ class EnhancedTennisAnalyzer {
 
     // Biomechanical checkpoint system for quality evaluation
     this.biomechanicalCheckpoints = new BiomechanicalCheckpoints();
+
+    // Kalman velocity estimator for smooth velocity/acceleration
+    this.kalmanEstimator = new KalmanVelocityEstimator({
+      processNoise: 0.001,
+      measurementNoise: 0.01
+    });
     
     // Session tracking
     this.poseHistory = [];
@@ -59,6 +65,7 @@ class EnhancedTennisAnalyzer {
     };
     this.physicsAnalyzer.reset();
     this.coachingOrchestrator.reset();
+    this.kalmanEstimator.reset();
     this.poseHistory = [];
     this.activeFaults = [];
     this.lastDetectedPhase = null;
@@ -94,11 +101,31 @@ class EnhancedTennisAnalyzer {
       
       // Joint positions for compatibility
       joints: this.extractJointPositions(landmarks),
-      
+
       // Legacy angles for UI display
       angles: this.calculateBasicAngles(landmarks)
     };
-    
+
+    // Feed joints to Kalman estimator for smooth velocity/acceleration
+    const kalmanEstimates = this.kalmanEstimator.update(poseData.joints, timestamp);
+    poseData.kalmanEstimates = kalmanEstimates;
+
+    // Override velocity and acceleration with Kalman-derived values for dominant wrist
+    const dominantWristKey = this.dominantHand === 'left' ? 'leftWrist' : 'rightWrist';
+    const wristEstimate = kalmanEstimates[dominantWristKey];
+    if (wristEstimate && wristEstimate.speed > 0) {
+      poseData.velocity = {
+        magnitude: wristEstimate.speed,
+        vx: wristEstimate.vx,
+        vy: wristEstimate.vy
+      };
+      poseData.acceleration = {
+        magnitude: wristEstimate.accelMag,
+        ax: wristEstimate.ax,
+        ay: wristEstimate.ay
+      };
+    }
+
     this.poseHistory.push(poseData);
 
     // Detect handedness by comparing wrist speeds over time
@@ -148,11 +175,15 @@ class EnhancedTennisAnalyzer {
       rightElbow: landmarks[14],
       rightShoulder: landmarks[12],
       leftShoulder: landmarks[11],
+      leftElbow: landmarks[13],
+      leftWrist: landmarks[15],
       rightHip: landmarks[24],
       leftHip: landmarks[23],
       rightKnee: landmarks[26],
+      leftKnee: landmarks[25],
       rightAnkle: landmarks[28],
-      leftAnkle: landmarks[27]
+      leftAnkle: landmarks[27],
+      nose: landmarks[0]
     };
   }
   

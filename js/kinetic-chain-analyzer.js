@@ -17,6 +17,17 @@ class KineticChainAnalyzer {
             'wrist'
         ];
 
+        // Map segment names to Kalman joint names for velocity lookup
+        this.segmentToJointMap = {
+            ankle: ['rightAnkle', 'leftAnkle'],
+            knee: ['rightKnee'],
+            hip: ['rightHip', 'leftHip'],
+            torso: ['rightShoulder', 'leftShoulder'],
+            shoulder: ['rightShoulder'],
+            elbow: ['rightElbow'],
+            wrist: ['rightWrist']
+        };
+
         // Timing tolerance between segments (frames)
         this.timingTolerance = {
             optimal: 2,      // Within 2 frames is optimal
@@ -103,9 +114,31 @@ class KineticChainAnalyzer {
     }
 
     /**
-     * Calculate velocity of a specific body segment between two consecutive frames
+     * Calculate velocity of a specific body segment between two consecutive frames.
+     * Prefers Kalman-estimated velocity when available (smoother, less noise).
      */
     getSegmentVelocity(currentFrame, previousFrame, segment) {
+        // Try Kalman estimates first (attached by enhanced-tennis-analyzer)
+        const kalman = currentFrame.kalmanEstimates;
+        if (kalman) {
+            const jointNames = this.segmentToJointMap[segment];
+            if (jointNames) {
+                let totalSpeed = 0;
+                let count = 0;
+                for (const name of jointNames) {
+                    const est = kalman[name];
+                    if (est && est.speed !== undefined) {
+                        totalSpeed += est.speed;
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    return totalSpeed / count;
+                }
+            }
+        }
+
+        // Fallback: position differencing between consecutive frames
         const current = currentFrame.joints;
         const previous = previousFrame.joints;
 
