@@ -3201,7 +3201,7 @@
         class TennisAI {
             constructor() {
                 this.pose = null;
-                this.camera = null;
+                this._cameraRunning = false;
                 this.isReady = false;
                 this.isAnalyzing = false;
                 this.currentFacingMode = 'user';
@@ -3372,33 +3372,49 @@
                 this.isReady = true;
             }
             async setupCamera() {
-                // Stop existing tracks before switching
+                // Stop existing stream and frame loop
+                this.stopCamera();
+
+                // Use getUserMedia directly with `ideal` constraints for high quality.
+                // The MediaPipe Camera class passes plain width/height values which
+                // mobile browsers interpret poorly, falling back to minimum resolution.
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: this.currentFacingMode
+                    }
+                });
+
+                this.video.srcObject = stream;
+                await this.video.play();
+
+                this.canvas.width = this.video.videoWidth;
+                this.canvas.height = this.video.videoHeight;
+
+                // Start frame processing loop (replaces MediaPipe Camera class)
+                this._cameraRunning = true;
+                const processFrame = async () => {
+                    if (!this._cameraRunning) return;
+                    try {
+                        if (this.video.readyState >= 2 && this.pose) {
+                            await this.pose.send({ image: this.video });
+                        }
+                    } catch (e) {
+                        // Pose send can fail during teardown — ignore
+                    }
+                    if (this._cameraRunning) {
+                        requestAnimationFrame(processFrame);
+                    }
+                };
+                requestAnimationFrame(processFrame);
+            }
+
+            stopCamera() {
+                this._cameraRunning = false;
                 if (this.video.srcObject) {
                     this.video.srcObject.getTracks().forEach(track => track.stop());
                     this.video.srcObject = null;
-                }
-
-                // Let MediaPipe Camera handle getUserMedia with the correct facingMode.
-                // Camera.start() returns a promise that resolves once the video is playing.
-                // Don't rely on onloadedmetadata — it may not fire on mobile when the
-                // Camera class controls the video element internally.
-                this.camera = new Camera(this.video, {
-                    onFrame: async () => {
-                        if (this.pose) {
-                            await this.pose.send({ image: this.video });
-                        }
-                    },
-                    width: 1280,
-                    height: 720,
-                    facingMode: this.currentFacingMode
-                });
-
-                await this.camera.start();
-
-                // Set canvas dimensions after camera is live
-                if (this.video.videoWidth && this.video.videoHeight) {
-                    this.canvas.width = this.video.videoWidth;
-                    this.canvas.height = this.video.videoHeight;
                 }
             }
             onResults(results) {
@@ -4282,10 +4298,7 @@
             const wasAnalyzing = tennisAI.isAnalyzing;
             if (wasAnalyzing) tennisAI.stopAnalysis();
 
-            // Stop MediaPipe camera loop
-            if (tennisAI.camera) {
-                tennisAI.camera.stop();
-            }
+            tennisAI.stopCamera();
 
             tennisAI.currentFacingMode = tennisAI.currentFacingMode === 'user' ? 'environment' : 'user';
             await tennisAI.setupCamera();
