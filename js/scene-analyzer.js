@@ -29,11 +29,22 @@ class SceneAnalyzer {
     this.consecutiveErrors = 0;
     this.maxConsecutiveErrors = 5;
 
-    // Create offscreen canvas for frame capture
+    // Create offscreen canvas for scene capture (320x180)
     this.captureCanvas = document.createElement('canvas');
     this.captureCanvas.width = 320;
     this.captureCanvas.height = 180;
     this.captureCtx = this.captureCanvas.getContext('2d');
+
+    // High-res canvas for stroke visual analysis (640x360)
+    this.strokeCanvas = document.createElement('canvas');
+    this.strokeCanvas.width = 640;
+    this.strokeCanvas.height = 360;
+    this.strokeCtx = this.strokeCanvas.getContext('2d');
+
+    // Rolling frame buffer for stroke analysis: last 60 frames at 640x360
+    this.rollingFrameBuffer = [];
+    this.maxRollingFrames = 60;
+    this.isAnalyzingStroke = false;   // prevents overlapping stroke analysis calls
   }
 
   /**
@@ -94,6 +105,325 @@ class SceneAnalyzer {
   }
 
   /**
+   * Capture a high-res frame (640x360) into the rolling buffer.
+   * Called every frame from onResults() during analysis.
+   */
+  captureHighResFrame(videoElement) {
+    if (!this.enabled || !videoElement || videoElement.readyState < 2) return;
+
+    try {
+      this.strokeCtx.drawImage(videoElement, 0, 0, 640, 360);
+      const dataUrl = this.strokeCanvas.toDataURL('image/jpeg', 0.75);
+      const base64 = dataUrl.split(',')[1];
+
+      this.rollingFrameBuffer.push({ base64, timestamp: Date.now() });
+      if (this.rollingFrameBuffer.length > this.maxRollingFrames) {
+        this.rollingFrameBuffer.shift();
+      }
+    } catch (e) {
+      // Silently fail — frame capture is best-effort
+    }
+  }
+
+  /**
+   * Analyze a stroke visually using Gemini.
+   * Extracts 5 evenly-spaced frames from the rolling buffer and sends to Gemini
+   * with a stroke-specific prompt. Returns structured visual analysis.
+   *
+   * @param {string} strokeType - e.g. 'Forehand', 'Backhand', 'Serve'
+   * @param {Array} detectedFaults - biomechanical faults already detected by MediaPipe
+   * @returns {Promise<Object|null>} Visual analysis result or null on failure
+   */
+  async analyzeStroke(strokeType, detectedFaults) {
+    if (!this.enabled || !this.geminiApiKey) return null;
+    if (this.isAnalyzingStroke) return null;
+    if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
+    if (this.rollingFrameBuffer.length < 5) return null;
+
+    this.isAnalyzingStroke = true;
+
+    // Extract 5 evenly-spaced frames from the rolling buffer
+    const buf = this.rollingFrameBuffer;
+    const indices = [
+      0,
+      Math.floor(buf.length * 0.25),
+      Math.floor(buf.length * 0.5),
+      Math.floor(buf.length * 0.75),
+      buf.length - 1
+    ];
+    const frames = indices.map(i => buf[i].base64);
+
+    const faultList = (detectedFaults || []).map(f => f.name || f.id).join(', ') || 'none';
+
+    const requestBody = {
+      contents: [{
+        parts: [
+          ...frames.map(base64 => ({
+            inline_data: {
+              mime_type: 'image/jpeg',
+              data: base64
+            }
+          })),
+          {
+            text: `You are an expert tennis coach analyzing a ${strokeType} stroke.
+These 5 frames show the stroke from preparation to follow-through (chronological order).
+
+The skeleton-based analysis already detected these faults: ${faultList}
+
+Analyze what the CAMERA can see that skeletons CANNOT:
+1. Racket face angle at contact (open/closed/neutral)
+2. Grip type if visible (eastern/semi-western/western/continental)
+3. Contact point relative to body (in front/beside/behind, high/low)
+4. Any visual faults not covered by the skeleton analysis
+5. Positive observations about form
+
+Be specific and concise.`
+          }
+        ]
+      }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            racketFace: {
+              type: 'OBJECT',
+              properties: {
+                state: { type: 'STRING', enum: ['open', 'closed', 'neutral', 'unknown'] },
+                atContact: { type: 'BOOLEAN' }
+              },
+              required: ['state']
+            },
+            contactPoint: {
+              type: 'OBJECT',
+              properties: {
+                position: { type: 'STRING', enum: ['in_front', 'beside', 'behind_body', 'unknown'] },
+                height: { type: 'STRING', enum: ['high', 'waist', 'low', 'unknown'] },
+                relative_to_body: { type: 'STRING', enum: ['optimal', 'behind', 'too_far_front', 'unknown'] }
+              },
+              required: ['position']
+            },
+            gripType: { type: 'STRING', enum: ['eastern', 'semi_western', 'western', 'continental', 'unknown'] },
+            bodyPosition: { type: 'STRING' },
+            faults: {
+              type: 'ARRAY',
+              items: {
+                type: 'OBJECT',
+                properties: {
+                  id: { type: 'STRING' },
+                  description: { type: 'STRING' },
+                  confidence: { type: 'NUMBER' },
+                  severity: { type: 'STRING', enum: ['low', 'medium', 'high'] }
+                },
+                required: ['id', 'description', 'confidence']
+              }
+            },
+            positives: {
+              type: 'ARRAY',
+              items: { type: 'STRING' }
+            },
+            confidence: { type: 'NUMBER' }
+          },
+          required: ['racketFace', 'contactPoint', 'confidence']
+        },
+        temperature: 0.2,
+        maxOutputTokens: 500
+      }
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.geminiApiKey
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        console.warn(`SceneAnalyzer: stroke analysis API error ${response.status}`);
+        this.consecutiveErrors++;
+        this.isAnalyzingStroke = false;
+        return null;
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        this.consecutiveErrors++;
+        this.isAnalyzingStroke = false;
+        return null;
+      }
+
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        result = JSON.parse(cleaned);
+      }
+
+      this.consecutiveErrors = 0;
+      this.isAnalyzingStroke = false;
+
+      console.log('SceneAnalyzer: stroke visual analysis complete', {
+        racketFace: result.racketFace?.state,
+        contactPoint: result.contactPoint?.position,
+        faults: (result.faults || []).length,
+        confidence: result.confidence
+      });
+
+      return result;
+
+    } catch (e) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        console.warn('SceneAnalyzer: stroke analysis timed out');
+      } else {
+        console.warn('SceneAnalyzer: stroke analysis failed', e);
+      }
+      this.consecutiveErrors++;
+      this.isAnalyzingStroke = false;
+      return null;
+    }
+  }
+
+  /**
+   * Analyze a completed rally using Gemini (up to 8 keyframes, tactical prompt).
+   * Called from RallyTracker.endRally() when Gemini enabled and rally had 3+ strokes.
+   *
+   * @param {Object} rallyData - Rally object from RallyTracker
+   * @returns {Promise<Object|null>} Tactical analysis result or null
+   */
+  async analyzeRally(rallyData) {
+    if (!this.enabled || !this.geminiApiKey) return null;
+    if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
+    if (this.rollingFrameBuffer.length < 5) return null;
+
+    // Extract up to 8 evenly-spaced keyframes (1/sec of rally duration)
+    const buf = this.rollingFrameBuffer;
+    const frameCount = Math.min(8, buf.length);
+    const step = Math.max(1, Math.floor(buf.length / frameCount));
+    const frames = [];
+    for (let i = 0; i < buf.length && frames.length < 8; i += step) {
+      frames.push(buf[i].base64);
+    }
+
+    const strokeSummary = (rallyData.strokes || [])
+      .map((s, i) => `${i + 1}. ${s.type} (quality ${s.quality})`)
+      .join(', ');
+
+    const requestBody = {
+      contents: [{
+        parts: [
+          ...frames.map(base64 => ({
+            inline_data: { mime_type: 'image/jpeg', data: base64 }
+          })),
+          {
+            text: `You are an expert tennis coach reviewing a rally that just ended.
+The rally was ${rallyData.origin === 'serve' ? 'a serve point' : 'a feed/drill rally'} with ${rallyData.strokes?.length || 0} strokes.
+Stroke sequence: ${strokeSummary || 'unknown'}
+
+Analyze these ${frames.length} keyframes from the rally and provide tactical insights:
+1. Court positioning — was the player in good position throughout?
+2. Shot selection — appropriate shot choices for the situation?
+3. Movement patterns — good recovery between shots?
+4. Point construction — building the point logically?
+5. Key moment — what decided the outcome?`
+          }
+        ]
+      }],
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            positioning: { type: 'STRING' },
+            shotSelection: { type: 'STRING' },
+            movement: { type: 'STRING' },
+            pointConstruction: { type: 'STRING' },
+            keyMoment: { type: 'STRING' },
+            overallAssessment: { type: 'STRING' },
+            suggestion: { type: 'STRING' },
+            confidence: { type: 'NUMBER' }
+          },
+          required: ['overallAssessment', 'suggestion', 'confidence']
+        },
+        temperature: 0.3,
+        maxOutputTokens: 400
+      }
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.geminiApiKey
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        this.consecutiveErrors++;
+        return null;
+      }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) {
+        this.consecutiveErrors++;
+        return null;
+      }
+
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        const cleaned = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+        result = JSON.parse(cleaned);
+      }
+
+      this.consecutiveErrors = 0;
+      console.log('SceneAnalyzer: rally analysis complete', {
+        assessment: result.overallAssessment?.substring(0, 60),
+        confidence: result.confidence
+      });
+
+      return result;
+
+    } catch (e) {
+      clearTimeout(timeout);
+      if (e.name === 'AbortError') {
+        console.warn('SceneAnalyzer: rally analysis timed out');
+      } else {
+        console.warn('SceneAnalyzer: rally analysis failed', e);
+      }
+      this.consecutiveErrors++;
+      return null;
+    }
+  }
+
+  /**
    * Stop frame capture and reset state.
    */
   stop() {
@@ -120,6 +450,8 @@ class SceneAnalyzer {
     this.courtSide = 'unknown';
     this.playerCount = 0;
     this.lastUpdateTime = 0;
+    this.rollingFrameBuffer = [];
+    this.isAnalyzingStroke = false;
   }
 
   /**
@@ -154,7 +486,8 @@ Analyze the frames (in chronological order, ~5 seconds apart) and determine:
 3. ballVisible: true/false
 4. courtSide: "deuce" | "ad" | "unknown"
 5. playerCount: integer
-6. confidence: 0.0 to 1.0`
+6. courtPosition: { zone, lateralPosition, recoveryPosition }
+7. confidence: 0.0 to 1.0`
           }
         ]
       }],
@@ -168,6 +501,15 @@ Analyze the frames (in chronological order, ~5 seconds apart) and determine:
             ballVisible: { type: 'BOOLEAN' },
             courtSide: { type: 'STRING', enum: ['deuce', 'ad', 'unknown'] },
             playerCount: { type: 'INTEGER' },
+            courtPosition: {
+              type: 'OBJECT',
+              properties: {
+                zone: { type: 'STRING', enum: ['baseline', 'no_mans_land', 'service_line', 'net', 'unknown'] },
+                lateralPosition: { type: 'STRING', enum: ['wide_deuce', 'center', 'wide_ad', 'unknown'] },
+                recoveryPosition: { type: 'STRING', enum: ['center', 'good', 'out_of_position', 'unknown'] }
+              },
+              required: ['zone']
+            },
             confidence: { type: 'NUMBER' }
           },
           required: ['pointState', 'shotContext', 'ballVisible', 'courtSide', 'playerCount', 'confidence']

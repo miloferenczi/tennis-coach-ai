@@ -280,29 +280,8 @@ class StrokeReplayManager {
       }
     }
 
-    // Wrist swing trail (last 10 frames up to current)
-    const trailStart = Math.max(0, frameIndex - 10);
-    const isLefty = options.dominantHand === 'left';
-    const wristIdx = isLefty ? 15 : 16;
-
-    ctx.lineWidth = 2;
-    for (let t = trailStart; t < frameIndex; t++) {
-      const f1 = replay.frames[t];
-      const f2 = replay.frames[t + 1];
-      if (!f1 || !f2) continue;
-
-      const p1 = f1.landmarks[wristIdx];
-      const p2 = f2.landmarks[wristIdx];
-      if (!p1 || !p2) continue;
-
-      const alpha = 0.2 + 0.8 * ((t - trailStart) / (frameIndex - trailStart));
-      const trailColor = phaseColors[f2.phase] || phaseColors.unknown;
-      ctx.strokeStyle = trailColor.replace('1)', `${alpha})`);
-      ctx.beginPath();
-      ctx.moveTo(p1.x * w, p1.y * h);
-      ctx.lineTo(p2.x * w, p2.y * h);
-      ctx.stroke();
-    }
+    // Enhanced wrist swing trail — velocity-colored with acceleration-proportional width
+    this.drawEnhancedWristTrail(ctx, replay, frameIndex, w, h, options);
 
     // Text overlays
     ctx.font = 'bold 16px Inter, sans-serif';
@@ -376,5 +355,403 @@ class StrokeReplayManager {
     return [...this.replays]
       .sort((a, b) => b.strokeData.quality - a.strokeData.quality)
       .slice(0, n);
+  }
+
+  // ========== Phase 3B: Enhanced Swing Path Visualization ==========
+
+  /**
+   * Draw velocity-colored wrist trail with acceleration-proportional width.
+   * Blue (slow) → green → yellow → red (fast). Width scales with acceleration.
+   */
+  drawEnhancedWristTrail(ctx, replay, frameIndex, w, h, options) {
+    const trailLength = 15;
+    const trailStart = Math.max(0, frameIndex - trailLength);
+    const isLefty = options.dominantHand === 'left';
+    const wristIdx = isLefty ? 15 : 16;
+
+    if (frameIndex - trailStart < 2) return;
+
+    // Collect wrist positions and compute velocities
+    const points = [];
+    for (let t = trailStart; t <= frameIndex; t++) {
+      const frame = replay.frames[t];
+      if (!frame) continue;
+      const pt = frame.landmarks[wristIdx];
+      if (!pt) continue;
+      points.push({ x: pt.x * w, y: pt.y * h, t });
+    }
+
+    if (points.length < 3) return;
+
+    // Compute velocity per segment
+    const velocities = [];
+    for (let i = 1; i < points.length; i++) {
+      const dx = points[i].x - points[i - 1].x;
+      const dy = points[i].y - points[i - 1].y;
+      velocities.push(Math.sqrt(dx * dx + dy * dy));
+    }
+
+    // Compute acceleration per segment
+    const accelerations = [0];
+    for (let i = 1; i < velocities.length; i++) {
+      accelerations.push(Math.abs(velocities[i] - velocities[i - 1]));
+    }
+
+    const maxVel = Math.max(...velocities, 1);
+    const maxAccel = Math.max(...accelerations, 1);
+
+    // Draw each segment
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+
+    for (let i = 1; i < points.length; i++) {
+      const velNorm = velocities[i - 1] / maxVel;        // 0..1
+      const accelNorm = accelerations[i - 1] / maxAccel;  // 0..1
+      const alpha = 0.3 + 0.7 * ((i) / points.length);   // fade in
+
+      // Velocity color: blue(0) → cyan(0.25) → green(0.5) → yellow(0.75) → red(1)
+      const color = this.velocityToColor(velNorm, alpha);
+      // Width: 2px base + up to 6px from acceleration
+      const lineWidth = 2 + accelNorm * 6;
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = lineWidth;
+      ctx.beginPath();
+      ctx.moveTo(points[i - 1].x, points[i - 1].y);
+      ctx.lineTo(points[i].x, points[i].y);
+      ctx.stroke();
+    }
+
+    // Draw dot at current wrist position
+    if (points.length > 0) {
+      const last = points[points.length - 1];
+      const lastVel = velocities.length > 0 ? velocities[velocities.length - 1] / maxVel : 0;
+      ctx.beginPath();
+      ctx.arc(last.x, last.y, 5, 0, Math.PI * 2);
+      ctx.fillStyle = this.velocityToColor(lastVel, 1.0);
+      ctx.fill();
+    }
+
+    // Velocity legend (small, bottom-center)
+    this.drawVelocityLegend(ctx, w, h);
+
+    // Racket face angle indicator at contact frame
+    const contactFrame = replay.frames.findIndex(f => f.phase === 'contact');
+    if (contactFrame >= 0 && frameIndex >= contactFrame - 1 && frameIndex <= contactFrame + 1) {
+      const cf = replay.frames[contactFrame];
+      const wrist = cf.landmarks[isLefty ? 15 : 16];
+      const elbow = cf.landmarks[isLefty ? 13 : 14];
+      if (wrist && elbow && wrist.visibility > 0.3 && elbow.visibility > 0.3) {
+        // Draw a short perpendicular line at wrist to represent racket face
+        const dx = wrist.x * w - elbow.x * w;
+        const dy = wrist.y * h - elbow.y * h;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        if (len > 0) {
+          // Perpendicular direction
+          const px = -dy / len;
+          const py = dx / len;
+          const lineLen = 18;
+          const wx = wrist.x * w;
+          const wy = wrist.y * h;
+
+          // Determine color from Gemini visual data
+          let faceColor = 'rgba(255,255,255,0.8)'; // default white
+          let faceLabel = '';
+          if (typeof tennisAI !== 'undefined' && tennisAI.visualMerger?.lastVisualResult?.racketFace) {
+            const state = tennisAI.visualMerger.lastVisualResult.racketFace.state;
+            if (state === 'open') { faceColor = '#FF3B30'; faceLabel = 'OPEN'; }
+            else if (state === 'closed') { faceColor = '#4FC3F7'; faceLabel = 'CLOSED'; }
+            else if (state === 'neutral') { faceColor = '#32D74B'; faceLabel = 'NEUTRAL'; }
+          }
+
+          ctx.strokeStyle = faceColor;
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.beginPath();
+          ctx.moveTo(wx - px * lineLen, wy - py * lineLen);
+          ctx.lineTo(wx + px * lineLen, wy + py * lineLen);
+          ctx.stroke();
+
+          if (faceLabel) {
+            ctx.font = 'bold 10px Inter, sans-serif';
+            ctx.fillStyle = faceColor;
+            ctx.textAlign = 'center';
+            ctx.fillText(faceLabel, wx, wy - 14);
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Map normalized velocity (0..1) to a color string.
+   */
+  velocityToColor(t, alpha) {
+    // Blue → Cyan → Green → Yellow → Red
+    let r, g, b;
+    if (t < 0.25) {
+      const s = t / 0.25;
+      r = 0; g = Math.round(180 * s); b = 255;
+    } else if (t < 0.5) {
+      const s = (t - 0.25) / 0.25;
+      r = 0; g = 180 + Math.round(75 * s); b = Math.round(255 * (1 - s));
+    } else if (t < 0.75) {
+      const s = (t - 0.5) / 0.25;
+      r = Math.round(255 * s); g = 255; b = 0;
+    } else {
+      const s = (t - 0.75) / 0.25;
+      r = 255; g = Math.round(255 * (1 - s)); b = 0;
+    }
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
+
+  /**
+   * Draw a small velocity color bar legend.
+   */
+  drawVelocityLegend(ctx, w, h) {
+    const barW = 80, barH = 6;
+    const x = (w - barW) / 2;
+    const y = h - 28;
+
+    const grad = ctx.createLinearGradient(x, 0, x + barW, 0);
+    grad.addColorStop(0, 'rgba(0,0,255,0.8)');
+    grad.addColorStop(0.25, 'rgba(0,180,255,0.8)');
+    grad.addColorStop(0.5, 'rgba(0,255,0,0.8)');
+    grad.addColorStop(0.75, 'rgba(255,255,0,0.8)');
+    grad.addColorStop(1.0, 'rgba(255,0,0,0.8)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, y, barW, barH);
+
+    ctx.font = '9px Inter, sans-serif';
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.textAlign = 'left';
+    ctx.fillText('slow', x, y - 2);
+    ctx.textAlign = 'right';
+    ctx.fillText('fast', x + barW, y - 2);
+  }
+
+  // ========== Phase 5B: Replay Export ==========
+
+  /**
+   * Export a replay as a WebM video via MediaRecorder.
+   * @param {number} replayIndex - Index in replays array
+   * @returns {Promise<Blob|null>} WebM blob or null on failure
+   */
+  async exportAsVideo(replayIndex) {
+    const replay = this.replays[replayIndex];
+    if (!replay) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = 640;
+    canvas.height = 480;
+    const ctx = canvas.getContext('2d');
+
+    // Check MediaRecorder support
+    if (typeof MediaRecorder === 'undefined') {
+      console.warn('StrokeReplayManager: MediaRecorder not supported');
+      return null;
+    }
+
+    const stream = canvas.captureStream(30);
+    const recorder = new MediaRecorder(stream, {
+      mimeType: 'video/webm;codecs=vp9',
+      videoBitsPerSecond: 2000000
+    });
+
+    const chunks = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+
+    return new Promise((resolve) => {
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'video/webm' });
+        resolve(blob);
+      };
+
+      recorder.start();
+
+      let frame = 0;
+      const fps = 30;
+      const playbackSpeed = 0.5;
+      const interval = (1000 / fps) / playbackSpeed;
+
+      const drawNext = () => {
+        if (frame >= replay.frames.length) {
+          recorder.stop();
+          return;
+        }
+        this.drawReplayFrame(ctx, canvas, replay, frame, {});
+        frame++;
+        setTimeout(drawNext, interval);
+      };
+
+      drawNext();
+    });
+  }
+
+  /**
+   * Share an exported replay via Web Share API or download fallback.
+   */
+  async shareReplay(replayIndex) {
+    try {
+      const blob = await this.exportAsVideo(replayIndex);
+      if (!blob) return;
+
+      const replay = this.replays[replayIndex];
+      const fileName = `ace-replay-${replay.strokeData.type.toLowerCase()}-${Date.now()}.webm`;
+
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], fileName, { type: 'video/webm' });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: `ACE Replay: ${replay.strokeData.type}`,
+            text: `${replay.strokeData.type} — Quality ${replay.strokeData.quality}/100`,
+            files: [file]
+          });
+          return;
+        }
+      }
+
+      // Download fallback
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('StrokeReplayManager: share replay failed', e);
+    }
+  }
+
+  // ========== Phase 7B: Side-by-Side Comparison ==========
+
+  /**
+   * Play two replays side by side on a single canvas.
+   * Left shows replay1, right shows replay2, with metric deltas.
+   * @param {number} idx1 - First replay index
+   * @param {number} idx2 - Second replay index
+   * @param {HTMLCanvasElement} canvas
+   * @param {Object} options
+   */
+  playSideBySide(idx1, idx2, canvas, options = {}) {
+    const r1 = this.replays[idx1];
+    const r2 = this.replays[idx2];
+    if (!r1 || !r2) return;
+
+    this.stopPlayback();
+    this.isPlaying = true;
+    this.isPaused = false;
+
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+    const halfW = Math.floor(w / 2);
+
+    const maxFrames = Math.max(r1.frames.length, r2.frames.length);
+    let frameIdx = 0;
+
+    const speed = options.speed || 0.5;
+    const frameInterval = (1000 / 30) / speed;
+
+    const drawFrame = () => {
+      if (this.isPaused) return;
+
+      ctx.fillStyle = 'rgba(10, 10, 10, 0.9)';
+      ctx.fillRect(0, 0, w, h);
+
+      // Divider line
+      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(halfW, 0);
+      ctx.lineTo(halfW, h);
+      ctx.stroke();
+
+      // Draw left replay
+      const fi1 = Math.min(frameIdx, r1.frames.length - 1);
+      this.drawHalfFrame(ctx, r1, fi1, 0, 0, halfW, h);
+
+      // Draw right replay
+      const fi2 = Math.min(frameIdx, r2.frames.length - 1);
+      this.drawHalfFrame(ctx, r2, fi2, halfW, 0, halfW, h);
+
+      // Labels
+      ctx.font = 'bold 14px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(205,255,0,0.8)';
+      ctx.fillText(`${r1.strokeData.type} — ${r1.strokeData.quality}`, halfW / 2, 20);
+      ctx.fillText(`${r2.strokeData.type} — ${r2.strokeData.quality}`, halfW + halfW / 2, 20);
+
+      // Quality delta
+      const delta = r2.strokeData.quality - r1.strokeData.quality;
+      const deltaStr = delta > 0 ? `+${delta}` : `${delta}`;
+      const deltaColor = delta > 0 ? '#32D74B' : delta < 0 ? '#FF3B30' : 'rgba(255,255,255,0.5)';
+      ctx.fillStyle = deltaColor;
+      ctx.font = 'bold 16px Inter, sans-serif';
+      ctx.fillText(`Δ ${deltaStr}`, w / 2, h - 12);
+
+      // Progress
+      const progress = maxFrames > 1 ? frameIdx / (maxFrames - 1) : 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fillRect(0, h - 4, w, 4);
+      ctx.fillStyle = '#CDFF00';
+      ctx.fillRect(0, h - 4, w * progress, 4);
+
+      frameIdx++;
+      if (frameIdx >= maxFrames) {
+        if (this.looping) {
+          frameIdx = 0;
+        } else {
+          this.stopPlayback();
+          return;
+        }
+      }
+    };
+
+    drawFrame();
+    this.playbackInterval = setInterval(drawFrame, frameInterval);
+  }
+
+  /**
+   * Draw a replay frame scaled to a sub-region of the canvas.
+   */
+  drawHalfFrame(ctx, replay, frameIndex, ox, oy, regionW, regionH) {
+    const frame = replay.frames[frameIndex];
+    if (!frame) return;
+
+    const lm = frame.landmarks;
+    const phaseColors = {
+      preparation:   'rgba(60, 130, 246, 0.6)',
+      loading:       'rgba(250, 204, 21, 0.6)',
+      acceleration:  'rgba(249, 115, 22, 0.6)',
+      contact:       'rgba(255, 59, 48, 0.6)',
+      followThrough: 'rgba(50, 215, 75, 0.6)',
+      unknown:       'rgba(0, 255, 255, 0.6)'
+    };
+
+    const color = phaseColors[frame.phase] || phaseColors.unknown;
+
+    // Skeleton
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = color;
+    for (const [a, b] of this.connections) {
+      if (lm[a] && lm[b] && lm[a].visibility > 0.3 && lm[b].visibility > 0.3) {
+        ctx.beginPath();
+        ctx.moveTo(ox + lm[a].x * regionW, oy + lm[a].y * regionH);
+        ctx.lineTo(ox + lm[b].x * regionW, oy + lm[b].y * regionH);
+        ctx.stroke();
+      }
+    }
+
+    // Joints
+    for (const pt of lm) {
+      if (!pt || pt.visibility < 0.3) continue;
+      ctx.beginPath();
+      ctx.arc(ox + pt.x * regionW, oy + pt.y * regionH, 3, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    }
   }
 }

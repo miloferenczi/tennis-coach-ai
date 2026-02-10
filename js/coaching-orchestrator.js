@@ -194,7 +194,18 @@ class CoachingOrchestrator {
             'serveLegDriveScore': metrics.serveLegDriveScore || 0,
             'serveContactHeightScore': metrics.serveContactHeightScore || 0,
             'serveShoulderTiltScore': metrics.serveShoulderTiltScore || 0,
-            'serveTossArmScore': metrics.serveTossArmScore || 0
+            'serveTossArmScore': metrics.serveTossArmScore || 0,
+            // Court position metrics
+            'lingeringNoMansLand': metrics.lingeringNoMansLand ?? null,
+            'positionScore': metrics.positionScore ?? null,
+            'courtRecoveryQuality': metrics.courtRecoveryQuality ?? null,
+            'courtZone': metrics.courtZone ?? null,
+            'noSplitStepAtNet': metrics.noSplitStepAtNet ?? null,
+            // Gemini visual analysis metrics
+            'geminiRacketFaceScore': metrics.geminiRacketFaceScore ?? null,
+            'geminiContactPointScore': metrics.geminiContactPointScore ?? null,
+            'geminiGrip': metrics.geminiGrip ?? null,
+            'geminiConfidence': metrics.geminiConfidence ?? null
         };
 
         return metricMap[metricName] !== undefined ? metricMap[metricName] : null;
@@ -230,6 +241,29 @@ class CoachingOrchestrator {
      */
     selectIssueToAddress(matchingIssues, metrics) {
         if (matchingIssues.length === 0) return null;
+
+        // Check curriculum override — boost curriculum-focus issues during technique weeks
+        if (typeof tennisAI !== 'undefined' && tennisAI.curriculumEngine) {
+            const overrideFocus = tennisAI.curriculumEngine.getOverridePriority();
+            if (overrideFocus) {
+                // Map curriculum focus area to coaching tree issue IDs
+                const focusToIssues = {
+                    'preparation': ['latePreparation'],
+                    'rotation': ['insufficientRotation'],
+                    'weight_transfer': ['poorWeightTransfer'],
+                    'arm_extension': ['collapsingElbowChickenWing'],
+                    'follow_through': ['poorFollowThrough'],
+                    'footwork': ['poorFootwork'],
+                    'power': ['lowRacquetSpeed'],
+                    'contact_point': ['inconsistentContactPoint', 'contactBehindBody']
+                };
+                const issueIds = focusToIssues[overrideFocus] || [];
+                const curriculumMatch = matchingIssues.find(i => issueIds.includes(i.id));
+                if (curriculumMatch && this.prerequisitesMet(curriculumMatch, metrics)) {
+                    return curriculumMatch;
+                }
+            }
+        }
 
         // Check issues in priority order
         for (const issue of matchingIssues) {
@@ -570,6 +604,13 @@ class CoachingOrchestrator {
         }
         if ((playerMetrics.serveScore || 0) > 75) {
             strengths.push('Solid serve mechanics');
+        }
+        // Visual analysis strengths (from Gemini)
+        if ((playerMetrics.geminiRacketFaceScore || 0) > 70) {
+            strengths.push('Good racket face control');
+        }
+        if ((playerMetrics.geminiContactPointScore || 0) > 70) {
+            strengths.push('Clean contact point');
         }
 
         return strengths;

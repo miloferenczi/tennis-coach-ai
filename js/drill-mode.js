@@ -190,6 +190,13 @@ class DrillMode {
     const isComplete = drill.currentRep >= drill.totalReps;
     const hitTarget = metricValue >= drill.target;
 
+    // Fire Gemini visual assessment at midpoint and completion
+    const midpoint = Math.floor(drill.totalReps / 2);
+    if ((drill.currentRep === midpoint || isComplete) && !drill._geminiAssessmentSent) {
+      this.fireGeminiDrillAssessment(drill, isComplete);
+      if (isComplete) drill._geminiAssessmentSent = true;
+    }
+
     return {
       wrongType: false,
       rep: drill.currentRep,
@@ -202,6 +209,35 @@ class DrillMode {
       bestValue: Math.max(...drill.scores.map(s => s.value)),
       repsAtTarget: drill.scores.filter(s => s.value >= drill.target).length
     };
+  }
+
+  /**
+   * Fire async Gemini visual assessment during drill.
+   * Sends summary + keyframes from rolling buffer for drill-specific analysis.
+   */
+  fireGeminiDrillAssessment(drill, isComplete) {
+    if (typeof tennisAI === 'undefined' || !tennisAI.sceneAnalyzer?.enabled) return;
+
+    const summary = this.getSummary();
+    if (!summary) return;
+
+    const avg = Math.round(summary.average);
+    const phase = isComplete ? 'completed' : 'midpoint';
+
+    // Use the existing stroke analysis with a drill-specific prompt context
+    const drillContext = `DRILL ASSESSMENT (${phase}): "${drill.name}" — ${drill.currentRep}/${drill.totalReps} reps, average ${avg} (target: ${drill.target}). ` +
+      `Hit rate: ${summary.repsAtTarget}/${drill.currentRep}. Trend: ${summary.trend || 'stable'}. ` +
+      `${isComplete ? 'Give a brief drill summary and one thing to work on next.' : 'Give one mid-drill adjustment.'}`;
+
+    // Send to GPT as a proactive trigger
+    if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+      setTimeout(() => {
+        gptVoiceCoach.analyzeStroke({
+          type: 'proactive_trigger',
+          message: drillContext
+        });
+      }, 1500);
+    }
   }
 
   extractMetric(strokeData, metric) {
@@ -262,6 +298,82 @@ class DrillMode {
     this.isActive = false;
     this.currentDrill = null;
     return summary;
+  }
+
+  // ========== Phase 4B: Curriculum-Aware Drill Suggestions ==========
+
+  /**
+   * Get a suggested drill based on active curriculum focus.
+   * Returns a drill ID or null if no curriculum is active.
+   */
+  getCurriculumDrillSuggestion() {
+    if (typeof tennisAI === 'undefined' || !tennisAI.curriculumEngine) return null;
+    const engine = tennisAI.curriculumEngine;
+    if (!engine.isActive()) return null;
+
+    const focus = engine.getTodayFocus();
+    if (!focus) return null;
+
+    // Map curriculum focus areas to drill IDs
+    const focusToDrill = {
+      'preparation': null,              // no specific drill yet
+      'rotation': 'hip_rotation_power',
+      'weight_transfer': 'footwork_base',
+      'arm_extension': 'full_extension',
+      'follow_through': 'smooth_acceleration',
+      'footwork': 'footwork_base',
+      'power': 'explosive_serve',
+      'contact_point': null,
+      'consistency': 'smooth_acceleration'
+    };
+
+    const drillId = focusToDrill[focus.primaryFocus];
+    if (!drillId || !this.drills[drillId]) return null;
+
+    return {
+      drillId,
+      drill: this.drills[drillId],
+      weekTheme: focus.weekTheme,
+      weekNumber: focus.weekNumber,
+      reason: `Curriculum Week ${focus.weekNumber}: ${focus.primaryFocus.replace(/_/g, ' ')}`
+    };
+  }
+
+  /**
+   * Check if current drill target should be progressively increased.
+   * Increases by 10% if player hit 80%+ of target in last 3 consecutive sets.
+   * @returns {boolean} true if target was increased
+   */
+  checkProgressiveDifficulty() {
+    if (!this.currentDrill || !this.currentDrill.scores) return false;
+
+    const scores = this.currentDrill.scores;
+    const target = this.currentDrill.target;
+
+    // Need at least 3 sets worth (30 reps for 10-rep drills)
+    if (scores.length < 3 * (this.currentDrill.totalReps || 10)) return false;
+
+    // Check last 3 sets
+    const repsPerSet = this.currentDrill.totalReps || 10;
+    const lastThreeSets = [];
+    for (let i = 0; i < 3; i++) {
+      const setStart = scores.length - repsPerSet * (i + 1);
+      const setEnd = scores.length - repsPerSet * i;
+      if (setStart < 0) return false;
+      const setScores = scores.slice(setStart, setEnd);
+      const hitRate = setScores.filter(s => s.value >= target).length / setScores.length;
+      lastThreeSets.push(hitRate);
+    }
+
+    // All 3 sets must have 80%+ hit rate
+    if (lastThreeSets.every(rate => rate >= 0.8)) {
+      const increase = Math.round(target * 0.1);
+      this.currentDrill.target = target + Math.max(1, increase);
+      console.log(`DrillMode: progressive difficulty — target increased to ${this.currentDrill.target}`);
+      return true;
+    }
+
+    return false;
   }
 }
 

@@ -129,6 +129,12 @@ FORM TARGETS FOR THIS PLAYER (${skillLevel} level):
 `;
     }
 
+    // Get curriculum context if available
+    let curriculumContext = '';
+    if (typeof tennisAI !== 'undefined' && tennisAI?.curriculumEngine?.isActive()) {
+      curriculumContext = tennisAI.curriculumEngine.formatForSystemPrompt();
+    }
+
     // Get rally context if available
     let rallyContext = '';
     if (typeof tennisAI !== 'undefined' && tennisAI?.rallyTracker) {
@@ -142,7 +148,7 @@ SCORING SYSTEM:
 - Biomechanical form is phase-by-phase evaluation: preparation, loading, acceleration, follow-through
 - Velocities are in body-relative units (torso-lengths/sec) -- camera-independent
 - Power alone doesn't make a good stroke. Proper form generates power naturally.
-${formTargetsBlock}${trackerContext}${rallyContext}
+${formTargetsBlock}${trackerContext}${curriculumContext}${rallyContext}
 YOUR IDENTITY:
 - You are their personal tennis coach, not a generic AI assistant
 - You speak naturally like a real courtside coach - confident, direct, warm
@@ -376,6 +382,49 @@ DRILL MODE ACTIVE:
       return;
     }
 
+    // Handle proactive coaching triggers (pattern alerts, personal bests, etc.)
+    if (strokeData.type === 'proactive_trigger') {
+      const prompt = strokeData.message + '\n\nDeliver this naturally as the coach (1-2 sentences). Stay in character.';
+      this.dataChannel.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: prompt }] }
+      }));
+      this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+      return;
+    }
+
+    // Handle Gemini visual analysis follow-up (async result ~1-2s after stroke)
+    if (strokeData.type === 'visual_analysis_followup') {
+      const prompt = strokeData.prompt;
+      if (!prompt) return;
+
+      this.dataChannel.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: prompt }] }
+      }));
+      this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+      return;
+    }
+
+    // Handle Gemini rally analysis (async result after rally ends)
+    if (strokeData.type === 'rally_analysis') {
+      const a = strokeData.analysis;
+      let prompt = `RALLY ANALYSIS (Rally #${strokeData.rallyNumber}, ${strokeData.strokeCount} strokes, avg quality ${strokeData.avgQuality}):\n`;
+      if (a.overallAssessment) prompt += `Assessment: ${a.overallAssessment}\n`;
+      if (a.positioning) prompt += `Positioning: ${a.positioning}\n`;
+      if (a.shotSelection) prompt += `Shot selection: ${a.shotSelection}\n`;
+      if (a.keyMoment) prompt += `Key moment: ${a.keyMoment}\n`;
+      if (a.suggestion) prompt += `Suggestion: ${a.suggestion}\n`;
+      prompt += `\nBriefly share ONE tactical observation about this rally (1-2 sentences). Focus on what they can do next point.`;
+
+      this.dataChannel.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: prompt }] }
+      }));
+      this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+      return;
+    }
+
     // Handle shot outcome follow-up (async result from ball tracking)
     if (strokeData.type === 'shot_outcome_followup') {
       const outcome = strokeData.shotOutcome;
@@ -496,6 +545,9 @@ DRILL MODE ACTIVE:
         // Add plan progress so GPT can celebrate toward a goal
         prompt += this.buildFormDetailsBlock(data);
         prompt += `\nKeep it brief - celebrate this stroke and mention a specific strength with numbers. Be genuine, not generic.\n`;
+        if (data.brevityInstruction) {
+          prompt += data.brevityInstruction;
+        }
         return prompt;
       } else if (data.orchestratorFeedback.type === 'coaching') {
         // Structured coaching from decision tree
@@ -552,6 +604,9 @@ DRILL MODE ACTIVE:
         prompt += this.buildFormDetailsBlock(data);
 
         prompt += `YOUR TASK: Use sandwich coaching - briefly acknowledge a strength, deliver the correction cue, then encourage. Reference specific angles/metrics. Under 15 seconds. Be direct and actionable like a real coach.\n`;
+        if (data.brevityInstruction) {
+          prompt += data.brevityInstruction;
+        }
         return prompt;
       }
     }
@@ -760,6 +815,7 @@ Session stats:
 ${breakdownStr ? `\nPer-stroke-type breakdown:\n${breakdownStr}` : ''}
 ${transcriptSummary ? `Your coaching responses this session:\n${transcriptSummary}\n` : ''}
 ${previousNotes ? `Your notes from last session: "${previousNotes}"\n` : ''}
+${typeof tennisAI !== 'undefined' && tennisAI.sessionVideoManager ? tennisAI.sessionVideoManager.formatForNotebook() : ''}
 Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 characters. Include: what you worked on, what improved (reference specific metrics like hip-shoulder separation or rotation angles), what to focus on next session, and any personal observations about this player. Do NOT use any prefix or label — just write the notes directly. Be specific, not generic.`;
 
     return new Promise((resolve) => {
@@ -928,6 +984,17 @@ Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 c
       }
     }
 
+    // Court position context (from Gemini scene analysis)
+    if (typeof tennisAI !== 'undefined' && tennisAI.courtPositionAnalyzer) {
+      const cpBlock = tennisAI.courtPositionAnalyzer.formatForPrompt();
+      if (cpBlock) block += cpBlock;
+    }
+
+    // Previous stroke's visual context from Gemini (if available)
+    if (data.previousVisualContext) {
+      block += data.previousVisualContext;
+    }
+
     block += `\n`;
     return block;
   }
@@ -1033,6 +1100,21 @@ Rules:
   /**
    * Reset session state
    */
+  /**
+   * Interrupt current GPT speech by cancelling the active response.
+   * Called by speech gate when a new stroke is detected during coaching.
+   */
+  interruptSpeech() {
+    if (!this.isConnected || !this.dataChannel || this.dataChannel.readyState !== 'open') return;
+
+    try {
+      // Cancel any in-flight response
+      this.dataChannel.send(JSON.stringify({ type: 'response.cancel' }));
+    } catch (e) {
+      // Ignore errors — best effort interruption
+    }
+  }
+
   resetSession() {
     this.lastQualityScores = [];
     this.fatigueDetected = false;

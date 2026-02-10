@@ -20,8 +20,10 @@
 "issuePriority": {
 "foundation": ["latePreparation", "inconsistentContactPoint", "poorFootwork"],
 "power": ["lowRacquetSpeed", "insufficientRotation", "poorWeightTransfer"],
-"refinement": ["collapsingElbowChickenWing", "closedStanceLimitingPower", "poorFollowThrough"],
-"serve": ["poorServeTossArm", "noServeLegDrive", "noServeTrophyPosition", "lowServeContactPoint"]
+"refinement": ["collapsingElbowChickenWing", "closedStanceLimitingPower", "poorFollowThrough", "racketFaceOpen", "contactBehindBody"],
+"serve": ["poorServeTossArm", "noServeLegDrive", "noServeTrophyPosition", "lowServeContactPoint"],
+"visual": ["wrongGrip"],
+"positioning": ["lingeringNoMansLand", "poorRecoveryPosition", "noSplitStepAtNet"]
 },
 "issues": [
 {
@@ -483,6 +485,210 @@
 "expectedImprovement": {
 "serveContactHeightScore": { "increase": 20 },
 "serveScore": { "increase": 10 }
+}
+},
+{
+"id": "racketFaceOpen",
+"name": "Open Racket Face at Contact",
+"priority": 6,
+"category": "refinement",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"geminiRacketFaceScore": { "max": 40 }
+},
+"confirming": {
+"geminiConfidence": { "min": 0.5 }
+}
+},
+"diagnosis": {
+"rootCause": "wrist_position_or_grip",
+"symptoms": ["balls_flying_long", "lack_of_topspin", "high_trajectory"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["balls_flying_long", "inconsistent_depth"],
+"requires": ["basic_stroke_mechanics"]
+},
+"cueSelection": {
+"beginner": "Close the racket face slightly — imagine wiping the ball from low to high.",
+"intermediate": "Pronate your wrist through contact; brush up the back of the ball.",
+"advanced": "Adjust your grip pressure and wrist lay-back to control face angle through the hitting zone."
+},
+"keyMetrics": ["geminiRacketFaceScore", "geminiConfidence"],
+"expectedImprovement": {
+"quality": { "increase": 8 },
+"consistency": { "increase": 10 }
+}
+},
+{
+"id": "contactBehindBody",
+"name": "Contact Point Behind Body",
+"priority": 7,
+"category": "refinement",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"geminiContactPointScore": { "max": 35 }
+},
+"confirming": {
+"geminiConfidence": { "min": 0.5 }
+}
+},
+"diagnosis": {
+"rootCause": "late_preparation_or_poor_spacing",
+"symptoms": ["weak_shots", "loss_of_control", "arm_strain"]
+},
+"dependencies": {
+"mustFixFirst": ["latePreparation"],
+"resolves": ["weak_shots", "arm_strain"],
+"requires": ["footwork", "timing"]
+},
+"cueSelection": {
+"beginner": "Get to the ball early and hit it out in front of your body.",
+"intermediate": "Make contact when the ball is level with your front hip — not behind you.",
+"advanced": "Adjust your spacing so contact is in the optimal strike zone: front hip, arm comfortably extended."
+},
+"keyMetrics": ["geminiContactPointScore", "geminiConfidence"],
+"expectedImprovement": {
+"quality": { "increase": 12 },
+"velocity": { "increase": 0.01 }
+}
+},
+{
+"id": "wrongGrip",
+"name": "Incorrect Grip for Stroke",
+"priority": 4,
+"category": "visual",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"geminiGrip": { "equals": "continental" }
+},
+"confirming": {
+"geminiConfidence": { "min": 0.6 }
+}
+},
+"diagnosis": {
+"rootCause": "grip_not_matched_to_stroke",
+"symptoms": ["lack_of_topspin", "inconsistent_contact", "wrist_discomfort"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["lack_of_topspin", "wrist_issues"],
+"requires": ["grip_awareness"]
+},
+"cueSelection": {
+"beginner": "Check your grip — for groundstrokes, use a semi-western or eastern grip.",
+"intermediate": "Your grip looks like a continental — that's great for volleys and serves, but switch to semi-western for groundstrokes.",
+"advanced": "Fine-tune your grip: slight semi-western for topspin, more eastern for flatter shots."
+},
+"keyMetrics": ["geminiGrip", "geminiConfidence"],
+"expectedImprovement": {
+"quality": { "increase": 8 },
+"consistency": { "increase": 10 }
+}
+},
+{
+"id": "lingeringNoMansLand",
+"name": "Lingering in No-Man's Land",
+"priority": 6,
+"category": "positioning",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"lingeringNoMansLand": { "equals": true }
+},
+"confirming": {
+"positionScore": { "max": 60 }
+}
+},
+"diagnosis": {
+"rootCause": "poor_court_awareness",
+"symptoms": ["vulnerable_to_shots_at_feet", "defensive_position", "late_reactions"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["court_positioning", "defensive_play"],
+"requires": ["court_awareness"]
+},
+"cueSelection": {
+"beginner": "After your shot, move back behind the baseline or come forward to the net — don't stay in the middle.",
+"intermediate": "Commit to a position: recover behind the baseline, or close to the net. No-man's land gets you in trouble.",
+"advanced": "Transit through the transition zone quickly. If approaching, split-step at the service line and close."
+},
+"keyMetrics": ["lingeringNoMansLand", "positionScore"],
+"expectedImprovement": {
+"positionScore": { "increase": 20 },
+"quality": { "increase": 5 }
+}
+},
+{
+"id": "poorRecoveryPosition",
+"name": "Poor Recovery Position",
+"priority": 5,
+"category": "positioning",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"courtRecoveryQuality": { "equals": "poor" }
+},
+"confirming": {
+"positionScore": { "max": 55 }
+}
+},
+"diagnosis": {
+"rootCause": "not_recovering_to_center",
+"symptoms": ["open_court", "scrambling", "late_to_next_shot"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["court_coverage", "scrambling"],
+"requires": ["footwork", "court_awareness"]
+},
+"cueSelection": {
+"beginner": "After every shot, shuffle back toward the center of the baseline.",
+"intermediate": "Recover to the bisector — halfway between where your opponent could hit. Move your feet!",
+"advanced": "Dynamic recovery: adjust your base position based on shot quality and opponent tendencies."
+},
+"keyMetrics": ["courtRecoveryQuality", "positionScore"],
+"expectedImprovement": {
+"positionScore": { "increase": 15 },
+"quality": { "increase": 5 }
+}
+},
+{
+"id": "noSplitStepAtNet",
+"name": "No Split Step at Net",
+"priority": 7,
+"category": "positioning",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"noSplitStepAtNet": { "equals": true }
+},
+"confirming": {
+"courtZone": { "equals": "net" }
+}
+},
+"diagnosis": {
+"rootCause": "missing_split_step_before_volley",
+"symptoms": ["flat_footed_at_net", "late_reaction", "lunging_volleys"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["reaction_time_at_net", "volley_preparation"],
+"requires": ["footwork", "anticipation"]
+},
+"cueSelection": {
+"beginner": "When you come to the net, do a small hop (split step) just as your opponent hits the ball. Land on the balls of your feet.",
+"intermediate": "Time your split step to land as your opponent makes contact. Stay light on your feet, knees bent, ready to push off either direction.",
+"advanced": "Split step with a slight forward lean. Read the opponent's racket angle during your hop to pre-load your first step direction."
+},
+"keyMetrics": ["noSplitStepAtNet", "positionScore"],
+"expectedImprovement": {
+"positionScore": { "increase": 10 },
+"quality": { "increase": 8 }
 }
 }
 ],

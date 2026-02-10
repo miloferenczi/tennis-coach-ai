@@ -56,6 +56,15 @@
     <script src="js/ghost-overlay.js"></script>
     <script src="js/stroke-replay.js"></script>
     <script src="js/scene-analyzer.js"></script>
+    <script src="js/visual-analysis-merger.js"></script>
+    <script src="js/live-feedback-overlay.js"></script>
+    <script src="js/court-position-analyzer.js"></script>
+    <script src="js/speech-gate.js"></script>
+    <script src="js/insight-miner.js"></script>
+    <script src="js/proactive-triggers.js"></script>
+    <script src="js/curriculum-engine.js"></script>
+    <script src="js/share-card-generator.js"></script>
+    <script src="js/session-video-manager.js"></script>
     <script src="js/rally-tracker.js"></script>
     <script src="js/challenge-mode.js"></script>
     <script src="js/drill-mode.js"></script>
@@ -3238,12 +3247,34 @@
                     onShotAnalyzed: this.onShotAnalyzed.bind(this)
                 });
 
-                // Scene Analyzer (Gemini multimodal) + Rally Tracker
+                // Scene Analyzer (Gemini multimodal) + Rally Tracker + Visual Merger + Live Feedback + Court Position
                 this.sceneAnalyzer = new SceneAnalyzer();
+                this.visualMerger = new VisualAnalysisMerger();
+                this.liveFeedbackOverlay = new LiveFeedbackOverlay();
+                this.courtPositionAnalyzer = new CourtPositionAnalyzer();
+                this.speechGate = new SpeechGate();
+                this.insightMiner = new InsightMiner();
+                this.proactiveTriggers = new ProactiveTriggers();
+                this.curriculumEngine = new CurriculumEngine();
+                this.shareCardGenerator = new ShareCardGenerator();
+                this.sessionVideoManager = new SessionVideoManager();
                 this.rallyTracker = new RallyTracker();
                 this.sceneAnalyzer.onStateChange = (oldState, newState, sceneData) => {
                     this.rallyTracker.onStateChange(oldState, newState, sceneData);
+                    if (this.courtPositionAnalyzer && sceneData) {
+                        this.courtPositionAnalyzer.update(sceneData);
+                    }
+                    if (this.speechGate) {
+                        this.speechGate.updateGameState(newState);
+                    }
                     this.updateRallyIndicator();
+                };
+
+                // Speech gate flush: send queued coaching when transitioning to between-points
+                this.speechGate.onFlush = (coachingContext) => {
+                    if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+                        gptVoiceCoach.analyzeStroke(coachingContext);
+                    }
                 };
 
                 // Set Gemini key from localStorage if available
@@ -3344,36 +3375,31 @@
                 // Stop existing tracks before switching
                 if (this.video.srcObject) {
                     this.video.srcObject.getTracks().forEach(track => track.stop());
+                    this.video.srcObject = null;
                 }
 
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: this.currentFacingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                });
-
-                this.video.srcObject = stream;
-
+                // Let MediaPipe Camera handle getUserMedia with the correct facingMode.
+                // Previously we called getUserMedia ourselves, but Camera.start() opens
+                // its own stream internally, overwriting ours — causing the flip bug.
                 return new Promise((resolve) => {
-                    this.video.onloadedmetadata = () => {
-                        this.canvas.width = this.video.videoWidth;
-                        this.canvas.height = this.video.videoHeight;
-
-                       this.camera = new Camera(this.video, {
+                    this.camera = new Camera(this.video, {
                         onFrame: async () => {
                             if (this.pose) {
                                 await this.pose.send({ image: this.video });
                             }
                         },
                         width: 1280,
-                        height: 720
+                        height: 720,
+                        facingMode: this.currentFacingMode
                     });
 
-                        this.camera.start();
+                    this.video.onloadedmetadata = () => {
+                        this.canvas.width = this.video.videoWidth;
+                        this.canvas.height = this.video.videoHeight;
                         resolve();
                     };
+
+                    this.camera.start();
                 });
             }
             onResults(results) {
@@ -3412,6 +3438,11 @@
                     const filteredLandmarks = this.landmarkFilter.filterLandmarks(results.poseLandmarks, timestamp);
                     const poseData = this.enhancedAnalyzer.analyzePose(filteredLandmarks, timestamp);
 
+                    // Capture high-res frame for Gemini visual analysis (rolling buffer)
+                    if (this.sceneAnalyzer && this.sceneAnalyzer.enabled) {
+                        this.sceneAnalyzer.captureHighResFrame(this.video);
+                    }
+
                     // Capture frame for ball tracking (runs in background)
                     this.ballTracker.onFrame();
 
@@ -3435,6 +3466,11 @@
                     if (similarity !== null) {
                         this.updateGhostSimilarity(similarity);
                     }
+                }
+
+                // Draw live feedback overlay (stroke flash, floating score, word label)
+                if (this.liveFeedbackOverlay && this.liveFeedbackOverlay.isActive()) {
+                    this.liveFeedbackOverlay.draw(this.ctx, this.canvas.width, this.canvas.height);
                 }
             }
 
@@ -3789,9 +3825,37 @@
                             }
                         }
 
-                        // Add rally stats to summary
+                        // Add rally stats and last Gemini tactical analysis to summary
                         if (this.rallyTracker) {
                             endedSession.summary.rallyStats = this.rallyTracker.getSessionStats();
+                            const lastAnalysis = this.rallyTracker.getLastRallyAnalysis();
+                            if (lastAnalysis) {
+                                endedSession.summary.lastRallyAnalysis = lastAnalysis;
+                            }
+                        }
+
+                        // Mine patterns and insights
+                        if (this.insightMiner && endedSession.strokes) {
+                            const crossSessionData = typeof improvementTracker !== 'undefined' ? improvementTracker : null;
+                            endedSession.summary.insights = this.insightMiner.minePatterns(
+                                endedSession.strokes, crossSessionData
+                            );
+                        }
+
+                        // Record curriculum session
+                        if (this.curriculumEngine?.isActive()) {
+                            this.curriculumEngine.recordSession();
+                        }
+
+                        // Speak top insight via GPT at session end
+                        if (endedSession.summary.insights?.length > 0 && this.insightMiner) {
+                            const topInsightPrompt = this.insightMiner.formatTopInsightForGPT();
+                            if (topInsightPrompt && typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+                                gptVoiceCoach.analyzeStroke({
+                                    type: 'proactive_trigger',
+                                    message: `SESSION ENDING — share this insight with the player: ${topInsightPrompt}`
+                                });
+                            }
                         }
 
                         showSessionSummary(endedSession.summary);
@@ -3808,8 +3872,13 @@
                 this.enhancedAnalyzer.resetSession();
                 this.landmarkFilter.reset();
 
-                // Reset rally tracker and scene analyzer
+                // Reset rally tracker, scene analyzer, visual merger, and court position
                 if (this.rallyTracker) this.rallyTracker.reset();
+                if (this.visualMerger) this.visualMerger.reset();
+                if (this.courtPositionAnalyzer) this.courtPositionAnalyzer.reset();
+                if (this.speechGate) this.speechGate.reset();
+                if (this.proactiveTriggers) this.proactiveTriggers.reset();
+                if (this.sessionVideoManager) this.sessionVideoManager.reset();
                 if (this.sceneAnalyzer) {
                     this.sceneAnalyzer.reset();
                     // Restart scene analysis for new session
@@ -4318,6 +4387,77 @@
                 </div>
             `;
 
+            // Hero insight card (from pattern mining)
+            if (summary.insights && summary.insights.length > 0) {
+                const heroInsight = summary.insights[0];
+                html += `
+                    <div class="summary-section" style="background: linear-gradient(135deg, rgba(79,195,247,0.15), rgba(205,255,0,0.1));
+                                border-radius: 12px; padding: 16px; margin-top: 12px; border: 1px solid rgba(79,195,247,0.3);">
+                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #4FC3F7; margin-bottom: 8px;">
+                            Session Insight
+                        </div>
+                        <div style="font-size: 18px; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 6px;">
+                            ${heroInsight.headline}
+                        </div>
+                        <div style="font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.4; margin-bottom: 8px;">
+                            ${heroInsight.detail}
+                        </div>
+                        <div style="font-size: 13px; color: var(--accent-volt); font-weight: 500;">
+                            ${heroInsight.actionable}
+                        </div>
+                    </div>
+                `;
+
+                // Additional insights
+                if (summary.insights.length > 1) {
+                    html += `<div class="summary-section">
+                        <div class="summary-section-title">More Insights</div>`;
+                    for (let i = 1; i < summary.insights.length; i++) {
+                        const ins = summary.insights[i];
+                        html += `
+                            <div style="padding: 10px 14px; margin-bottom: 8px; background: rgba(255,255,255,0.05);
+                                        border-radius: 8px; border-left: 3px solid rgba(79,195,247,0.5);">
+                                <div style="font-weight: 600; color: rgba(255,255,255,0.9); font-size: 14px; margin-bottom: 2px;">${ins.headline}</div>
+                                <div style="color: rgba(255,255,255,0.6); font-size: 12px;">${ins.actionable}</div>
+                            </div>
+                        `;
+                    }
+                    html += `</div>`;
+                }
+            }
+
+            // Quality sparkline (inline SVG)
+            if (summary.totalStrokes >= 5) {
+                const currentSession = typeof sessionStorage !== 'undefined' ? sessionStorage.getCurrentSession() : null;
+                const strokes = currentSession?.strokes;
+                if (strokes && strokes.length >= 5) {
+                    const scores = strokes.map(s => s.quality);
+                    const maxS = Math.max(...scores, 100);
+                    const minS = Math.min(...scores, 0);
+                    const range = maxS - minS || 1;
+                    const w = 280;
+                    const h = 50;
+                    const points = scores.map((s, i) => {
+                        const x = (i / (scores.length - 1)) * w;
+                        const y = h - ((s - minS) / range) * h;
+                        return `${x.toFixed(1)},${y.toFixed(1)}`;
+                    }).join(' ');
+
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">Quality Over Time</div>
+                            <svg width="${w}" height="${h + 10}" style="display: block; margin: 0 auto;">
+                                <polyline points="${points}" fill="none" stroke="var(--accent-volt)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <line x1="0" y1="${h - ((summary.averageScore - minS) / range) * h}" x2="${w}" y2="${h - ((summary.averageScore - minS) / range) * h}"
+                                      stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="4,4"/>
+                                <text x="${w}" y="${h - ((summary.averageScore - minS) / range) * h - 4}" text-anchor="end"
+                                      fill="rgba(255,255,255,0.4)" font-size="10">avg ${summary.averageScore}</text>
+                            </svg>
+                        </div>
+                    `;
+                }
+            }
+
             if (summary.weaknesses && summary.weaknesses.length > 0) {
                 html += `
                     <div class="summary-section">
@@ -4395,6 +4535,25 @@
                 `;
             }
 
+            // Gemini tactical summary (from rally analysis)
+            if (tennisAI?.rallyTracker?.getLastRallyAnalysis) {
+                const ra = tennisAI.rallyTracker.getLastRallyAnalysis();
+                if (ra && ra.overallAssessment) {
+                    html += `
+                        <div class="summary-section" style="background: rgba(79,195,247,0.08); border-radius: 10px;
+                                    padding: 14px 16px; border-left: 3px solid rgba(79,195,247,0.5);">
+                            <div class="summary-section-title" style="color: #4FC3F7;">Tactical Summary</div>
+                            <div style="font-size: 14px; color: rgba(255,255,255,0.85); line-height: 1.5; margin-bottom: 8px;">
+                                ${ra.overallAssessment}
+                            </div>
+                            ${ra.suggestion ? `<div style="font-size: 13px; color: var(--accent-volt); font-weight: 500;">
+                                Next time: ${ra.suggestion}
+                            </div>` : ''}
+                        </div>
+                    `;
+                }
+            }
+
             // Rally stats (if rally tracker has data)
             if (summary.rallyStats && summary.rallyStats.totalRallies > 0) {
                 const rs = summary.rallyStats;
@@ -4429,7 +4588,120 @@
                 `;
             }
 
+            // Cross-session progress (vs last session)
+            if (typeof improvementTracker !== 'undefined' && improvementTracker.data) {
+                const types = Object.keys(improvementTracker.data.strokeTypes || {});
+                const crossDeltas = [];
+                for (const type of types) {
+                    const history = improvementTracker.data.strokeTypes[type];
+                    if (history && history.quality && history.quality.length >= 2) {
+                        const prev = history.quality[history.quality.length - 2];
+                        const current = history.quality[history.quality.length - 1];
+                        const delta = Math.round(current - prev);
+                        if (delta !== 0) {
+                            crossDeltas.push({ type, prev: Math.round(prev), current: Math.round(current), delta });
+                        }
+                    }
+                }
+                if (crossDeltas.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">vs Last Session</div>
+                            ${crossDeltas.map(d => {
+                                const arrow = d.delta > 0 ? '↑' : '↓';
+                                const color = d.delta > 0 ? '#32D74B' : '#FF3B30';
+                                return `<div style="display: flex; justify-content: space-between; align-items: center;
+                                            padding: 8px 12px; margin-bottom: 4px; background: rgba(255,255,255,0.04); border-radius: 8px;">
+                                    <span style="color: rgba(255,255,255,0.8); font-size: 14px;">${d.type}</span>
+                                    <span style="color: ${color}; font-weight: 600; font-size: 14px;">
+                                        ${d.prev} → ${d.current} ${arrow}${Math.abs(d.delta)}
+                                    </span>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    `;
+                }
+            }
+
+            // Within-session progress (from session video manager)
+            if (tennisAI?.sessionVideoManager?.bookmarks?.length >= 3) {
+                const progress = tennisAI.sessionVideoManager.getWithinSessionProgress();
+                const progressEntries = Object.entries(progress).filter(([, d]) => d.delta !== 0);
+                if (progressEntries.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">Within-Session Progress</div>
+                            ${progressEntries.map(([type, d]) => {
+                                const arrow = d.delta > 0 ? '↑' : '↓';
+                                const color = d.delta > 0 ? '#32D74B' : '#FF3B30';
+                                return `<div style="display: flex; justify-content: space-between; align-items: center;
+                                            padding: 8px 12px; margin-bottom: 4px; background: rgba(255,255,255,0.04); border-radius: 8px;">
+                                    <span style="color: rgba(255,255,255,0.8); font-size: 14px;">${type}</span>
+                                    <span style="color: ${color}; font-weight: 600; font-size: 14px;">
+                                        ${d.firstQuality} → ${d.lastQuality} ${arrow}${Math.abs(d.delta)}
+                                    </span>
+                                </div>`;
+                            }).join('')}
+                        </div>
+                    `;
+                }
+
+                // Notable strokes
+                const notables = tennisAI.sessionVideoManager.getNotableStrokes();
+                if (notables.length > 0) {
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">Notable Strokes</div>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                ${notables.map(n => {
+                                    const qColor = n.quality >= 80 ? '#32D74B' : n.quality >= 60 ? '#CDFF00' : '#FF3B30';
+                                    return `<div style="padding: 8px 14px; background: rgba(255,255,255,0.05); border-radius: 8px;
+                                                border-left: 3px solid ${qColor}; cursor: ${n.replayIndex >= 0 ? 'pointer' : 'default'};"
+                                            ${n.replayIndex >= 0 ? `onclick="playNotableReplay(${n.replayIndex})"` : ''}>
+                                        <div style="font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px;">${n.label}</div>
+                                        <div style="font-size: 16px; font-weight: 700; color: ${qColor};">${n.quality}</div>
+                                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">${n.type}</div>
+                                    </div>`;
+                                }).join('')}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Curriculum drill suggestion
+            if (typeof drillMode !== 'undefined') {
+                const suggestion = drillMode.getCurriculumDrillSuggestion();
+                if (suggestion) {
+                    html += `
+                        <div class="summary-section">
+                            <div class="summary-section-title">Suggested Drill</div>
+                            <div style="padding: 12px 16px; background: rgba(79,195,247,0.1); border-radius: 10px;
+                                        border: 1px solid rgba(79,195,247,0.3);">
+                                <div style="font-size: 12px; color: #4FC3F7; margin-bottom: 4px;">${suggestion.reason}</div>
+                                <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 4px;">${suggestion.drill.name}</div>
+                                <div style="font-size: 13px; color: rgba(255,255,255,0.6);">${suggestion.drill.description}</div>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            // Share button
+            html += `
+                <div class="summary-section" style="text-align: center; padding-top: 8px;">
+                    <button onclick="shareSessionCard()" style="background: linear-gradient(135deg, var(--accent-volt), #a0cc00);
+                        color: #0A0A0A; border: none; padding: 14px 32px; border-radius: 12px; font-weight: 700;
+                        font-size: 16px; cursor: pointer; letter-spacing: 0.5px;">
+                        Share Session Card
+                    </button>
+                </div>
+            `;
+
             document.getElementById('sessionSummaryContent').innerHTML = html;
+
+            // Store summary for share card
+            window._lastSessionSummary = summary;
 
             // Add stroke review grid if replays are available
             const summaryContent = document.getElementById('sessionSummaryContent');
@@ -4442,6 +4714,21 @@
 
         function closeSessionSummary() {
             document.getElementById('sessionSummaryModal').classList.remove('visible');
+        }
+
+        function shareSessionCard() {
+            if (!tennisAI?.shareCardGenerator || !window._lastSessionSummary) return;
+            tennisAI.shareCardGenerator.share(
+                window._lastSessionSummary,
+                window._lastSessionSummary.insights || []
+            );
+        }
+
+        function playNotableReplay(replayIndex) {
+            if (typeof window.strokeReplayManager === 'undefined') return;
+            if (typeof showReplayOverlay === 'function') {
+                showReplayOverlay(replayIndex);
+            }
         }
 
         // Analytics Modal

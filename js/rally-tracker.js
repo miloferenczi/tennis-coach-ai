@@ -16,6 +16,7 @@ class RallyTracker {
       totalStrokesInRallies: 0
     };
     this.rallyCounter = 0;
+    this.lastRallyAnalysis = null;   // most recent Gemini rally analysis
   }
 
   /**
@@ -83,6 +84,7 @@ class RallyTracker {
 
   /**
    * End the current rally, compute stats, push to completed list.
+   * If Gemini is enabled and rally had 3+ strokes, fire async tactical analysis.
    */
   endRally() {
     if (!this.currentRally) return;
@@ -110,7 +112,36 @@ class RallyTracker {
 
     console.log(`RallyTracker: rally #${rally.number} ended (${rally.strokes.length} strokes, ${rally.avgQuality} avg quality, ${(rally.duration / 1000).toFixed(1)}s)`);
 
+    // Fire async Gemini rally analysis if available and rally was substantial
+    if (rally.strokes.length >= 3 && typeof tennisAI !== 'undefined' && tennisAI.sceneAnalyzer?.enabled) {
+      const rallySnapshot = { ...rally };
+      tennisAI.sceneAnalyzer.analyzeRally(rallySnapshot).then(result => {
+        if (result && typeof tennisAI !== 'undefined' && tennisAI.gptVoiceCoach?.isConnected) {
+          rallySnapshot.geminiAnalysis = result;
+          this.lastRallyAnalysis = result;
+          // Send to GPT as between-points tactical context
+          tennisAI.gptVoiceCoach.analyzeStroke({
+            type: 'rally_analysis',
+            rallyNumber: rallySnapshot.number,
+            strokeCount: rallySnapshot.strokes.length,
+            avgQuality: rallySnapshot.avgQuality,
+            origin: rallySnapshot.origin,
+            analysis: result
+          });
+        }
+      }).catch(e => {
+        console.warn('RallyTracker: Gemini rally analysis failed', e);
+      });
+    }
+
     this.currentRally = null;
+  }
+
+  /**
+   * Get the most recent Gemini rally analysis (for session summary).
+   */
+  getLastRallyAnalysis() {
+    return this.lastRallyAnalysis || null;
   }
 
   /**
@@ -239,5 +270,6 @@ class RallyTracker {
       totalStrokesInRallies: 0
     };
     this.rallyCounter = 0;
+    this.lastRallyAnalysis = null;
   }
 }

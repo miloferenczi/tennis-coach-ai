@@ -707,15 +707,60 @@ class EnhancedTennisAnalyzer {
     // Build enhanced coaching context
     const coachingContext = this.buildCoachingContext(strokeData, coachingRecommendation);
     
-    // Send to GPT Coach with rich context
+    // Send to GPT Coach with rich context (gated by speech controller)
     if (coachingRecommendation) {
-      gptVoiceCoach.analyzeStroke(coachingContext);
+      const speechGate = (typeof tennisAI !== 'undefined') ? tennisAI.speechGate : null;
+      if (speechGate) {
+        speechGate.onStroke();
+        const decision = speechGate.shouldSpeak(coachingContext);
+        if (decision === 'speak_now') {
+          // Append brevity instruction if between points
+          if (speechGate.shouldBeBrief()) {
+            coachingContext.brevityInstruction = speechGate.getBrevityInstruction();
+          }
+          gptVoiceCoach.analyzeStroke(coachingContext);
+        } else if (decision === 'queue') {
+          speechGate.enqueue(coachingContext);
+        }
+        // 'suppress' → do nothing
+      } else {
+        gptVoiceCoach.analyzeStroke(coachingContext);
+      }
     }
     
     // Update UI
     this.updateUI(coachingContext);
 
-    // Trigger screen border flash based on quality
+    // Check proactive triggers (pattern alerts, personal bests, etc.)
+    if (typeof tennisAI !== 'undefined' && tennisAI.proactiveTriggers) {
+      const trigger = tennisAI.proactiveTriggers.check(strokeData, this.sessionStats);
+      if (trigger && typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+        // Send proactive message to GPT after a brief delay to not overlap with main coaching
+        setTimeout(() => {
+          gptVoiceCoach.analyzeStroke({
+            type: 'proactive_trigger',
+            triggerType: trigger.type,
+            message: trigger.message
+          });
+        }, 3000);
+      }
+    }
+
+    // Trigger live feedback overlay (skeleton flash + floating score + word label)
+    if (typeof tennisAI !== 'undefined' && tennisAI.liveFeedbackOverlay) {
+      const contactPt = strokeData.contactPoint
+        ? { x: strokeData.contactPoint.distance, y: strokeData.contactPoint.height }
+        : null;
+      tennisAI.liveFeedbackOverlay.flashStroke(
+        strokeData.quality.overall,
+        null,  // auto-pick label
+        contactPt,
+        strokeData,
+        coachingRecommendation
+      );
+    }
+
+    // Trigger screen border flash based on quality (legacy)
     if (typeof flashStrokeQuality === 'function') {
       flashStrokeQuality(strokeData.quality.overall);
     }
@@ -731,8 +776,15 @@ class EnhancedTennisAnalyzer {
     }
 
     // Record replay BEFORE clearing pose history
+    let replayIdx = -1;
     if (typeof window.strokeReplayManager !== 'undefined') {
       window.strokeReplayManager.recordStroke([...this.poseHistory], strokeData);
+      replayIdx = window.strokeReplayManager.getReplayCount() - 1;
+    }
+
+    // Bookmark stroke in session video manager
+    if (typeof tennisAI !== 'undefined' && tennisAI.sessionVideoManager) {
+      tennisAI.sessionVideoManager.addBookmark(strokeData, replayIdx);
     }
 
     // Notify external listeners before clearing history (trail freeze, etc.)
@@ -740,8 +792,45 @@ class EnhancedTennisAnalyzer {
       this.onStrokeCallback(strokeData, [...this.poseHistory]);
     }
 
+    // Fire async Gemini visual analysis (result arrives ~1-2s later as follow-up)
+    this.fireVisualAnalysis(strokeData);
+
     // Clear pose history after stroke
     this.poseHistory = [];
+  }
+
+  /**
+   * Async Gemini visual analysis — runs after instant MediaPipe coaching.
+   * On completion, sends a follow-up to GPT with visual insights.
+   */
+  fireVisualAnalysis(strokeData) {
+    if (typeof tennisAI === 'undefined') return;
+    const sa = tennisAI.sceneAnalyzer;
+    const vm = tennisAI.visualMerger;
+    if (!sa || !sa.enabled || !vm) return;
+
+    const faults = strokeData.biomechanicalEvaluation?.detectedFaults || [];
+    sa.analyzeStroke(strokeData.type, faults).then(visualResult => {
+      if (!visualResult) return;
+
+      const merged = vm.merge(strokeData, visualResult);
+      if (!merged) return;
+
+      const followUp = vm.buildVisualFollowUpPrompt(merged, strokeData.type);
+      if (!followUp) return;
+
+      // Send as follow-up to GPT (same pattern as shot_outcome_followup)
+      if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+        gptVoiceCoach.analyzeStroke({
+          type: 'visual_analysis_followup',
+          strokeType: strokeData.type,
+          visualResult: merged,
+          prompt: followUp
+        });
+      }
+    }).catch(err => {
+      console.warn('Visual analysis follow-up failed:', err);
+    });
   }
 
   /**
@@ -833,6 +922,25 @@ class EnhancedTennisAnalyzer {
       metrics.serveTrophyElbowAngle = sa.trophy?.elbowAngle;
       metrics.serveShoulderTiltAngle = sa.shoulderTilt?.atTrophy;
       metrics.serveLegDriveKneeBend = sa.legDrive?.kneeBendAtTrophy;
+    }
+
+    // Enrich with court position metrics (from Gemini scene analysis)
+    if (typeof tennisAI !== 'undefined' && tennisAI.courtPositionAnalyzer) {
+      const cpMetrics = tennisAI.courtPositionAnalyzer.getMetrics();
+      metrics.courtZone = cpMetrics.courtZone;
+      metrics.lingeringNoMansLand = cpMetrics.lingeringNoMansLand;
+      metrics.positionScore = cpMetrics.positionScore;
+      metrics.courtRecoveryQuality = cpMetrics.recoveryQuality;
+      // Invert: coaching tree triggers on noSplitStepAtNet=true (no split step)
+      metrics.noSplitStepAtNet = cpMetrics.courtZone === 'net' && !cpMetrics.splitStepAtNet;
+    }
+
+    // Enrich with cached Gemini visual metrics from previous stroke
+    if (typeof tennisAI !== 'undefined' && tennisAI.visualMerger) {
+      const visualMetrics = tennisAI.visualMerger.getOrchestratorMetrics(
+        tennisAI.visualMerger.lastVisualResult
+      );
+      Object.assign(metrics, visualMetrics);
     }
 
     // Enrich with footwork data
@@ -1033,6 +1141,14 @@ class EnhancedTennisAnalyzer {
     // Add serve analysis
     if (strokeData.serveAnalysis) {
       baseContext.serveAnalysis = strokeData.serveAnalysis;
+    }
+
+    // Inject previous stroke's Gemini visual context (if available)
+    if (typeof tennisAI !== 'undefined' && tennisAI.visualMerger) {
+      const prevVisual = tennisAI.visualMerger.formatForNextStrokeContext();
+      if (prevVisual) {
+        baseContext.previousVisualContext = prevVisual;
+      }
     }
 
     return baseContext;
