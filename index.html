@@ -3204,7 +3204,7 @@
                 this._cameraRunning = false;
                 this.isReady = false;
                 this.isAnalyzing = false;
-                this.currentFacingMode = 'user';
+                this.currentFacingMode = 'environment';
 
                 // Signal processing: adaptive low-pass filter + bone constraints
                 this.landmarkFilter = new LandmarkFilter({
@@ -3372,12 +3372,8 @@
                 this.isReady = true;
             }
             async setupCamera() {
-                // Stop existing stream and frame loop
                 this.stopCamera();
 
-                // Use getUserMedia directly with `ideal` constraints for high quality.
-                // The MediaPipe Camera class passes plain width/height values which
-                // mobile browsers interpret poorly, falling back to minimum resolution.
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         width: { ideal: 1280 },
@@ -3387,12 +3383,20 @@
                 });
 
                 this.video.srcObject = stream;
+
+                // Wait for video dimensions before playing
+                if (this.video.readyState < 1) {
+                    await new Promise(resolve => {
+                        this.video.onloadedmetadata = resolve;
+                    });
+                }
+
                 await this.video.play();
 
                 this.canvas.width = this.video.videoWidth;
                 this.canvas.height = this.video.videoHeight;
 
-                // Start frame processing loop (replaces MediaPipe Camera class)
+                // Start frame processing loop
                 this._cameraRunning = true;
                 const processFrame = async () => {
                     if (!this._cameraRunning) return;
