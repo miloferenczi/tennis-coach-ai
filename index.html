@@ -3379,28 +3379,27 @@
                 }
 
                 // Let MediaPipe Camera handle getUserMedia with the correct facingMode.
-                // Previously we called getUserMedia ourselves, but Camera.start() opens
-                // its own stream internally, overwriting ours — causing the flip bug.
-                return new Promise((resolve) => {
-                    this.camera = new Camera(this.video, {
-                        onFrame: async () => {
-                            if (this.pose) {
-                                await this.pose.send({ image: this.video });
-                            }
-                        },
-                        width: 1280,
-                        height: 720,
-                        facingMode: this.currentFacingMode
-                    });
-
-                    this.video.onloadedmetadata = () => {
-                        this.canvas.width = this.video.videoWidth;
-                        this.canvas.height = this.video.videoHeight;
-                        resolve();
-                    };
-
-                    this.camera.start();
+                // Camera.start() returns a promise that resolves once the video is playing.
+                // Don't rely on onloadedmetadata — it may not fire on mobile when the
+                // Camera class controls the video element internally.
+                this.camera = new Camera(this.video, {
+                    onFrame: async () => {
+                        if (this.pose) {
+                            await this.pose.send({ image: this.video });
+                        }
+                    },
+                    width: 1280,
+                    height: 720,
+                    facingMode: this.currentFacingMode
                 });
+
+                await this.camera.start();
+
+                // Set canvas dimensions after camera is live
+                if (this.video.videoWidth && this.video.videoHeight) {
+                    this.canvas.width = this.video.videoWidth;
+                    this.canvas.height = this.video.videoHeight;
+                }
             }
             onResults(results) {
                 // Clear and draw camera feed
