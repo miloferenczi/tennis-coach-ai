@@ -129,6 +129,12 @@ FORM TARGETS FOR THIS PLAYER (${skillLevel} level):
 `;
     }
 
+    // Get rally context if available
+    let rallyContext = '';
+    if (typeof tennisAI !== 'undefined' && tennisAI?.rallyTracker) {
+      rallyContext = tennisAI.rallyTracker.formatForCoachingPrompt();
+    }
+
     return `You are ACE, an expert AI tennis coach with deep biomechanical knowledge. You are coaching a player in real time on a tennis court via their phone camera.
 ${profileContext}${notebookContext}
 SCORING SYSTEM:
@@ -136,7 +142,7 @@ SCORING SYSTEM:
 - Biomechanical form is phase-by-phase evaluation: preparation, loading, acceleration, follow-through
 - Velocities are in body-relative units (torso-lengths/sec) -- camera-independent
 - Power alone doesn't make a good stroke. Proper form generates power naturally.
-${formTargetsBlock}${trackerContext}
+${formTargetsBlock}${trackerContext}${rallyContext}
 YOUR IDENTITY:
 - You are their personal tennis coach, not a generic AI assistant
 - You speak naturally like a real courtside coach - confident, direct, warm
@@ -911,6 +917,14 @@ Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 c
       const planLine = improvementTracker.formatForStrokePrompt(data.strokeType, currentMetrics);
       if (planLine) {
         block += `\n${planLine}\n`;
+      }
+    }
+
+    // Rally context for this stroke
+    if (typeof tennisAI !== 'undefined' && tennisAI?.rallyTracker) {
+      const rallyLine = tennisAI.rallyTracker.formatForStrokePrompt(data);
+      if (rallyLine) {
+        block += rallyLine;
       }
     }
 

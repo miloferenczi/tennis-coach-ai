@@ -90,7 +90,8 @@ class SessionStorage {
         overall: strokeData.biomechanicalEvaluation.overall,
         faults: strokeData.biomechanicalEvaluation.detectedFaults?.map(f => f.name) || []
       } : null,
-      normalizedToTorso: !!strokeData.velocity?.normalizedToTorso
+      normalizedToTorso: !!strokeData.velocity?.normalizedToTorso,
+      rallyContext: this.getRallyContext()
     };
 
     session.strokes.push(strokeRecord);
@@ -198,6 +199,12 @@ class SessionStorage {
       };
     }
 
+    // Rally stats from tracker (if available)
+    let rallyStats = null;
+    if (typeof tennisAI !== 'undefined' && tennisAI?.rallyTracker) {
+      rallyStats = tennisAI.rallyTracker.getSessionStats();
+    }
+
     return {
       duration: session.endTime - session.startTime,
       totalStrokes: strokes.length,
@@ -211,7 +218,8 @@ class SessionStorage {
       improvement: Math.round(improvement),
       weaknesses,
       skillLevel,
-      drillRecommendation: this.getDrillRecommendation(weaknesses, dominantStrokeType)
+      drillRecommendation: this.getDrillRecommendation(weaknesses, dominantStrokeType),
+      rallyStats
     };
   }
 
@@ -349,6 +357,20 @@ class SessionStorage {
         score: bestSession.summary.averageScore
       } : null,
       recentSessions: history.slice(0, 10)
+    };
+  }
+
+  /**
+   * Get current rally context from the global rally tracker (if available).
+   */
+  getRallyContext() {
+    if (typeof tennisAI === 'undefined' || !tennisAI?.rallyTracker) return null;
+    const rt = tennisAI.rallyTracker;
+    if (!rt.currentRally) return null;
+    return {
+      rallyNumber: rt.currentRally.number,
+      strokeInRally: rt.currentRally.strokes.length,
+      origin: rt.currentRally.origin
     };
   }
 

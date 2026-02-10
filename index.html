@@ -55,6 +55,8 @@
     <script src="js/player-profile.js"></script>
     <script src="js/ghost-overlay.js"></script>
     <script src="js/stroke-replay.js"></script>
+    <script src="js/scene-analyzer.js"></script>
+    <script src="js/rally-tracker.js"></script>
     <script src="js/challenge-mode.js"></script>
     <script src="js/drill-mode.js"></script>
     <script src="js/coach-notebook.js"></script>
@@ -2639,6 +2641,28 @@
                     </a>
                 </div>
 
+                <div class="api-input-group" style="margin-top: 16px;">
+                    <label class="api-label">GOOGLE GEMINI API KEY <span style="opacity:0.5">(OPTIONAL)</span></label>
+                    <div class="api-input-wrapper">
+                        <input
+                            type="password"
+                            id="geminiKeyInput"
+                            class="api-input"
+                            placeholder="AI..."
+                            autocomplete="off"
+                        />
+                        <div class="api-checkmark" id="geminiCheckmark">
+                            <svg viewBox="0 0 24 24">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px;">
+                        Enables rally tracking &amp; scene analysis.
+                        <a href="https://ai.google.dev" target="_blank" rel="noopener" class="api-link" style="font-size: 11px;">Get a free key →</a>
+                    </div>
+                </div>
+
                 <button class="btn-primary" id="connectBtn" onclick="connectGPTCoach()">
                     CONNECT <span style="margin-left: 4px;">→</span>
                 </button>
@@ -2707,6 +2731,10 @@
                     <div class="ai-status">
                         <div id="aiStatusDot" class="status-dot"></div>
                     </div>
+                </div>
+                <div class="status-item" id="rallyStatus" style="display: none;">
+                    <div class="status-label">RALLY</div>
+                    <div class="status-value" id="rallyStateValue" style="font-size: 11px;">--</div>
                 </div>
             </div>
 
@@ -3189,6 +3217,16 @@
                     if (this.replayManager && this.replayManager.getReplayCount() > 0) {
                         showReplayButton(this.replayManager.getReplayCount() - 1);
                     }
+                    // Track stroke in rally
+                    if (this.rallyTracker) {
+                        this.rallyTracker.addStroke(strokeData);
+                        this.updateRallyIndicator();
+                    }
+                    // Notify scene analyzer of serve detection
+                    if (this.sceneAnalyzer && this.sceneAnalyzer.enabled &&
+                        (strokeData.type === 'serve' || strokeData.strokeType === 'serve')) {
+                        this.sceneAnalyzer.onServeDetected();
+                    }
                 };
 
                 // Stroke Replay Manager
@@ -3199,6 +3237,20 @@
                 this.ballTracker = new BallTrackingClient({
                     onShotAnalyzed: this.onShotAnalyzed.bind(this)
                 });
+
+                // Scene Analyzer (Gemini multimodal) + Rally Tracker
+                this.sceneAnalyzer = new SceneAnalyzer();
+                this.rallyTracker = new RallyTracker();
+                this.sceneAnalyzer.onStateChange = (oldState, newState, sceneData) => {
+                    this.rallyTracker.onStateChange(oldState, newState, sceneData);
+                    this.updateRallyIndicator();
+                };
+
+                // Set Gemini key from localStorage if available
+                const savedGeminiKey = localStorage.getItem('ace_gemini_key');
+                if (savedGeminiKey) {
+                    this.sceneAnalyzer.setApiKey(savedGeminiKey);
+                }
 
                 // Fault-to-landmark mapping for visual highlighting
                 this.faultLandmarkMap = {
@@ -3737,6 +3789,11 @@
                             }
                         }
 
+                        // Add rally stats to summary
+                        if (this.rallyTracker) {
+                            endedSession.summary.rallyStats = this.rallyTracker.getSessionStats();
+                        }
+
                         showSessionSummary(endedSession.summary);
                     }
                     // Create new session
@@ -3751,6 +3808,16 @@
                 this.enhancedAnalyzer.resetSession();
                 this.landmarkFilter.reset();
 
+                // Reset rally tracker and scene analyzer
+                if (this.rallyTracker) this.rallyTracker.reset();
+                if (this.sceneAnalyzer) {
+                    this.sceneAnalyzer.reset();
+                    // Restart scene analysis for new session
+                    if (this.sceneAnalyzer.enabled && this.video) {
+                        this.sceneAnalyzer.start(this.video);
+                    }
+                }
+
                 document.getElementById('strokeCount').textContent = '0';
                 document.getElementById('avgScore').textContent = '--';
                 document.getElementById('consistencyScore').textContent = '--';
@@ -3761,6 +3828,7 @@
                 document.getElementById('coachingText').textContent =
                     'Session reset! Ready to analyze your technique.';
                 document.getElementById('analysisCard').classList.remove('visible');
+                this.updateRallyIndicator();
             }
 
             /**
@@ -3877,11 +3945,57 @@
                             }
                         }
 
+                        // Start scene analysis if Gemini key is configured
+                        if (this.sceneAnalyzer && this.sceneAnalyzer.enabled && this.video) {
+                            this.sceneAnalyzer.start(this.video);
+                        }
+
                         // Welcome coaching message
                         document.getElementById('coachingText').textContent =
                             'Ready to analyze. Tap REC to start.';
                     }, 300);
                 }, 1000); // Hold at READY for 1 second
+            }
+
+            updateRallyIndicator() {
+                const container = document.getElementById('rallyStatus');
+                const value = document.getElementById('rallyStateValue');
+                if (!container || !value) return;
+
+                if (!this.sceneAnalyzer || !this.sceneAnalyzer.enabled) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                container.style.display = '';
+                const state = this.sceneAnalyzer.gameState;
+                const rallyStrokes = this.rallyTracker?.currentRally?.strokes?.length || 0;
+
+                switch (state) {
+                    case 'serving':
+                        value.textContent = 'SERVING';
+                        value.style.color = '#CDFF00';
+                        break;
+                    case 'rallying':
+                        value.textContent = `RALLY (${rallyStrokes})`;
+                        value.style.color = '#32D74B';
+                        break;
+                    case 'between_points':
+                        value.textContent = 'BETWEEN';
+                        value.style.color = 'rgba(255,255,255,0.4)';
+                        break;
+                    case 'warmup':
+                        value.textContent = 'WARMUP';
+                        value.style.color = '#4FC3F7';
+                        break;
+                    case 'idle':
+                        value.textContent = 'IDLE';
+                        value.style.color = 'rgba(255,255,255,0.3)';
+                        break;
+                    default:
+                        value.textContent = '--';
+                        value.style.color = 'rgba(255,255,255,0.4)';
+                }
             }
 
             // Premium loading phase management
@@ -3976,6 +4090,16 @@
             transitionScreens('permissionScreen', 'apiKeyScreen');
         }
 
+        function saveGeminiKey() {
+            const geminiInput = document.getElementById('geminiKeyInput');
+            if (geminiInput && geminiInput.value.trim()) {
+                try {
+                    localStorage.setItem('ace_gemini_key', geminiInput.value.trim());
+                    document.getElementById('geminiCheckmark').classList.add('visible');
+                } catch (e) {}
+            }
+        }
+
         async function connectGPTCoach() {
             const input = document.getElementById('apiKeyInput');
             const apiKey = input.value;
@@ -3991,6 +4115,9 @@
             try {
                 localStorage.setItem('ace_openai_key', apiKey);
             } catch (e) {}
+
+            // Save Gemini key if provided
+            saveGeminiKey();
 
             // Micro-interaction: flash input border
             input.classList.add('flash');
@@ -4020,6 +4147,9 @@
         }
 
         function skipGPTCoach() {
+            // Save Gemini key if provided (works even without OpenAI key)
+            saveGeminiKey();
+
             transitionScreens('apiKeyScreen', 'loadingScreen', () => {
                 // Use fallback coaching
                 gptVoiceCoach.fallbackToSpeechSynthesis();
@@ -4261,6 +4391,40 @@
                                 </span>
                             `).join('')}
                         </div>
+                    </div>
+                `;
+            }
+
+            // Rally stats (if rally tracker has data)
+            if (summary.rallyStats && summary.rallyStats.totalRallies > 0) {
+                const rs = summary.rallyStats;
+                html += `
+                    <div class="summary-section">
+                        <div class="summary-section-title">Rally Stats</div>
+                        <div class="summary-stats" style="margin-top: 8px;">
+                            <div class="summary-stat">
+                                <div class="summary-stat-value">${rs.totalRallies}</div>
+                                <div class="summary-stat-label">Rallies</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-value">${rs.avgRallyLength}</div>
+                                <div class="summary-stat-label">Avg Length</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-value">${rs.longestRally}</div>
+                                <div class="summary-stat-label">Longest</div>
+                            </div>
+                            <div class="summary-stat">
+                                <div class="summary-stat-value">${rs.servePercentage}%</div>
+                                <div class="summary-stat-label">Serve Points</div>
+                            </div>
+                        </div>
+                        ${rs.avgPointQuality > 0 ? `
+                            <div style="margin-top: 8px; font-size: 13px; color: rgba(255,255,255,0.6);">
+                                Average point quality: ${rs.avgPointQuality}/100
+                                ${rs.recentTrend !== 'stable' && rs.recentTrend !== 'none' ? ` · Trend: ${rs.recentTrend}` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                 `;
             }
@@ -5407,6 +5571,17 @@
 
                         // Show checkmark
                         document.getElementById('apiCheckmark').classList.add('visible');
+                    }
+                }
+
+                // Check for saved Gemini key
+                const savedGeminiKey = localStorage.getItem('ace_gemini_key');
+                if (savedGeminiKey) {
+                    const geminiInput = document.getElementById('geminiKeyInput');
+                    if (geminiInput) {
+                        geminiInput.value = savedGeminiKey;
+                        geminiInput.classList.add('validated');
+                        document.getElementById('geminiCheckmark').classList.add('visible');
                     }
                 }
 
