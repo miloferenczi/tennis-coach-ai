@@ -63,8 +63,8 @@ class GPTVoiceCoach {
         playerProfile.startSession();
       }
 
-      // Prompt GPT to greet in character as the tennis coach
-      this.sendCoachGreeting();
+      // Greeting is now sent from inside dataChannel.onopen handler
+      // to avoid race condition where channel isn't ready yet
       
     } catch (error) {
       console.error('Connection failed:', error);
@@ -178,9 +178,24 @@ COACHING WITH METRICS:
 - Celebrate measurable improvements with specific numbers ("your rotation improved from 14 to 18 degrees -- that's real progress")
 - When giving form corrections, describe the body movement, not just the metric ("lead with your hip before your shoulders unwind")
 
-IMPORTANT: Always stay in character as their tennis coach. Never break character or discuss being an AI.`;
+IMPORTANT: Always stay in character as their tennis coach. Never break character or discuss being an AI.`
+    + this.getDrillModeInstructions();
   }
-  
+
+  getDrillModeInstructions() {
+    if (typeof drillMode === 'undefined' || !drillMode.isActive) return '';
+    return `
+
+DRILL MODE ACTIVE:
+- The player is doing a focused drill. ALL coaching should be about the drill metric.
+- Keep responses UNDER 8 seconds during drills — short, punchy, metric-focused.
+- Celebrate reps that hit the target with energy.
+- If they're close, give one micro-cue to get them over the line.
+- Track trends across reps ("that's 3 in a row above target" or "you're trending up").
+- Don't discuss other faults or broad technique — stay laser-focused on the drill metric.
+- When the drill completes, give a brief 2-sentence summary of what you saw.`;
+  }
+
   sendCoachGreeting() {
     if (!this.isConnected || this.dataChannel.readyState !== 'open') return;
 
@@ -267,6 +282,8 @@ IMPORTANT: Always stay in character as their tennis coach. Never break character
               turn_detection: { type: 'server_vad' }
             }
           }));
+          // Send greeting from inside onopen to guarantee channel is ready
+          setTimeout(() => this.sendCoachGreeting(), 500);
           resolve();
         };
         
@@ -399,6 +416,23 @@ IMPORTANT: Always stay in character as their tennis coach. Never break character
   
   formatEnhancedStrokePrompt(data) {
     let prompt = `Stroke #${data.session.strokeCount}: ${data.strokeType}\n\n`;
+
+    // Drill mode context — overrides normal coaching flow
+    if (typeof drillMode !== 'undefined' && drillMode.isActive && drillMode.currentDrill) {
+      const drill = drillMode.currentDrill;
+      const lastScore = drill.scores.length > 0 ? drill.scores[drill.scores.length - 1] : null;
+      prompt += `DRILL MODE: "${drill.name}"\n`;
+      prompt += `Focus: ${drill.metricLabel} (target: ${drill.target}${drill.unit ? ' ' + drill.unit : ''})\n`;
+      prompt += `Progress: ${drill.currentRep}/${drill.totalReps} reps`;
+      if (lastScore) {
+        prompt += `, this rep: ${lastScore.value < 10 ? lastScore.value.toFixed(1) : Math.round(lastScore.value)}${drill.unit ? ' ' + drill.unit : ''}`;
+      }
+      const avg = drill.scores.length > 0 ? drill.scores.reduce((a, s) => a + s.value, 0) / drill.scores.length : 0;
+      if (avg > 0) {
+        prompt += `, avg: ${avg < 10 ? avg.toFixed(1) : Math.round(avg)}`;
+      }
+      prompt += `\nCoach ONLY on this metric. Under 8 seconds.\n\n`;
+    }
 
     // Track quality for fatigue detection
     this.lastQualityScores.push(data.quality.overall);
@@ -813,6 +847,57 @@ Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 c
       block += `- Racquet speed: ${data.velocity.magnitude.toFixed(1)}`;
       if (data.velocity.normalizedToTorso) block += ` torso-lengths/sec`;
       block += `\n`;
+    }
+
+    // Footwork details (from FootworkAnalyzer)
+    const fw = data.footwork;
+    if (fw) {
+      if (fw.stance) {
+        block += `- Stance: ${fw.stance.type} (${fw.stance.angle}deg)\n`;
+      }
+      if (fw.baseWidth) {
+        block += `- Base width: ${fw.baseWidth.assessment} (${fw.baseWidth.ratio}x shoulder-width)\n`;
+      }
+      if (fw.weightTransfer) {
+        block += `- Weight transfer: ${fw.weightTransfer.overall}\n`;
+      }
+      if (fw.stepPattern) {
+        block += `- Footwork: ${fw.stepPattern.pattern}\n`;
+      }
+      if (fw.recovery) {
+        block += `- Recovery: ${fw.recovery.recovered ? 'returned to ready' : 'did not recover'}\n`;
+      }
+      block += `- Footwork score: ${fw.score}/100\n`;
+    }
+
+    // Serve analysis details (only for serves)
+    const sa = data.serveAnalysis;
+    if (sa) {
+      block += `SERVE ANALYSIS:\n`;
+      if (sa.trophy) {
+        block += `- Trophy position: ${sa.trophy.detected ? 'detected' : 'not detected'}`;
+        if (sa.trophy.elbowAngle != null) block += `, elbow=${Math.round(sa.trophy.elbowAngle)}deg (ideal ~90)`;
+        block += `, score=${sa.trophy.score}/100\n`;
+      }
+      if (sa.legDrive) {
+        block += `- Leg drive: score=${sa.legDrive.score}/100`;
+        if (sa.legDrive.kneeBendAtTrophy != null) block += `, knee bend at trophy=${Math.round(sa.legDrive.kneeBendAtTrophy)}deg`;
+        block += `\n`;
+      }
+      if (sa.shoulderTilt) {
+        block += `- Shoulder tilt at trophy: ${sa.shoulderTilt.atTrophy != null ? Math.round(sa.shoulderTilt.atTrophy) + 'deg' : '?'} (ideal 20-45)\n`;
+      }
+      if (sa.contactHeight) {
+        block += `- Contact height: ${sa.contactHeight.assessment || '?'}`;
+        if (sa.contactHeight.score != null) block += `, score=${sa.contactHeight.score}/100`;
+        block += `\n`;
+      }
+      if (sa.tossArm) {
+        block += `- Toss arm: ${sa.tossArm.aboveShoulder ? 'above shoulder' : 'below shoulder'}`;
+        if (sa.tossArm.armStraight) block += ', arm straight';
+        block += `, score=${sa.tossArm.score}/100\n`;
+      }
+      block += `- Serve score: ${sa.serveScore}/100\n`;
     }
 
     // Plan progress line

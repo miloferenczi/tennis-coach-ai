@@ -180,6 +180,62 @@ class BiomechanicalCheckpoints {
           feedback: {
             low: "Use more body rotation through contact - don't arm the ball"
           }
+        },
+        stanceAndBase: {
+          metric: 'baseWidthRatio',
+          ideal: { min: 0.7, max: 1.5 },
+          weight: 0.10,
+          feedback: {
+            low: "Widen your stance - feet too close together for a stable base",
+            high: "Bring your feet in slightly - stance is too wide for quick recovery"
+          }
+        }
+      },
+
+      // ==========================================
+      // SERVE-SPECIFIC CHECKPOINTS
+      // Goal: Evaluate serve biomechanics (trophy, leg drive, contact height, tilt, toss)
+      // ==========================================
+      serve: {
+        trophyPosition: {
+          metric: 'serveTrophyScore',
+          ideal: { min: 60 },
+          weight: 0.25,
+          feedback: {
+            low: "Work on your trophy position - elbow at 90 degrees, racquet behind head, knees bent"
+          }
+        },
+        legDrive: {
+          metric: 'serveLegDriveScore',
+          ideal: { min: 50 },
+          weight: 0.20,
+          feedback: {
+            low: "Bend your knees and drive upward explosively through the serve"
+          }
+        },
+        contactHeight: {
+          metric: 'serveContactHeightScore',
+          ideal: { min: 60 },
+          weight: 0.20,
+          feedback: {
+            low: "Reach higher at contact - full arm extension above your head"
+          }
+        },
+        shoulderTilt: {
+          metric: 'serveShoulderTiltScore',
+          ideal: { min: 50 },
+          weight: 0.15,
+          feedback: {
+            low: "Tilt your tossing shoulder up at trophy position for better power"
+          }
+        },
+        tossArm: {
+          metric: 'serveTossArmScore',
+          ideal: { min: 50 },
+          weight: 0.10,
+          feedback: {
+            low: "Extend your toss arm straight up from the shoulder"
+          }
         }
       },
 
@@ -302,6 +358,90 @@ class BiomechanicalCheckpoints {
         },
         fix: "Take your time in the loading phase - don't rush to the ball",
         drills: ["Pause at loading drill", "Rhythm and timing focus"]
+      },
+
+      narrowBase: {
+        name: "Narrow Stance",
+        priority: 6,
+        detection: (metrics) => {
+          return metrics.baseWidthRatio != null && metrics.baseWidthRatio < 0.6;
+        },
+        fix: "Widen your stance for better balance and power",
+        drills: ["Cone spacing drill", "Wide-base shadow swings"]
+      },
+
+      noStepIn: {
+        name: "Static Feet",
+        priority: 5,
+        detection: (metrics) => {
+          return metrics.stepPattern === 'planted' &&
+                 (metrics.footworkScore != null && metrics.footworkScore < 50);
+        },
+        fix: "Move your feet to the ball - small adjustment steps help timing",
+        drills: ["Footwork ladder drill", "Split step reaction drill"]
+      },
+
+      poorRecovery: {
+        name: "Poor Recovery",
+        priority: 4,
+        detection: (metrics) => {
+          return metrics.recoveryDetected === false && metrics.footworkScore != null;
+        },
+        fix: "Push off after the shot and recover to ready position",
+        drills: ["Recovery step drill", "2-ball rally recovery"]
+      },
+
+      wrongStanceForStroke: {
+        name: "Stance Limits Power",
+        priority: 5,
+        detection: (metrics) => {
+          return metrics.stanceType === 'closed' &&
+                 metrics.weightTransferDirection !== 'forward' &&
+                 metrics.weightTransferDirection !== 'slight_forward';
+        },
+        fix: "Use a semi-open or open stance to allow better hip rotation",
+        drills: ["Open-stance forehand drill", "Stance selection shadow swings"]
+      },
+
+      // Serve-specific faults
+      noLegDrive: {
+        name: "No Leg Drive",
+        priority: 7,
+        detection: (metrics) => {
+          return metrics.isServe && metrics.serveLegDriveScore < 30;
+        },
+        fix: "Bend your knees and drive up explosively through the serve",
+        drills: ["Knee bend serve drill", "Jump serves for leg drive"]
+      },
+
+      noTrophyPosition: {
+        name: "Missing Trophy Position",
+        priority: 6,
+        detection: (metrics) => {
+          return metrics.isServe && metrics.serveTrophyScore < 25;
+        },
+        fix: "Pause at trophy: toss arm up, racquet behind head, knees bent",
+        drills: ["Trophy freeze drill", "Toss-and-hold practice"]
+      },
+
+      lowServeContactPoint: {
+        name: "Low Serve Contact",
+        priority: 5,
+        detection: (metrics) => {
+          return metrics.isServe && metrics.serveContactHeightScore < 30;
+        },
+        fix: "Reach as high as possible at contact - full extension",
+        drills: ["Reach-and-hit target drill", "Wall contact height markers"]
+      },
+
+      flatServeNoTilt: {
+        name: "No Shoulder Tilt",
+        priority: 5,
+        detection: (metrics) => {
+          return metrics.isServe && metrics.serveShoulderTiltScore < 25;
+        },
+        fix: "Tilt your tossing shoulder up at trophy for better angle and power",
+        drills: ["Shoulder tilt awareness drill", "Side-bend stretches"]
       }
     };
   }
@@ -328,6 +468,9 @@ class BiomechanicalCheckpoints {
     let weightedScore = 0;
 
     for (const [phaseName, phaseCheckpoints] of Object.entries(this.checkpoints)) {
+      // Skip serve checkpoints for non-serves, and vice versa
+      if (phaseName === 'serve' && !metrics.isServe) continue;
+
       const phaseResult = this.evaluatePhase(phaseName, phaseCheckpoints, metrics);
       results.byPhase[phaseName] = phaseResult;
 
@@ -368,8 +511,30 @@ class BiomechanicalCheckpoints {
 
       // Contact point metrics
       contactHeightRelativeToBody: strokeData.contactPoint?.height || 0.5,
-      contactDistanceInFront: strokeData.contactPoint?.distance || 0.1
+      contactDistanceInFront: strokeData.contactPoint?.distance || 0.1,
+
+      // Footwork metrics (from FootworkAnalyzer)
+      stanceType: strokeData.footwork?.stance?.type,
+      baseWidthRatio: strokeData.footwork?.baseWidth?.ratio,
+      footworkScore: strokeData.footwork?.score,
+      stepPattern: strokeData.footwork?.stepPattern?.pattern,
+      recoveryDetected: strokeData.footwork?.recovery?.recovered,
+      weightTransferDirection: strokeData.footwork?.weightTransfer?.overall
     };
+
+    // Serve analysis metrics
+    if (strokeData.serveAnalysis) {
+      const sa = strokeData.serveAnalysis;
+      metrics.isServe = true;
+      metrics.serveTrophyScore = sa.trophy?.score || 0;
+      metrics.serveLegDriveScore = sa.legDrive?.score || 0;
+      metrics.serveContactHeightScore = sa.contactHeight?.score || 0;
+      metrics.serveShoulderTiltScore = sa.shoulderTilt?.score || 0;
+      metrics.serveTossArmScore = sa.tossArm?.score || 0;
+      metrics.serveScore = sa.serveScore || 0;
+    } else {
+      metrics.isServe = false;
+    }
 
     // Add sequence analysis metrics if available
     if (sequenceAnalysis) {

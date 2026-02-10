@@ -216,14 +216,21 @@ class MotionSequenceAnalyzer {
      * Estimate weight on back foot from pose
      */
     estimateBackFootWeight(poseData) {
-        const rightAnkle = poseData.joints.rightAnkle.y;
-        const leftAnkle = poseData.joints.leftAnkle.y;
-        
-        // Lower ankle = more weight (simplified heuristic)
-        const heightDiff = leftAnkle - rightAnkle;
-        
-        // Normalize to 0-1 range
-        return 0.5 + Math.max(-0.4, Math.min(0.4, heightDiff * 4));
+        const j = poseData.joints;
+        if (!j.leftHip || !j.rightHip || !j.leftAnkle || !j.rightAnkle) return 0.5;
+
+        // Hip midpoint vs base-of-support midpoint on X axis
+        const hipMidX = (j.leftHip.x + j.rightHip.x) / 2;
+        const baseMidX = (j.leftAnkle.x + j.rightAnkle.x) / 2;
+        const baseWidth = Math.abs(j.rightAnkle.x - j.leftAnkle.x);
+
+        if (baseWidth < 0.001) return 0.5;
+
+        // Positive offset = weight shifted toward front, negative = toward back
+        const offset = (hipMidX - baseMidX) / baseWidth;
+
+        // Map to 0-1: 0 = full front, 0.5 = balanced, 1 = full back
+        return Math.max(0, Math.min(1, 0.5 - offset));
     }
 
     /**
@@ -342,14 +349,18 @@ class MotionSequenceAnalyzer {
     calculateForwardMomentum(accelerationData) {
         if (accelerationData.length < 3) return 0;
 
-        const start = accelerationData[0].joints.rightHip;
-        const end = accelerationData[accelerationData.length - 1].joints.rightHip;
+        const startJ = accelerationData[0].joints;
+        const endJ = accelerationData[accelerationData.length - 1].joints;
 
-        // Forward = positive x direction
-        const forwardMovement = end.x - start.x;
-        
+        // Use hip midpoint (both hips averaged) for center-of-mass proxy
+        const startX = (startJ.leftHip.x + startJ.rightHip.x) / 2;
+        const endX = (endJ.leftHip.x + endJ.rightHip.x) / 2;
+
+        // Direction-independent movement magnitude
+        const movement = Math.abs(endX - startX);
+
         // Normalize
-        return Math.max(0, Math.min(1, forwardMovement * 10));
+        return Math.max(0, Math.min(1, movement * 10));
     }
 
     /**

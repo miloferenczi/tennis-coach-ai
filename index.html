@@ -54,8 +54,12 @@
     <script src="js/improvement-tracker.js"></script>
     <script src="js/player-profile.js"></script>
     <script src="js/ghost-overlay.js"></script>
+    <script src="js/stroke-replay.js"></script>
     <script src="js/challenge-mode.js"></script>
+    <script src="js/drill-mode.js"></script>
     <script src="js/coach-notebook.js"></script>
+    <script src="js/footwork-analyzer.js"></script>
+    <script src="js/serve-analyzer.js"></script>
     <script src="js/enhanced-tennis-analyzer.js"></script>
     <script src="js/gpt-voice-coach.js"></script>
     <script src="js/video-analyzer.js"></script>
@@ -1406,6 +1410,374 @@
             100% { transform: scale(1); }
         }
 
+        /* ============================================
+           DRILL MODE STYLES
+           ============================================ */
+        .drill-hud {
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 90;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            width: 320px;
+        }
+
+        .drill-hud-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: var(--glass-blur);
+            -webkit-backdrop-filter: var(--glass-blur);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-full);
+            padding: 6px 16px;
+            pointer-events: auto;
+        }
+
+        .drill-hud-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .drill-hud-stop {
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--danger);
+            background: rgba(255, 59, 48, 0.15);
+            border: 1px solid rgba(255, 59, 48, 0.3);
+            border-radius: 4px;
+            padding: 3px 8px;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+        }
+
+        .drill-hud-progress {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .drill-hud-progress-bar {
+            flex: 1;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .drill-hud-progress-fill {
+            height: 100%;
+            background: var(--accent-volt);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+
+        .drill-hud-progress-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            min-width: 30px;
+            text-align: right;
+        }
+
+        .drill-hud-metric {
+            text-align: center;
+            animation: drillMetricPop 0.3s ease;
+        }
+
+        .drill-hud-metric-value {
+            font-size: 56px;
+            font-weight: 900;
+            line-height: 1;
+            color: var(--text-primary);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+            transition: color 0.2s ease;
+        }
+
+        .drill-hud-metric-value.at-target {
+            color: var(--success);
+            text-shadow: 0 0 20px rgba(50, 215, 75, 0.4);
+        }
+
+        .drill-hud-metric-value.close {
+            color: var(--warning);
+            text-shadow: 0 0 20px rgba(255, 149, 0, 0.4);
+        }
+
+        .drill-hud-metric-value.far {
+            color: var(--danger);
+            text-shadow: 0 0 20px rgba(255, 59, 48, 0.4);
+        }
+
+        .drill-hud-metric-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .drill-hud-metric-target {
+            font-size: 10px;
+            color: var(--text-subtle);
+        }
+
+        @keyframes drillMetricPop {
+            0% { transform: scale(0.5); opacity: 0; }
+            60% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .drill-hud-reps {
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .drill-rep-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            font-weight: 700;
+            color: transparent;
+            transition: all 0.3s ease;
+        }
+
+        .drill-rep-dot.hit {
+            background: rgba(50, 215, 75, 0.25);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .drill-rep-dot.close {
+            background: rgba(255, 149, 0, 0.2);
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .drill-rep-dot.miss {
+            background: rgba(255, 59, 48, 0.2);
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .drill-hud-wrong-type {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 59, 48, 0.9);
+            color: white;
+            font-size: 16px;
+            font-weight: 700;
+            padding: 12px 24px;
+            border-radius: var(--radius-md);
+            z-index: 95;
+            animation: drillWrongTypeFade 1.5s ease forwards;
+            pointer-events: none;
+        }
+
+        @keyframes drillWrongTypeFade {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            70% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-50%, -60%) scale(0.9); }
+        }
+
+        .drill-summary-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 20000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .drill-summary-content {
+            text-align: center;
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        .drill-summary-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .drill-summary-name {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--accent-volt);
+            margin-bottom: 24px;
+        }
+
+        .drill-summary-stats {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        .drill-stat {
+            text-align: center;
+        }
+
+        .drill-stat-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .drill-stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .drill-summary-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 4px;
+            height: 100px;
+            margin-bottom: 24px;
+            padding: 0 8px;
+        }
+
+        .drill-chart-bar {
+            flex: 1;
+            max-width: 28px;
+            border-radius: 3px 3px 0 0;
+            position: relative;
+            transition: height 0.3s ease;
+        }
+
+        .drill-chart-bar.hit {
+            background: var(--success);
+        }
+
+        .drill-chart-bar.close {
+            background: var(--warning);
+        }
+
+        .drill-chart-bar.miss {
+            background: var(--danger);
+        }
+
+        .drill-chart-target-line {
+            position: absolute;
+            left: -8px;
+            right: -8px;
+            height: 2px;
+            background: var(--accent-volt);
+            opacity: 0.5;
+        }
+
+        .drill-summary-trend {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .drill-summary-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .drill-card {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .drill-card:hover {
+            border-color: var(--accent-volt);
+            background: rgba(205, 255, 0, 0.05);
+        }
+
+        .drill-card.recommended {
+            border-color: rgba(205, 255, 0, 0.3);
+            background: rgba(205, 255, 0, 0.05);
+        }
+
+        .drill-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+
+        .drill-card-name {
+            font-weight: 700;
+            color: white;
+            font-size: 15px;
+        }
+
+        .drill-card-reps {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .drill-card-desc {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .drill-card-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+        }
+
+        .drill-card-stroke {
+            color: var(--accent-volt);
+            font-weight: 600;
+        }
+
+        .drill-card-target {
+            color: var(--text-subtle);
+        }
+
+        .drill-card-badge {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-volt);
+            background: rgba(205, 255, 0, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+
         .challenge-card {
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid var(--border-subtle);
@@ -2044,6 +2416,133 @@
                 font-size: 20px;
             }
         }
+
+        /* ============================================
+           REPLAY OVERLAY
+           ============================================ */
+        .replay-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 10000;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .replay-overlay.visible {
+            display: flex;
+        }
+
+        .replay-canvas-wrap {
+            position: relative;
+            width: 100%;
+            max-width: 640px;
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #replayCanvas {
+            width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+        }
+
+        .replay-controls {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .replay-ctrl-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #F5F5F5;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .replay-ctrl-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .replay-ctrl-btn.active {
+            background: var(--accent-volt);
+            color: #0A0A0A;
+            border-color: var(--accent-volt);
+        }
+
+        .replay-ctrl-btn.close-btn {
+            background: rgba(255, 59, 48, 0.2);
+            border-color: rgba(255, 59, 48, 0.4);
+            color: #FF3B30;
+        }
+
+        .replay-btn {
+            position: fixed;
+            bottom: calc(220px + env(safe-area-inset-bottom));
+            right: 16px;
+            z-index: 200;
+            background: var(--accent-volt);
+            color: #0A0A0A;
+            border: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            padding: 10px 16px;
+            border-radius: 24px;
+            cursor: pointer;
+            display: none;
+            box-shadow: 0 4px 12px rgba(205, 255, 0, 0.3);
+            animation: replayPulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes replayPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        .replay-btn.visible {
+            display: block;
+        }
+
+        /* Session review stroke grid */
+        .replay-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .replay-grid-item {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .replay-grid-item:hover {
+            transform: scale(1.1);
+        }
     </style>
 </head>
 <body>
@@ -2259,6 +2758,9 @@
                 <button id="playBtn" class="control-btn play-btn" onclick="toggleAnalysis()">
                     REC
                 </button>
+                <button class="control-btn text-btn" onclick="flipCamera()" title="Flip Camera">
+                    FLIP
+                </button>
                 <button class="control-btn text-btn" onclick="resetSession()">
                     RESET
                 </button>
@@ -2289,6 +2791,7 @@
                 <button class="mode-btn active" id="practiceModeBtn" onclick="switchMode('practice')">Practice</button>
                 <button class="mode-btn" id="analysisModeBtn" onclick="switchMode('analysis')">Analysis</button>
                 <button class="mode-btn" onclick="showChallenges()" title="Challenges">CHAL</button>
+                <button class="mode-btn" id="drillModeBtn" onclick="showDrillSelection()" title="Drill Mode">DRILL</button>
                 <button class="mode-btn" onclick="showProComparison()" title="Compare to pro players">Pro</button>
                 <button class="mode-btn" id="calibrateModeBtn" onclick="openCalibrationModal()" title="Calibrate with pro videos">Cal</button>
             </div>
@@ -2404,6 +2907,51 @@
                 <button class="btn" onclick="closeSessionSummary()" style="width: 100%; margin-top: 16px;">
                     Start New Session
                 </button>
+            </div>
+        </div>
+
+        <!-- Drill Selection Modal -->
+        <div id="drillModal" class="modal-overlay">
+            <div class="modal" style="max-width: 500px;">
+                <div class="modal-header">
+                    <div class="modal-title">Select Drill</div>
+                    <button class="modal-close" onclick="closeDrillModal()">&times;</button>
+                </div>
+                <div id="drillListContent"></div>
+            </div>
+        </div>
+
+        <!-- Drill Mode HUD -->
+        <div id="drillHUD" class="drill-hud" style="display: none;">
+            <div class="drill-hud-header">
+                <div class="drill-hud-name" id="drillHudName"></div>
+                <button class="drill-hud-stop" onclick="stopDrill()">STOP</button>
+            </div>
+            <div class="drill-hud-progress">
+                <div class="drill-hud-progress-bar">
+                    <div class="drill-hud-progress-fill" id="drillProgressFill" style="width: 0%"></div>
+                </div>
+                <div class="drill-hud-progress-text" id="drillProgressText">0/10</div>
+            </div>
+            <div class="drill-hud-metric" id="drillMetricDisplay" style="display: none;">
+                <div class="drill-hud-metric-value" id="drillMetricValue">--</div>
+                <div class="drill-hud-metric-label" id="drillMetricLabel"></div>
+                <div class="drill-hud-metric-target" id="drillMetricTarget"></div>
+            </div>
+            <div class="drill-hud-reps" id="drillRepDots"></div>
+        </div>
+
+        <!-- Drill Summary Overlay -->
+        <div id="drillSummaryOverlay" class="drill-summary-overlay" style="display: none;">
+            <div class="drill-summary-content">
+                <div class="drill-summary-title">Drill Complete</div>
+                <div class="drill-summary-name" id="drillSummaryName"></div>
+                <div class="drill-summary-stats" id="drillSummaryStats"></div>
+                <div class="drill-summary-chart" id="drillSummaryChart"></div>
+                <div class="drill-summary-actions">
+                    <button class="btn" onclick="closeDrillSummary()">Done</button>
+                    <button class="btn" onclick="repeatDrill()" style="background: transparent; border: 1px solid var(--text-muted); color: var(--text-primary);">Repeat</button>
+                </div>
             </div>
         </div>
 
@@ -2592,6 +3140,25 @@
         </div>
     </div>
 
+    <!-- Replay Button (fixed, bottom-right) -->
+    <button id="replayBtn" class="replay-btn" onclick="openReplay(this.dataset.index)">REPLAY</button>
+
+    <!-- Replay Overlay -->
+    <div id="replayOverlay" class="replay-overlay">
+        <div class="replay-canvas-wrap">
+            <canvas id="replayCanvas" width="640" height="480"></canvas>
+        </div>
+        <div class="replay-controls">
+            <button class="replay-ctrl-btn" onclick="toggleReplayPlayback()" id="replayPlayPauseBtn">PAUSE</button>
+            <button class="replay-ctrl-btn" onclick="setReplaySpeed(0.25)" data-speed="0.25">0.25x</button>
+            <button class="replay-ctrl-btn active" onclick="setReplaySpeed(0.5)" data-speed="0.5">0.5x</button>
+            <button class="replay-ctrl-btn" onclick="setReplaySpeed(1)" data-speed="1">1x</button>
+            <button class="replay-ctrl-btn" onclick="replayStepFrame(-1)">&lt;</button>
+            <button class="replay-ctrl-btn" onclick="replayStepFrame(1)">&gt;</button>
+            <button class="replay-ctrl-btn close-btn" onclick="closeReplay()">CLOSE</button>
+        </div>
+    </div>
+
     <script>
         // Tennis AI Application
         class TennisAI {
@@ -2600,6 +3167,7 @@
                 this.camera = null;
                 this.isReady = false;
                 this.isAnalyzing = false;
+                this.currentFacingMode = 'user';
 
                 // Signal processing: adaptive low-pass filter + bone constraints
                 this.landmarkFilter = new LandmarkFilter({
@@ -2615,6 +3183,17 @@
                 // Enhanced Analysis Engine
                 this.enhancedAnalyzer = new EnhancedTennisAnalyzer();
                 this.enhancedAnalyzer.setLandmarkFilter(this.landmarkFilter);
+                this.enhancedAnalyzer.onStrokeCallback = (strokeData, historySnapshot) => {
+                    this.freezeTrail(historySnapshot, strokeData);
+                    // Show replay button after each stroke
+                    if (this.replayManager && this.replayManager.getReplayCount() > 0) {
+                        showReplayButton(this.replayManager.getReplayCount() - 1);
+                    }
+                };
+
+                // Stroke Replay Manager
+                this.replayManager = new StrokeReplayManager();
+                window.strokeReplayManager = this.replayManager;
 
                 // Ball Tracking (in-browser color detection, no server needed)
                 this.ballTracker = new BallTrackingClient({
@@ -2630,9 +3209,32 @@
                     abbreviatedFollowThrough: [15, 16],
                     inconsistentContactPoint: [15, 16],
                     noKneeBend: [25, 26],
-                    rushingTheSwing: [11, 12, 23, 24]
+                    rushingTheSwing: [11, 12, 23, 24],
+                    narrowBase: [27, 28],
+                    noStepIn: [27, 28],
+                    poorRecovery: [23, 24, 27, 28],
+                    wrongStanceForStroke: [23, 24, 27, 28],
+                    // Serve faults
+                    noLegDrive: [25, 26, 27, 28],
+                    noTrophyPosition: [11, 12, 15, 16],
+                    lowServeContactPoint: [15, 16],
+                    flatServeNoTilt: [11, 12]
                 };
                 this.faultHighlightDuration = 3000;
+
+                // Enhanced swing trail state
+                this.frozenTrail = null;
+                this.frozenTrailTimestamp = 0;
+                this.frozenTrailFadeMs = 1500;
+                this.contactPointMarker = null;
+                this.phaseColors = {
+                    preparation:   { r: 60,  g: 130, b: 246 },
+                    loading:       { r: 250, g: 204, b: 21  },
+                    acceleration:  { r: 249, g: 115, b: 22  },
+                    contact:       { r: 255, g: 59,  b: 48  },
+                    followThrough: { r: 50,  g: 215, b: 75  },
+                    unknown:       { r: 0,   g: 255, b: 255 }
+                };
 
                 // DOM elements
                 this.video = document.getElementById('videoElement');
@@ -2687,21 +3289,26 @@
                 this.isReady = true;
             }
             async setupCamera() {
+                // Stop existing tracks before switching
+                if (this.video.srcObject) {
+                    this.video.srcObject.getTracks().forEach(track => track.stop());
+                }
+
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        facingMode: 'user',
+                        facingMode: this.currentFacingMode,
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     }
                 });
 
                 this.video.srcObject = stream;
-                
+
                 return new Promise((resolve) => {
                     this.video.onloadedmetadata = () => {
                         this.canvas.width = this.video.videoWidth;
                         this.canvas.height = this.video.videoHeight;
-                        
+
                        this.camera = new Camera(this.video, {
                         onFrame: async () => {
                             if (this.pose) {
@@ -2711,7 +3318,7 @@
                         width: 1280,
                         height: 720
                     });
-                        
+
                         this.camera.start();
                         resolve();
                     };
@@ -2783,30 +3390,168 @@
             }
 
             drawSwingTrail() {
-                const path = this.enhancedAnalyzer.poseHistory.map(p => {
-                    const wrist = p.joints.dominantWrist || p.joints.rightWrist;
-                    return {
-                        x: wrist.x * this.canvas.width,
-                        y: wrist.y * this.canvas.height
-                    };
-                });
+                const now = Date.now();
 
-                if (path.length < 2) return;
+                // Draw frozen trail (post-stroke, phase-colored) if available
+                if (this.frozenTrail) {
+                    const age = now - this.frozenTrailTimestamp;
+                    if (age > this.frozenTrailFadeMs) {
+                        this.frozenTrail = null;
+                        this.contactPointMarker = null;
+                    } else {
+                        const fadeAlpha = age < 1000 ? 1.0 : 1.0 - ((age - 1000) / 500);
+                        this.drawPhaseColoredTrail(this.frozenTrail, fadeAlpha);
+                        this.drawContactPointMarker(fadeAlpha);
+                        return;
+                    }
+                }
+
+                // Draw live real-time trail
+                this.drawLiveTrail();
+            }
+
+            drawLiveTrail() {
+                const history = this.enhancedAnalyzer.poseHistory;
+                if (history.length < 3) return;
 
                 this.ctx.save();
 
-                // Draw gradient trail (recent = brighter)
-                for (let i = 1; i < path.length; i++) {
-                    const alpha = i / path.length;
-                    this.ctx.strokeStyle = `rgba(0, 255, 255, ${alpha})`;
-                    this.ctx.lineWidth = 4;
+                const points = history.map(p => {
+                    const wrist = p.joints.dominantWrist || p.joints.rightWrist;
+                    return {
+                        x: wrist.x * this.canvas.width,
+                        y: wrist.y * this.canvas.height,
+                        velocity: p.velocity?.magnitude || 0
+                    };
+                });
+
+                const velocities = points.map(p => p.velocity);
+                const maxVel = Math.max(...velocities);
+                const minVel = Math.min(...velocities);
+                const velRange = maxVel - minVel || 1;
+                const peakIdx = velocities.indexOf(maxVel);
+
+                for (let i = 1; i < points.length; i++) {
+                    const t = i / points.length;
+                    const velNorm = (points[i].velocity - minVel) / velRange;
+                    const isPastPeak = i > peakIdx && peakIdx > points.length * 0.3;
+                    const color = this.velocityToColor(velNorm, isPastPeak);
+                    const lineWidth = 2 + velNorm * 6;
+
+                    this.ctx.shadowColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${t * 0.5})`;
+                    this.ctx.shadowBlur = 6 + velNorm * 8;
+                    this.ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${t * 0.8})`;
+                    this.ctx.lineWidth = lineWidth;
+                    this.ctx.lineCap = 'round';
 
                     this.ctx.beginPath();
-                    this.ctx.moveTo(path[i - 1].x, path[i - 1].y);
-                    this.ctx.lineTo(path[i].x, path[i].y);
+                    this.ctx.moveTo(points[i - 1].x, points[i - 1].y);
+                    this.ctx.lineTo(points[i].x, points[i].y);
                     this.ctx.stroke();
                 }
 
+                this.ctx.shadowBlur = 0;
+                this.ctx.restore();
+            }
+
+            velocityToColor(velNorm, isPastPeak) {
+                if (isPastPeak) return this.phaseColors.followThrough;
+                if (velNorm < 0.2) return this.phaseColors.preparation;
+                if (velNorm < 0.45) return this.phaseColors.loading;
+                if (velNorm < 0.7) return this.phaseColors.acceleration;
+                return this.phaseColors.contact;
+            }
+
+            freezeTrail(poseHistory, strokeData) {
+                const phases = this.enhancedAnalyzer.lastDetectedPhase;
+                const phaseDetector = this.enhancedAnalyzer.phaseDetector;
+
+                const velocities = poseHistory.map(p => p.velocity?.magnitude || 0);
+                const maxVel = Math.max(...velocities);
+                const minVel = Math.min(...velocities);
+                const velRange = maxVel - minVel || 1;
+
+                this.frozenTrail = poseHistory.map((p, i) => {
+                    const wrist = p.joints.dominantWrist || p.joints.rightWrist;
+                    const velNorm = (velocities[i] - minVel) / velRange;
+
+                    let phase = 'unknown';
+                    if (phases && phaseDetector) {
+                        phase = phaseDetector.getPhaseAtFrame(phases, i);
+                    }
+
+                    return {
+                        x: wrist.x * this.canvas.width,
+                        y: wrist.y * this.canvas.height,
+                        velNorm,
+                        phase
+                    };
+                });
+
+                this.frozenTrailTimestamp = Date.now();
+
+                // Set contact point marker
+                if (phases && phases.contactFrame != null && poseHistory[phases.contactFrame]) {
+                    const contactPose = poseHistory[phases.contactFrame];
+                    const wrist = contactPose.joints.dominantWrist || contactPose.joints.rightWrist;
+                    this.contactPointMarker = {
+                        x: wrist.x * this.canvas.width,
+                        y: wrist.y * this.canvas.height,
+                        timestamp: Date.now()
+                    };
+                }
+            }
+
+            drawPhaseColoredTrail(trailData, globalAlpha) {
+                if (trailData.length < 2) return;
+                this.ctx.save();
+
+                for (let i = 1; i < trailData.length; i++) {
+                    const seg = trailData[i];
+                    const color = this.phaseColors[seg.phase] || this.phaseColors.unknown;
+                    const t = i / trailData.length;
+
+                    this.ctx.shadowColor = `rgba(${color.r}, ${color.g}, ${color.b}, ${globalAlpha * 0.5})`;
+                    this.ctx.shadowBlur = 8 + seg.velNorm * 10;
+                    this.ctx.strokeStyle = `rgba(${color.r}, ${color.g}, ${color.b}, ${globalAlpha * t})`;
+                    this.ctx.lineWidth = 2 + seg.velNorm * 6;
+                    this.ctx.lineCap = 'round';
+
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(trailData[i - 1].x, trailData[i - 1].y);
+                    this.ctx.lineTo(seg.x, seg.y);
+                    this.ctx.stroke();
+                }
+
+                this.ctx.shadowBlur = 0;
+                this.ctx.restore();
+            }
+
+            drawContactPointMarker(alpha) {
+                if (!this.contactPointMarker) return;
+                const { x, y, timestamp } = this.contactPointMarker;
+                const age = Date.now() - timestamp;
+                const pulse = 1.0 + 0.3 * Math.sin(age / 100);
+                const radius = 10 * pulse;
+
+                this.ctx.save();
+                this.ctx.shadowColor = `rgba(255, 59, 48, ${alpha * 0.8})`;
+                this.ctx.shadowBlur = 20;
+
+                // Outer ring
+                this.ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.9})`;
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+
+                // Inner dot
+                this.ctx.fillStyle = `rgba(255, 59, 48, ${alpha * 0.9})`;
+                this.ctx.beginPath();
+                this.ctx.arc(x, y, 4, 0, Math.PI * 2);
+                this.ctx.fill();
+
+                this.ctx.shadowBlur = 0;
                 this.ctx.restore();
             }
 
@@ -3328,6 +4073,26 @@
             if (typeof ghostOverlay !== 'undefined') {
                 ghostOverlay.resetSession();
             }
+            // Clear replay recordings
+            if (tennisAI?.replayManager) {
+                tennisAI.replayManager.clearReplays();
+            }
+        }
+
+        async function flipCamera() {
+            if (!tennisAI) return;
+            const wasAnalyzing = tennisAI.isAnalyzing;
+            if (wasAnalyzing) tennisAI.stopAnalysis();
+
+            // Stop MediaPipe camera loop
+            if (tennisAI.camera) {
+                tennisAI.camera.stop();
+            }
+
+            tennisAI.currentFacingMode = tennisAI.currentFacingMode === 'user' ? 'environment' : 'user';
+            await tennisAI.setupCamera();
+
+            if (wasAnalyzing) tennisAI.startAnalysis();
         }
 
         // Ghost Overlay Toggle
@@ -3501,6 +4266,13 @@
             }
 
             document.getElementById('sessionSummaryContent').innerHTML = html;
+
+            // Add stroke review grid if replays are available
+            const summaryContent = document.getElementById('sessionSummaryContent');
+            if (typeof buildStrokeReviewGrid === 'function') {
+                buildStrokeReviewGrid(summaryContent);
+            }
+
             document.getElementById('sessionSummaryModal').classList.add('visible');
         }
 
@@ -3791,6 +4563,281 @@
         }
 
         // ========================================
+        // Drill Mode Functions
+        // ========================================
+
+        let lastDrillId = null;
+
+        function showDrillSelection() {
+            renderDrillList();
+            document.getElementById('drillModal').classList.add('visible');
+        }
+
+        function closeDrillModal() {
+            document.getElementById('drillModal').classList.remove('visible');
+        }
+
+        function renderDrillList() {
+            if (typeof drillMode === 'undefined') return;
+
+            const skillLevel = tennisAI?.playerProfile?.skillLevel || 'intermediate';
+            let html = '';
+
+            // Auto drill from improvement plan
+            const autoDrill = drillMode.buildAutoDrill(skillLevel);
+            if (autoDrill) {
+                html += `
+                    <div class="drill-card-badge">Recommended from your plan</div>
+                    <div class="drill-card recommended" onclick="startDrill('auto')">
+                        <div class="drill-card-header">
+                            <span class="drill-card-name">${autoDrill.name}</span>
+                            <span class="drill-card-reps">${autoDrill.totalReps} reps</span>
+                        </div>
+                        <div class="drill-card-desc">${autoDrill.description}</div>
+                        <div class="drill-card-meta">
+                            ${autoDrill.strokeType ? `<span class="drill-card-stroke">${autoDrill.strokeType}</span>` : '<span class="drill-card-stroke">Any stroke</span>'}
+                            <span class="drill-card-target">Target: ${autoDrill.target}${autoDrill.unit ? ' ' + autoDrill.unit : ''}</span>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Predefined drills
+            Object.values(drillMode.drills).forEach(drill => {
+                const target = drill.targets?.[skillLevel] || drill.targets?.intermediate;
+                const strokeLabel = drill.strokeType || (drill.acceptedTypes ? drill.acceptedTypes.join('/') : 'Any');
+                html += `
+                    <div class="drill-card" onclick="startDrill('${drill.id}')">
+                        <div class="drill-card-header">
+                            <span class="drill-card-name">${drill.name}</span>
+                            <span class="drill-card-reps">${drill.totalReps} reps</span>
+                        </div>
+                        <div class="drill-card-desc">${drill.description}</div>
+                        <div class="drill-card-meta">
+                            <span class="drill-card-stroke">${strokeLabel}</span>
+                            <span class="drill-card-target">Target: ${target}${drill.unit ? ' ' + drill.unit : ''}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('drillListContent').innerHTML = html;
+        }
+
+        function startDrill(drillId) {
+            if (typeof drillMode === 'undefined') return;
+
+            const skillLevel = tennisAI?.playerProfile?.skillLevel || 'intermediate';
+            const drill = drillMode.startDrill(drillId, skillLevel);
+            if (!drill) return;
+
+            lastDrillId = drillId;
+            closeDrillModal();
+
+            // Ensure practice mode
+            if (currentMode !== 'practice') {
+                switchMode('practice');
+            }
+
+            // Auto-start analysis if not running
+            if (tennisAI && !tennisAI.isAnalyzing) {
+                tennisAI.startAnalysis();
+            }
+
+            showDrillHUD(drill);
+        }
+
+        function showDrillHUD(drill) {
+            const hud = document.getElementById('drillHUD');
+            document.getElementById('drillHudName').textContent = drill.name;
+            document.getElementById('drillProgressText').textContent = `0/${drill.totalReps}`;
+            document.getElementById('drillProgressFill').style.width = '0%';
+            document.getElementById('drillMetricDisplay').style.display = 'none';
+            document.getElementById('drillMetricLabel').textContent = drill.metricLabel;
+            document.getElementById('drillMetricTarget').textContent = `Target: ${drill.target}${drill.unit ? ' ' + drill.unit : ''}`;
+            renderRepDots(drill);
+            hud.style.display = 'flex';
+
+            // Hide challenge bar if active
+            document.getElementById('activeChallengeBar').style.display = 'none';
+        }
+
+        function renderRepDots(drill) {
+            let html = '';
+            for (let i = 0; i < drill.totalReps; i++) {
+                html += `<div class="drill-rep-dot" id="drillDot${i}"></div>`;
+            }
+            document.getElementById('drillRepDots').innerHTML = html;
+        }
+
+        function recordDrillStroke(strokeData) {
+            if (typeof drillMode === 'undefined' || !drillMode.isActive) return;
+
+            const result = drillMode.recordStroke(strokeData);
+            if (!result) return;
+
+            if (result.wrongType) {
+                showDrillWrongType(result.expectedType);
+                return;
+            }
+
+            if (result.error) return;
+
+            updateDrillHUD(result);
+
+            if (result.isComplete) {
+                setTimeout(() => showDrillSummary(), 800);
+            }
+        }
+
+        function updateDrillHUD(result) {
+            // Update progress
+            const pct = (result.rep / result.totalReps) * 100;
+            document.getElementById('drillProgressFill').style.width = `${pct}%`;
+            document.getElementById('drillProgressText').textContent = `${result.rep}/${result.totalReps}`;
+
+            // Show big metric value with pop animation
+            const metricDisplay = document.getElementById('drillMetricDisplay');
+            const metricValue = document.getElementById('drillMetricValue');
+            const valueStr = result.metricValue < 10 ? result.metricValue.toFixed(1) : Math.round(result.metricValue);
+
+            metricDisplay.style.display = 'block';
+            metricValue.textContent = valueStr;
+
+            // Color based on distance from target
+            metricValue.classList.remove('at-target', 'close', 'far');
+            if (result.hitTarget) {
+                metricValue.classList.add('at-target');
+            } else if (result.metricValue >= result.target * 0.8) {
+                metricValue.classList.add('close');
+            } else {
+                metricValue.classList.add('far');
+            }
+
+            // Re-trigger pop animation
+            metricDisplay.style.animation = 'none';
+            metricDisplay.offsetHeight; // force reflow
+            metricDisplay.style.animation = 'drillMetricPop 0.3s ease';
+
+            // Update rep dot
+            const dotIdx = result.rep - 1;
+            const dot = document.getElementById(`drillDot${dotIdx}`);
+            if (dot) {
+                const dotValue = result.metricValue < 10 ? result.metricValue.toFixed(0) : Math.round(result.metricValue);
+                dot.textContent = dotValue;
+                if (result.hitTarget) {
+                    dot.classList.add('hit');
+                } else if (result.metricValue >= result.target * 0.8) {
+                    dot.classList.add('close');
+                } else {
+                    dot.classList.add('miss');
+                }
+            }
+
+            // Auto-hide metric after 3s
+            clearTimeout(window._drillMetricTimeout);
+            window._drillMetricTimeout = setTimeout(() => {
+                metricDisplay.style.display = 'none';
+            }, 3000);
+        }
+
+        function showDrillWrongType(expectedType) {
+            // Remove any existing wrong-type indicator
+            const existing = document.querySelector('.drill-hud-wrong-type');
+            if (existing) existing.remove();
+
+            const indicator = document.createElement('div');
+            indicator.className = 'drill-hud-wrong-type';
+            indicator.textContent = `Need: ${expectedType}`;
+            document.body.appendChild(indicator);
+
+            setTimeout(() => indicator.remove(), 1500);
+        }
+
+        function showDrillSummary() {
+            const summary = drillMode.stopDrill();
+            if (!summary) return;
+
+            document.getElementById('drillHUD').style.display = 'none';
+
+            // Populate summary
+            document.getElementById('drillSummaryName').textContent = summary.drillName;
+
+            // Stats row
+            const hitPct = summary.totalReps > 0 ? Math.round((summary.repsAtTarget / summary.totalReps) * 100) : 0;
+            document.getElementById('drillSummaryStats').innerHTML = `
+                <div class="drill-stat">
+                    <div class="drill-stat-value">${summary.average < 10 ? summary.average.toFixed(1) : Math.round(summary.average)}</div>
+                    <div class="drill-stat-label">Average${summary.unit ? ' (' + summary.unit + ')' : ''}</div>
+                </div>
+                <div class="drill-stat">
+                    <div class="drill-stat-value">${summary.repsAtTarget}/${summary.totalReps}</div>
+                    <div class="drill-stat-label">At Target</div>
+                </div>
+                <div class="drill-stat">
+                    <div class="drill-stat-value">${summary.best < 10 ? summary.best.toFixed(1) : Math.round(summary.best)}</div>
+                    <div class="drill-stat-label">Best</div>
+                </div>
+            `;
+
+            // Bar chart
+            const maxVal = Math.max(summary.target * 1.3, summary.best * 1.1);
+            let chartHtml = '';
+            summary.scores.forEach((score, i) => {
+                const heightPct = Math.max(5, (score.value / maxVal) * 100);
+                let barClass = 'miss';
+                if (score.value >= summary.target) barClass = 'hit';
+                else if (score.value >= summary.target * 0.8) barClass = 'close';
+
+                chartHtml += `<div class="drill-chart-bar ${barClass}" style="height: ${heightPct}%"></div>`;
+            });
+
+            // Target line
+            const targetPct = (summary.target / maxVal) * 100;
+            chartHtml += `<div class="drill-chart-target-line" style="bottom: ${targetPct}%; position: absolute; left: 0; right: 0;"></div>`;
+
+            document.getElementById('drillSummaryChart').innerHTML = chartHtml;
+            document.getElementById('drillSummaryChart').style.position = 'relative';
+
+            // Trend text
+            const trendText = summary.trend === 'improving' ? 'Trending up across reps' :
+                             summary.trend === 'declining' ? 'Consistency dropped toward the end' :
+                             'Consistent performance throughout';
+            const trendEl = document.querySelector('.drill-summary-trend');
+            if (trendEl) {
+                trendEl.textContent = trendText;
+            } else {
+                // Insert trend before actions
+                const actions = document.querySelector('.drill-summary-actions');
+                if (actions) {
+                    const div = document.createElement('div');
+                    div.className = 'drill-summary-trend';
+                    div.textContent = trendText;
+                    actions.parentNode.insertBefore(div, actions);
+                }
+            }
+
+            document.getElementById('drillSummaryOverlay').style.display = 'flex';
+        }
+
+        function closeDrillSummary() {
+            document.getElementById('drillSummaryOverlay').style.display = 'none';
+        }
+
+        function repeatDrill() {
+            closeDrillSummary();
+            if (lastDrillId) {
+                startDrill(lastDrillId);
+            }
+        }
+
+        function stopDrill() {
+            if (typeof drillMode !== 'undefined' && drillMode.isActive) {
+                showDrillSummary();
+            }
+        }
+
+        // ========================================
         // Pro Comparison Functions
         // ========================================
 
@@ -3957,6 +5004,12 @@
                 // Stop practice mode analysis if running
                 if (tennisAI && tennisAI.isAnalyzing) {
                     tennisAI.stopAnalysis();
+                }
+
+                // Stop active drill when leaving practice mode
+                if (typeof drillMode !== 'undefined' && drillMode.isActive) {
+                    drillMode.stopDrill();
+                    document.getElementById('drillHUD').style.display = 'none';
                 }
             }
         }
@@ -4678,14 +5731,179 @@
             overlay.classList.add('flash');
         }
 
+        // ============================================
+        // REPLAY FUNCTIONS
+        // ============================================
+        let replayBtnTimeout = null;
+
+        function showReplayButton(index) {
+            const btn = document.getElementById('replayBtn');
+            if (!btn) return;
+            btn.dataset.index = index;
+            btn.classList.add('visible');
+            if (replayBtnTimeout) clearTimeout(replayBtnTimeout);
+            replayBtnTimeout = setTimeout(() => {
+                btn.classList.remove('visible');
+            }, 5000);
+        }
+
+        function openReplay(index) {
+            const overlay = document.getElementById('replayOverlay');
+            const canvas = document.getElementById('replayCanvas');
+            if (!overlay || !canvas || !window.tennisAI?.replayManager) return;
+
+            const idx = parseInt(index, 10);
+            const mgr = window.tennisAI.replayManager;
+            if (idx < 0 || idx >= mgr.getReplayCount()) return;
+
+            // Match canvas to main canvas dimensions
+            const mainCanvas = document.getElementById('canvasElement');
+            if (mainCanvas) {
+                canvas.width = mainCanvas.width;
+                canvas.height = mainCanvas.height;
+            }
+
+            overlay.classList.add('visible');
+            const ctx = canvas.getContext('2d');
+
+            mgr.startPlayback(idx, canvas, ctx, {
+                speed: 0.5,
+                loop: true,
+                faultLandmarkMap: window.tennisAI.faultLandmarkMap,
+                dominantHand: window.tennisAI.enhancedAnalyzer?.dominantHand
+            });
+
+            // Hide the replay button
+            const btn = document.getElementById('replayBtn');
+            if (btn) btn.classList.remove('visible');
+
+            // Update speed button states
+            updateSpeedButtons(0.5);
+            document.getElementById('replayPlayPauseBtn').textContent = 'PAUSE';
+        }
+
+        function closeReplay() {
+            const overlay = document.getElementById('replayOverlay');
+            if (overlay) overlay.classList.remove('visible');
+            if (window.tennisAI?.replayManager) {
+                window.tennisAI.replayManager.stopPlayback();
+            }
+        }
+
+        function toggleReplayPlayback() {
+            if (!window.tennisAI?.replayManager) return;
+            const mgr = window.tennisAI.replayManager;
+            const paused = mgr.pausePlayback();
+            document.getElementById('replayPlayPauseBtn').textContent = paused ? 'PLAY' : 'PAUSE';
+
+            // If paused, redraw current frame
+            if (paused) {
+                const canvas = document.getElementById('replayCanvas');
+                const ctx = canvas?.getContext('2d');
+                const replay = mgr.getReplay(mgr.currentReplayIndex);
+                if (replay && ctx) {
+                    mgr.drawReplayFrame(ctx, canvas, replay, mgr.currentFrameIndex, {
+                        faultLandmarkMap: window.tennisAI.faultLandmarkMap,
+                        dominantHand: window.tennisAI.enhancedAnalyzer?.dominantHand
+                    });
+                }
+            }
+        }
+
+        function setReplaySpeed(speed) {
+            if (!window.tennisAI?.replayManager) return;
+            window.tennisAI.replayManager.setPlaybackSpeed(speed);
+            updateSpeedButtons(speed);
+        }
+
+        function updateSpeedButtons(activeSpeed) {
+            document.querySelectorAll('.replay-ctrl-btn[data-speed]').forEach(btn => {
+                const s = parseFloat(btn.dataset.speed);
+                btn.classList.toggle('active', s === activeSpeed);
+            });
+        }
+
+        function replayStepFrame(delta) {
+            if (!window.tennisAI?.replayManager) return;
+            const mgr = window.tennisAI.replayManager;
+            const replay = mgr.getReplay(mgr.currentReplayIndex);
+            if (!replay) return;
+
+            // Pause if playing
+            if (!mgr.isPaused) {
+                mgr.pausePlayback();
+                document.getElementById('replayPlayPauseBtn').textContent = 'PLAY';
+            }
+
+            const newIdx = Math.max(0, Math.min(mgr.currentFrameIndex + delta, replay.frames.length - 1));
+            mgr.currentFrameIndex = newIdx;
+
+            const canvas = document.getElementById('replayCanvas');
+            const ctx = canvas?.getContext('2d');
+            if (ctx) {
+                mgr.drawReplayFrame(ctx, canvas, replay, newIdx, {
+                    faultLandmarkMap: window.tennisAI.faultLandmarkMap,
+                    dominantHand: window.tennisAI.enhancedAnalyzer?.dominantHand
+                });
+            }
+        }
+
+        // Build stroke review grid for session summary
+        function buildStrokeReviewGrid(container) {
+            if (!window.tennisAI?.replayManager) return;
+            const mgr = window.tennisAI.replayManager;
+            if (mgr.getReplayCount() === 0) return;
+
+            const section = document.createElement('div');
+            section.style.marginTop = '16px';
+
+            const title = document.createElement('div');
+            title.textContent = 'Review Strokes';
+            title.style.cssText = 'font-size: 14px; font-weight: 700; color: #F5F5F5; margin-bottom: 8px;';
+            section.appendChild(title);
+
+            const grid = document.createElement('div');
+            grid.className = 'replay-grid';
+
+            const replays = mgr.getAllReplays();
+            replays.forEach((replay, idx) => {
+                const q = replay.strokeData.quality;
+                const bg = q >= 80 ? 'rgba(50, 215, 75, 0.2)'
+                    : q >= 60 ? 'rgba(205, 255, 0, 0.2)'
+                    : 'rgba(255, 59, 48, 0.2)';
+                const color = q >= 80 ? '#32D74B' : q >= 60 ? '#CDFF00' : '#FF3B30';
+
+                const item = document.createElement('div');
+                item.className = 'replay-grid-item';
+                item.style.background = bg;
+                item.style.color = color;
+                item.style.border = `1px solid ${color}33`;
+                item.textContent = q;
+                item.title = `${replay.strokeData.type} - ${q}/100`;
+                item.onclick = () => openReplay(idx);
+                grid.appendChild(item);
+            });
+
+            section.appendChild(grid);
+            container.appendChild(section);
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (event) => {
             if (event.code === 'Space') {
                 event.preventDefault();
-                toggleAnalysis();
+                // Close replay if open, otherwise toggle analysis
+                const overlay = document.getElementById('replayOverlay');
+                if (overlay?.classList.contains('visible')) {
+                    toggleReplayPlayback();
+                } else {
+                    toggleAnalysis();
+                }
             } else if (event.code === 'KeyR' && (event.ctrlKey || event.metaKey)) {
                 event.preventDefault();
                 resetSession();
+            } else if (event.code === 'Escape') {
+                closeReplay();
             }
         });
     </script>

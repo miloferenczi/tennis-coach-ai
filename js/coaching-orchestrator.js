@@ -180,7 +180,21 @@ class CoachingOrchestrator {
             'swingPathSmoothness': metrics.smoothness || 70,
             'weightTransfer': metrics.technique?.weightTransfer,
             'stance': metrics.technique?.stance,
-            'followThroughComplete': metrics.followThroughComplete !== false
+            'followThroughComplete': metrics.followThroughComplete !== false,
+            'footworkScore': metrics.footworkScore || 0,
+            'stanceType': metrics.stanceType || 'neutral',
+            'baseWidthRatio': metrics.baseWidthRatio || 1.0,
+            'stepPattern': metrics.stepPattern || 'unknown',
+            'weightTransferDirection': metrics.weightTransferDirection || 'static',
+            'hasStepIn': metrics.hasStepIn || false,
+            'recoveryDetected': metrics.recoveryDetected || false,
+            // Serve metrics
+            'serveScore': metrics.serveScore || 0,
+            'serveTrophyScore': metrics.serveTrophyScore || 0,
+            'serveLegDriveScore': metrics.serveLegDriveScore || 0,
+            'serveContactHeightScore': metrics.serveContactHeightScore || 0,
+            'serveShoulderTiltScore': metrics.serveShoulderTiltScore || 0,
+            'serveTossArmScore': metrics.serveTossArmScore || 0
         };
 
         return metricMap[metricName] !== undefined ? metricMap[metricName] : null;
@@ -534,6 +548,28 @@ class CoachingOrchestrator {
         }
         if (playerMetrics.followThroughComplete !== false && (playerMetrics.smoothness || 0) > 60) {
             strengths.push('Complete follow-through');
+        }
+        if ((playerMetrics.footworkScore || 0) > 75) {
+            strengths.push('Good footwork');
+        }
+        if (playerMetrics.hasStepIn) {
+            strengths.push('Good step into ball');
+        }
+        if (playerMetrics.recoveryDetected) {
+            strengths.push('Quick recovery');
+        }
+        if (playerMetrics.stanceType === 'semi-open' || playerMetrics.stanceType === 'open') {
+            strengths.push('Good stance selection');
+        }
+        // Serve strengths
+        if ((playerMetrics.serveTrophyScore || 0) > 70) {
+            strengths.push('Good trophy position');
+        }
+        if ((playerMetrics.serveLegDriveScore || 0) > 70) {
+            strengths.push('Strong leg drive');
+        }
+        if ((playerMetrics.serveScore || 0) > 75) {
+            strengths.push('Solid serve mechanics');
         }
 
         return strengths;

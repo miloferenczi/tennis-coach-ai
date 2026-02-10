@@ -18,9 +18,10 @@
 }
 },
 "issuePriority": {
-"foundation": ["latePreparation", "inconsistentContactPoint"],
+"foundation": ["latePreparation", "inconsistentContactPoint", "poorFootwork"],
 "power": ["lowRacquetSpeed", "insufficientRotation", "poorWeightTransfer"],
-"refinement": ["collapsingElbowChickenWing", "closedStanceLimitingPower", "poorFollowThrough"]
+"refinement": ["collapsingElbowChickenWing", "closedStanceLimitingPower", "poorFollowThrough"],
+"serve": ["poorServeTossArm", "noServeLegDrive", "noServeTrophyPosition", "lowServeContactPoint"]
 },
 "issues": [
 {
@@ -309,6 +310,179 @@
 "followThroughComplete": true,
 "spin": { "increase": 18 },
 "depth": { "increase": 12 }
+}
+},
+{
+"id": "poorFootwork",
+"name": "Poor Footwork",
+"priority": 6,
+"category": "foundation",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"footworkScore": { "max": 45 }
+},
+"confirming": {
+"stepPattern": { "equals": "planted" },
+"baseWidthRatio": { "max": 0.65 }
+}
+},
+"diagnosis": {
+"rootCause": "lack_of_foot_movement",
+"symptoms": ["poor_balance", "weak_shots", "late_contact", "poor_recovery"]
+},
+"dependencies": {
+"blocksFixing": ["insufficientRotation", "poorWeightTransfer"],
+"resolves": ["poor_balance", "inconsistent_contact", "poor_recovery"],
+"requires": ["basic_ready_position", "split_step"]
+},
+"cueSelection": {
+"beginner": "Move your feet to the ball; small steps help you find the right spot.",
+"intermediate": "Split step, adjust, set your base, then swing. Feet first, racquet second.",
+"advanced": "Efficient footwork: split, adjust, load, drive. Recover to center after every shot."
+},
+"keyMetrics": ["footworkScore", "stepPattern", "baseWidthRatio", "recoveryDetected"],
+"expectedImprovement": {
+"footworkScore": { "increase": 15 },
+"quality": { "increase": 10 },
+"consistency": { "increase": 12 }
+}
+},
+{
+"id": "poorServeTossArm",
+"name": "Poor Serve Toss Arm",
+"priority": 8,
+"category": "serve",
+"impactLevel": "critical",
+"detection": {
+"primary": {
+"serveTossArmScore": { "max": 35 }
+},
+"confirming": {
+"serveScore": { "max": 50 }
+}
+},
+"diagnosis": {
+"rootCause": "inconsistent_toss_mechanics",
+"symptoms": ["inconsistent_toss", "poor_timing", "rushed_motion"]
+},
+"dependencies": {
+"blocksFixing": ["noServeLegDrive", "lowServeContactPoint"],
+"resolves": ["inconsistent_toss", "serve_timing", "weak_serves"],
+"requires": ["basic_serve_motion"]
+},
+"cueSelection": {
+"beginner": "Extend your toss arm straight up like you're reaching for the sky.",
+"intermediate": "Toss with a straight arm from the shoulder, release at eye level for consistency.",
+"advanced": "Consistent toss placement: slightly in front and to your hitting side. Control the release point."
+},
+"keyMetrics": ["serveTossArmScore", "serveScore"],
+"expectedImprovement": {
+"serveTossArmScore": { "increase": 20 },
+"serveScore": { "increase": 15 }
+}
+},
+{
+"id": "noServeLegDrive",
+"name": "No Serve Leg Drive",
+"priority": 7,
+"category": "serve",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"serveLegDriveScore": { "max": 35 }
+},
+"confirming": {
+"serveScore": { "max": 55 }
+}
+},
+"diagnosis": {
+"rootCause": "insufficient_leg_loading",
+"symptoms": ["flat_footed_serve", "weak_power", "low_contact_point"]
+},
+"dependencies": {
+"mustFixFirst": ["poorServeTossArm"],
+"resolves": ["weak_serve_power", "low_contact_point"],
+"requires": ["consistent_toss", "knee_bend_ability"]
+},
+"cueSelection": {
+"beginner": "Bend your knees and push up like you're jumping.",
+"intermediate": "Load your legs as the toss goes up, then drive upward explosively.",
+"advanced": "Deep knee bend at trophy, then sequence: legs drive hips, hips drive torso, torso drives arm."
+},
+"keyMetrics": ["serveLegDriveScore", "serveScore"],
+"expectedImprovement": {
+"serveLegDriveScore": { "increase": 20 },
+"serveScore": { "increase": 12 },
+"serveContactHeightScore": { "increase": 10 }
+}
+},
+{
+"id": "noServeTrophyPosition",
+"name": "No Serve Trophy Position",
+"priority": 6,
+"category": "serve",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"serveTrophyScore": { "max": 30 }
+},
+"confirming": {
+"serveScore": { "max": 50 }
+}
+},
+"diagnosis": {
+"rootCause": "missing_power_loading_position",
+"symptoms": ["no_coil", "arm_only_serve", "inconsistent_power"]
+},
+"dependencies": {
+"mustFixFirst": ["poorServeTossArm"],
+"resolves": ["arm_only_serve", "inconsistent_power"],
+"requires": ["toss_consistency", "shoulder_flexibility"]
+},
+"cueSelection": {
+"beginner": "Pause with both arms up - toss arm pointing up, racquet behind your head.",
+"intermediate": "Feel the trophy: elbow at 90 degrees, racquet tip down behind back, knees bent.",
+"advanced": "Trophy is your launch pad: coiled, loaded, and ready to explode upward."
+},
+"keyMetrics": ["serveTrophyScore", "serveScore"],
+"expectedImprovement": {
+"serveTrophyScore": { "increase": 20 },
+"serveScore": { "increase": 15 }
+}
+},
+{
+"id": "lowServeContactPoint",
+"name": "Low Serve Contact Point",
+"priority": 5,
+"category": "serve",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"serveContactHeightScore": { "max": 35 }
+},
+"confirming": {
+"serveLegDriveScore": { "max": 50 }
+}
+},
+"diagnosis": {
+"rootCause": "insufficient_extension_at_contact",
+"symptoms": ["low_contact", "weak_angle", "more_faults"]
+},
+"dependencies": {
+"mustFixFirst": ["noServeLegDrive"],
+"resolves": ["weak_serve_angle", "double_faults"],
+"requires": ["leg_drive", "full_arm_extension"]
+},
+"cueSelection": {
+"beginner": "Reach as high as you can when you hit the ball.",
+"intermediate": "Full arm extension at contact - imagine touching the ceiling.",
+"advanced": "Maximize contact height: legs drive, body extends, arm reaches at peak."
+},
+"keyMetrics": ["serveContactHeightScore", "serveLegDriveScore"],
+"expectedImprovement": {
+"serveContactHeightScore": { "increase": 20 },
+"serveScore": { "increase": 10 }
 }
 }
 ],

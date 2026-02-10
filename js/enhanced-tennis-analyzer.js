@@ -15,6 +15,12 @@ class EnhancedTennisAnalyzer {
     // Biomechanical checkpoint system for quality evaluation
     this.biomechanicalCheckpoints = new BiomechanicalCheckpoints();
 
+    // Footwork analyzer for stance, base width, weight transfer
+    this.footworkAnalyzer = new FootworkAnalyzer();
+
+    // Serve analyzer for serve-specific biomechanics
+    this.serveAnalyzer = new ServeAnalyzer();
+
     // Kalman velocity estimator for smooth velocity/acceleration
     this.kalmanEstimator = new KalmanVelocityEstimator({
       processNoise: 0.001,
@@ -46,6 +52,7 @@ class EnhancedTennisAnalyzer {
     // Active faults and phase for UI overlay
     this.activeFaults = [];
     this.lastDetectedPhase = null;
+    this.onStrokeCallback = null;  // External callback for stroke events (trail freeze, drill mode)
 
     // Body-relative normalization
     this.landmarkFilter = null;  // Set externally via setLandmarkFilter()
@@ -156,6 +163,12 @@ class EnhancedTennisAnalyzer {
         if (this.strokeClassifier) {
           this.strokeClassifier.setNormalized(true);
         }
+        if (this.footworkAnalyzer) {
+          this.footworkAnalyzer.setTorsoLength(this.torsoLength);
+        }
+        if (this.serveAnalyzer) {
+          this.serveAnalyzer.setTorsoLength(this.torsoLength);
+        }
       } else {
         this.torsoLength = null; // Invalid, stay in raw mode
       }
@@ -200,6 +213,12 @@ class EnhancedTennisAnalyzer {
       if (totalVotes >= 30) {
         this.dominantHand = this.handednessVotes.right >= this.handednessVotes.left ? 'right' : 'left';
         this.handednessLocked = true;
+        if (this.footworkAnalyzer) {
+          this.footworkAnalyzer.setDominantHand(this.dominantHand);
+        }
+        if (this.serveAnalyzer) {
+          this.serveAnalyzer.setDominantHand(this.dominantHand);
+        }
         console.log('Handedness detected:', this.dominantHand);
       }
     }
@@ -238,6 +257,10 @@ class EnhancedTennisAnalyzer {
       leftKnee: landmarks[25],
       rightAnkle: landmarks[28],
       leftAnkle: landmarks[27],
+      rightHeel: landmarks[29],
+      leftHeel: landmarks[30],
+      rightFootIndex: landmarks[31],
+      leftFootIndex: landmarks[32],
       nose: landmarks[0]
     };
   }
@@ -353,14 +376,23 @@ class EnhancedTennisAnalyzer {
       }
 
       // Check for minimum rotation during loading (indicates actual tennis stroke)
-      const loadingData = this.poseHistory.slice(phases.loading.start, phases.loading.end);
-      if (loadingData.length >= 2) {
-        const startRotation = Math.abs(loadingData[0]?.rotation || 0);
-        const endRotation = Math.abs(loadingData[loadingData.length - 1]?.rotation || 0);
-        const rotationGain = endRotation - startRotation;
+      // Skip for serves — they have different rotation patterns (more vertical motion)
+      const recentVertical = this.poseHistory.slice(-15);
+      const maxVerticalMotion = recentVertical.length > 0
+        ? Math.max(...recentVertical.map(p => Math.abs(p.verticalMotion || 0)))
+        : 0;
+      const likelyServe = maxVerticalMotion > 0.20;
 
-        if (rotationGain < 1.5) {
-          return { isValid: false, reason: 'insufficient_loading_rotation' };
+      if (!likelyServe) {
+        const loadingData = this.poseHistory.slice(phases.loading.start, phases.loading.end);
+        if (loadingData.length >= 2) {
+          const startRotation = Math.abs(loadingData[0]?.rotation || 0);
+          const endRotation = Math.abs(loadingData[loadingData.length - 1]?.rotation || 0);
+          const rotationGain = endRotation - startRotation;
+
+          if (rotationGain < 1.5) {
+            return { isValid: false, reason: 'insufficient_loading_rotation' };
+          }
         }
       }
 
@@ -450,22 +482,58 @@ class EnhancedTennisAnalyzer {
       },
       contactPointVariance: contactPointVariance,
 
-      // Technique details (for UI display)
+      // Technique details (for UI display) — populated after footwork analysis below
       technique: {
         elbowAngleAtContact: contactFrame.angles.elbowAngle,
         shoulderRotation: contactFrame.angles.shoulderRotation,
         hipShoulderSeparation: contactFrame.angles.hipShoulderSeparation,
         kneeBend: contactFrame.angles.kneeBend,
-        stance: this.detectStance(contactFrame.joints),
-        weightTransfer: this.calculateWeightTransfer(contactFrame.joints)
+        stance: 'neutral',       // overwritten below
+        weightTransfer: 'static' // overwritten below
       },
 
       // Phase-by-phase analysis (from motion sequence analyzer)
       sequenceAnalysis: this.analyzeMotionSequence(strokeType),
 
+      // Footwork analysis (populated below)
+      footwork: null,
+
+      // Serve analysis (populated below for serves only)
+      serveAnalysis: null,
+
       // Biomechanical checkpoint evaluation (populated below)
       biomechanicalEvaluation: null
     };
+
+    // Run footwork analysis using the new FootworkAnalyzer
+    if (this.footworkAnalyzer) {
+      const phaseData = strokeData.sequenceAnalysis?.phases || null;
+      strokeData.footwork = this.footworkAnalyzer.analyzeFootwork(
+        this.poseHistory, phaseData, strokeType
+      );
+      if (strokeData.footwork) {
+        // Populate technique.stance and technique.weightTransfer for backward compat
+        strokeData.technique.stance = strokeData.footwork.stance?.type || 'neutral';
+        strokeData.technique.weightTransfer = strokeData.footwork.weightTransfer?.legacyLabel || 'static';
+      }
+    }
+
+    // Run serve analysis for serves
+    if (strokeType === 'Serve' && this.serveAnalyzer) {
+      const phaseData = strokeData.sequenceAnalysis?.phases || null;
+      strokeData.serveAnalysis = this.serveAnalyzer.analyzeServe(
+        this.poseHistory, phaseData, strokeType
+      );
+      if (strokeData.serveAnalysis) {
+        console.log('Serve Analysis:', {
+          trophyDetected: strokeData.serveAnalysis.trophy?.detected,
+          trophyScore: strokeData.serveAnalysis.trophy?.score,
+          legDriveScore: strokeData.serveAnalysis.legDrive?.score,
+          contactHeightScore: strokeData.serveAnalysis.contactHeight?.score,
+          serveScore: strokeData.serveAnalysis.serveScore
+        });
+      }
+    }
 
     // Run biomechanical evaluation if we have sequence analysis
     if (strokeData.sequenceAnalysis && this.biomechanicalCheckpoints) {
@@ -538,43 +606,6 @@ class EnhancedTennisAnalyzer {
       console.warn('Motion sequence analysis failed:', error.message);
       return null;
     }
-  }
-  
-  detectStance(joints) {
-    const leftFoot = joints.leftAnkle;
-    const rightFoot = joints.rightAnkle;
-    const leftShoulder = joints.leftShoulder;
-    const rightShoulder = joints.rightShoulder;
-    
-    const footAngle = Math.atan2(
-      rightFoot.y - leftFoot.y,
-      rightFoot.x - leftFoot.x
-    );
-    const shoulderAngle = Math.atan2(
-      rightShoulder.y - leftShoulder.y,
-      rightShoulder.x - leftShoulder.x
-    );
-    
-    const diff = Math.abs(footAngle - shoulderAngle) * 180 / Math.PI;
-    
-    if (diff < 30) return 'neutral';
-    if (diff < 60) return 'semi-open';
-    return 'open';
-  }
-  
-  calculateWeightTransfer(joints) {
-    if (this.poseHistory.length < 30) return 'static';
-    
-    const start = this.poseHistory[0].joints;
-    const end = joints;
-    
-    const rightShift = Math.abs(end.rightAnkle.y - start.rightAnkle.y);
-    const leftShift = Math.abs(end.leftAnkle.y - start.leftAnkle.y);
-    
-    if (rightShift > 0.05 || leftShift > 0.05) {
-      return 'back-to-front';
-    }
-    return 'static';
   }
   
   /**
@@ -694,6 +725,21 @@ class EnhancedTennisAnalyzer {
       recordChallengeStroke(strokeData);
     }
 
+    // Record stroke for drill mode
+    if (typeof recordDrillStroke === 'function') {
+      recordDrillStroke(strokeData);
+    }
+
+    // Record replay BEFORE clearing pose history
+    if (typeof window.strokeReplayManager !== 'undefined') {
+      window.strokeReplayManager.recordStroke([...this.poseHistory], strokeData);
+    }
+
+    // Notify external listeners before clearing history (trail freeze, etc.)
+    if (this.onStrokeCallback) {
+      this.onStrokeCallback(strokeData, [...this.poseHistory]);
+    }
+
     // Clear pose history after stroke
     this.poseHistory = [];
   }
@@ -773,6 +819,33 @@ class EnhancedTennisAnalyzer {
         fix: f.fix
       }));
       metrics.primaryBiomechanicalFeedback = bio.primaryFeedback;
+    }
+
+    // Enrich with serve data
+    const sa = strokeData.serveAnalysis;
+    if (sa) {
+      metrics.serveScore = sa.serveScore;
+      metrics.serveTrophyScore = sa.trophy?.score || 0;
+      metrics.serveLegDriveScore = sa.legDrive?.score || 0;
+      metrics.serveContactHeightScore = sa.contactHeight?.score || 0;
+      metrics.serveShoulderTiltScore = sa.shoulderTilt?.score || 0;
+      metrics.serveTossArmScore = sa.tossArm?.score || 0;
+      metrics.serveTrophyElbowAngle = sa.trophy?.elbowAngle;
+      metrics.serveShoulderTiltAngle = sa.shoulderTilt?.atTrophy;
+      metrics.serveLegDriveKneeBend = sa.legDrive?.kneeBendAtTrophy;
+    }
+
+    // Enrich with footwork data
+    const fw = strokeData.footwork;
+    if (fw) {
+      metrics.stanceType = fw.stance?.type;
+      metrics.stanceAngle = fw.stance?.angle;
+      metrics.baseWidthRatio = fw.baseWidth?.ratio;
+      metrics.footworkScore = fw.score;
+      metrics.stepPattern = fw.stepPattern?.pattern;
+      metrics.hasStepIn = fw.stepPattern?.hasStepIn || false;
+      metrics.weightTransferDirection = fw.weightTransfer?.overall;
+      metrics.recoveryDetected = fw.recovery?.recovered || false;
     }
 
     return metrics;
@@ -950,6 +1023,16 @@ class EnhancedTennisAnalyzer {
         primaryFeedback: bio.primaryFeedback,
         drillRecommendations: this.biomechanicalCheckpoints?.getDrillRecommendations(bio) || []
       };
+    }
+
+    // Add footwork analysis
+    if (strokeData.footwork) {
+      baseContext.footwork = strokeData.footwork;
+    }
+
+    // Add serve analysis
+    if (strokeData.serveAnalysis) {
+      baseContext.serveAnalysis = strokeData.serveAnalysis;
     }
 
     return baseContext;
