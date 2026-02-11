@@ -18,15 +18,17 @@ class GPTVoiceCoach {
   async initialize(apiKey) {
     this.apiKey = apiKey;
     
-    this.audioElement = document.createElement("audio"); 
+    this.audioElement = document.createElement("audio");
     this.audioElement.autoplay = true;
+    this.audioElement.playsInline = true;
+    document.body.appendChild(this.audioElement);
 
     try {
       const coachInstructions = this.getCoachingInstructions();
       const sessionConfig = {
         session: {
           type: "realtime",
-          model: "gpt-4o-realtime-preview-2024-12-17",
+          model: "gpt-4o-realtime-preview",
           instructions: coachInstructions,
           modalities: ["text", "audio"],
           voice: "alloy",

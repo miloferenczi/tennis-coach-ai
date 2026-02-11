@@ -4029,9 +4029,14 @@
                             this.sceneAnalyzer.start(this.video);
                         }
 
-                        // Welcome coaching message
+                        // Welcome coaching message with GPT connection status
+                        const gptStatus = (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected)
+                            ? 'Voice coach connected.'
+                            : (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.useFallback)
+                                ? 'Voice coach unavailable — using text fallback.'
+                                : 'Connecting voice coach...';
                         document.getElementById('coachingText').textContent =
-                            'Ready to analyze. Tap REC to start.';
+                            gptStatus + ' Tap REC to start.';
                     }, 300);
                 }, 1000); // Hold at READY for 1 second
             }
