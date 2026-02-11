@@ -13,10 +13,54 @@ class GPTVoiceCoach {
     this.sessionTranscript = [];
     this.awaitingNotebook = false;
     this.notebookResolve = null;
+    // Coach personality (set via initialize options)
+    this.voice = 'alloy';
+    this.coachName = 'Coach Alex';
+    this.coachPersonality = '';
+    // Free tier observation limit
+    this.coachingObservationCount = 0;
+    this.observationLimit = null; // null = unlimited
+  }
+
+  /**
+   * Get coach personality configurations.
+   * @returns {Object} map of coach key → { name, voice, personality, tagline, previewText }
+   */
+  static getCoachConfigs() {
+    return {
+      alex: {
+        name: 'Coach Alex',
+        voice: 'alloy',
+        personality: 'You are encouraging and patient. You build confidence through positive reinforcement while gently guiding improvements. You celebrate small wins and keep the energy supportive.',
+        tagline: 'Encouraging & patient',
+        description: 'Great for building confidence',
+        previewText: "Hey, nice to meet you! I'm Coach Alex. Let's work on your game together — I can already tell you've got great potential."
+      },
+      jordan: {
+        name: 'Coach Jordan',
+        voice: 'echo',
+        personality: 'You are technical and precise. You focus on biomechanical details and give specific, measurable coaching cues. You are analytical but not cold — you show genuine investment in improvement.',
+        tagline: 'Technical & precise',
+        description: 'Focused on mechanics',
+        previewText: "I'm Coach Jordan. I focus on the details that matter — angles, timing, kinetic chain. Let's break down your technique and build it back stronger."
+      },
+      sam: {
+        name: 'Coach Sam',
+        voice: 'shimmer',
+        personality: 'You are high-energy and motivating. You push players harder while keeping it fun. You use competitive framing and challenge the player to beat their personal bests.',
+        tagline: 'High-energy & motivating',
+        description: 'Pushes you to your best',
+        previewText: "What's up! I'm Coach Sam. Ready to level up? I'm going to push you — but trust me, you're going to love the results. Let's go!"
+      }
+    };
   }
   
-  async initialize(apiKey) {
+  async initialize(apiKey, options = {}) {
     this.apiKey = apiKey;
+    if (options.voice) this.voice = options.voice;
+    if (options.coachName) this.coachName = options.coachName;
+    if (options.coachPersonality) this.coachPersonality = options.coachPersonality;
+    this.coachingObservationCount = 0;
 
     this.audioElement = document.createElement("audio");
     this.audioElement.autoplay = true;
@@ -29,7 +73,7 @@ class GPTVoiceCoach {
 
       // Try Supabase Edge Function first, fall back to direct API key
       if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
-        const tokenData = await supabaseClient.getRealtimeToken(coachInstructions, 'alloy');
+        const tokenData = await supabaseClient.getRealtimeToken(coachInstructions, this.voice);
         if (!tokenData?.ephemeralKey) {
           throw new Error('Failed to get token via Edge Function');
         }
@@ -42,7 +86,7 @@ class GPTVoiceCoach {
             model: "gpt-4o-realtime-preview",
             instructions: coachInstructions,
             modalities: ["text", "audio"],
-            voice: "alloy",
+            voice: this.voice,
             turn_detection: { type: "server_vad" }
           }
         };
@@ -166,8 +210,8 @@ SCORING SYSTEM:
 - Power alone doesn't make a good stroke. Proper form generates power naturally.
 ${formTargetsBlock}${trackerContext}${curriculumContext}${rallyContext}
 YOUR IDENTITY:
-- You are their personal tennis coach, not a generic AI assistant
-- You speak naturally like a real courtside coach - confident, direct, warm
+- You are ${this.coachName}, their personal tennis coach, not a generic AI assistant
+- ${this.coachPersonality || 'You speak naturally like a real courtside coach - confident, direct, warm'}
 - You remember what you've worked on together (use the player context and your notebook above)
 - You have a coaching notebook with your own notes from past sessions — reference your observations naturally
 - If the player tells you what they want to focus on, prioritize that for the session
@@ -392,6 +436,11 @@ DRILL MODE ACTIVE:
   }
   
   analyzeStroke(strokeData) {
+    // Free tier coaching observation limit
+    if (this.observationLimit !== null && this.coachingObservationCount >= this.observationLimit) {
+      return;
+    }
+
     if (!this.isConnected || this.dataChannel.readyState !== 'open') {
       console.log('GPT not connected, using fallback');
       this.fallbackCoaching(strokeData);
@@ -467,7 +516,7 @@ DRILL MODE ACTIVE:
     }
 
     const prompt = this.formatEnhancedStrokePrompt(strokeData);
-    
+
     this.dataChannel.send(JSON.stringify({
       type: 'conversation.item.create',
       item: {
@@ -479,10 +528,12 @@ DRILL MODE ACTIVE:
         }]
       }
     }));
-    
+
     this.dataChannel.send(JSON.stringify({
       type: 'response.create'
     }));
+
+    this.coachingObservationCount++;
   }
   
   formatEnhancedStrokePrompt(data) {

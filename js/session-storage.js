@@ -25,6 +25,21 @@ class SessionStorage {
    * Create a new session
    */
   async createSession() {
+    // Free tier: 1 session per month
+    if (this._useSupabase()) {
+      const sub = supabaseClient.getSubscriptionStatus();
+      if (sub.sessionLimitPerMonth !== null) {
+        const sessions = await supabaseClient.getSessionHistory(5);
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+        const sessionsThisMonth = sessions.filter(s => s.date >= monthStart);
+        if (sessionsThisMonth.length >= sub.sessionLimitPerMonth) {
+          window.dispatchEvent(new CustomEvent('ace:session-limit-reached', { detail: { tier: sub.tier, limit: sub.sessionLimitPerMonth } }));
+          return null;
+        }
+      }
+    }
+
     const session = {
       id: this.generateSessionId(),
       startTime: Date.now(),
@@ -74,6 +89,15 @@ class SessionStorage {
   addStroke(strokeData) {
     const session = this.getCurrentSession();
     if (!session) return;
+
+    // Free tier stroke limit enforcement
+    if (this._useSupabase()) {
+      const sub = supabaseClient.getSubscriptionStatus();
+      if (sub.strokeLimit !== null && session.strokes.length >= sub.strokeLimit) {
+        window.dispatchEvent(new CustomEvent('ace:stroke-limit-reached', { detail: { tier: sub.tier, limit: sub.strokeLimit } }));
+        return null;
+      }
+    }
 
     // Store essential stroke data (avoid storing full landmark data)
     const strokeRecord = {

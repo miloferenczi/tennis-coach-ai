@@ -2562,6 +2562,133 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* ================================================
+           ONBOARDING FLOW STYLES
+           ================================================ */
+
+        /* Selection cards (sport, skill, coach) */
+        .ob-card-grid { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-bottom: 32px; }
+        .ob-card {
+            display: flex; align-items: center; gap: 16px;
+            padding: 18px 20px; background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06); border-radius: 16px;
+            cursor: pointer; transition: all 200ms ease-out;
+            opacity: 0; transform: translateY(12px);
+            animation: featureCardIn 400ms ease-out forwards;
+        }
+        .ob-card:hover { background: rgba(205,255,0,0.04); border-color: rgba(205,255,0,0.15); }
+        .ob-card.selected { background: rgba(205,255,0,0.08); border-color: rgba(205,255,0,0.4); }
+        .ob-card-icon { font-size: 28px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .ob-card-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+        .ob-card-title { font-size: 15px; font-weight: 600; color: #F5F5F5; }
+        .ob-card-desc { font-size: 12px; color: #555; }
+        .ob-card-check {
+            width: 24px; height: 24px; border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: all 200ms ease-out;
+        }
+        .ob-card.selected .ob-card-check { background: #CDFF00; border-color: #CDFF00; }
+
+        /* Multi-select chip grid */
+        .ob-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-bottom: 24px; }
+        .ob-chip {
+            padding: 10px 16px; background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 24px;
+            font-size: 13px; color: #999; cursor: pointer; transition: all 200ms ease-out;
+            font-family: inherit;
+        }
+        .ob-chip.selected { background: rgba(205,255,0,0.12); border-color: rgba(205,255,0,0.4); color: #CDFF00; }
+
+        /* Coach personality cards */
+        .ob-coach-card {
+            display: flex; flex-direction: column; padding: 20px;
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px; cursor: pointer; transition: all 200ms ease-out; gap: 8px;
+        }
+        .ob-coach-card.selected { background: rgba(205,255,0,0.08); border-color: rgba(205,255,0,0.4); }
+        .ob-coach-header { display: flex; align-items: center; gap: 12px; }
+        .ob-coach-avatar {
+            width: 48px; height: 48px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center; font-size: 20px;
+        }
+        .ob-coach-name { font-size: 16px; font-weight: 700; color: #F5F5F5; }
+        .ob-coach-tagline { font-size: 12px; color: #555; }
+        .ob-preview-btn {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; padding: 6px 12px; font-size: 11px; color: #888;
+            cursor: pointer; align-self: flex-start; margin-top: 4px;
+            transition: all 200ms; font-family: inherit;
+        }
+        .ob-preview-btn:hover { color: #CDFF00; border-color: rgba(205,255,0,0.3); }
+
+        /* Meet coach audio wave */
+        .ob-coach-wave { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; gap: 3px; margin: 24px 0; }
+        .ob-coach-wave .bar { width: 3px; background: #CDFF00; border-radius: 2px; animation: waveBar 1.2s ease-in-out infinite; }
+        @keyframes waveBar {
+            0%, 100% { height: 8px; opacity: 0.3; }
+            50% { height: 28px; opacity: 1; }
+        }
+
+        /* Trial stroke counter */
+        .ob-trial-counter {
+            position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
+            padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 600;
+            color: #CDFF00; z-index: 1100; border: 1px solid rgba(205,255,0,0.2);
+        }
+
+        /* Report card */
+        .ob-report-card { width: 100%; display: flex; flex-direction: column; gap: 0; }
+        .ob-report-stat {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+        .ob-report-stat:last-child { border-bottom: none; }
+        .ob-report-stat-label { font-size: 13px; color: #666; }
+        .ob-report-stat-value { font-size: 15px; font-weight: 600; color: #F5F5F5; }
+
+        /* Pricing cards */
+        .ob-pricing-grid { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-bottom: 24px; }
+        .ob-pricing-card {
+            padding: 20px; background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; transition: all 200ms;
+        }
+        .ob-pricing-card.highlight { border-color: rgba(205,255,0,0.4); background: rgba(205,255,0,0.04); }
+        .ob-pricing-badge {
+            display: inline-block; background: #CDFF00; color: #0A0A0A;
+            font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;
+        }
+        .ob-pricing-name { font-size: 18px; font-weight: 700; color: #F5F5F5; margin-bottom: 4px; }
+        .ob-pricing-price { font-size: 14px; color: #CDFF00; margin-bottom: 12px; }
+        .ob-pricing-features { list-style: none; padding: 0; margin: 0; }
+        .ob-pricing-features li {
+            font-size: 12px; color: #777; padding: 4px 0 4px 16px; position: relative;
+        }
+        .ob-pricing-features li::before { content: '\2713'; position: absolute; left: 0; color: #CDFF00; font-size: 11px; }
+
+        /* Onboarding text elements */
+        .ob-question { font-size: 24px; font-weight: 700; color: #F5F5F5; text-align: center; margin-bottom: 32px; line-height: 1.3; }
+        .ob-subtitle { font-size: 13px; color: #555; text-align: center; margin-top: -24px; margin-bottom: 32px; }
+
+        /* Onboarding input fields */
+        .ob-input {
+            width: 100%; padding: 14px 16px; background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08); border-radius: 12px;
+            color: #F5F5F5; font-size: 15px; font-family: inherit; outline: none;
+            transition: border-color 200ms; box-sizing: border-box;
+        }
+        .ob-input:focus { border-color: rgba(205,255,0,0.4); }
+        .ob-input::placeholder { color: #444; }
+
+        /* Progress bar at bottom of onboarding screens */
+        .ob-progress {
+            position: absolute; bottom: 40px; left: 24px; right: 24px;
+            height: 2px; background: rgba(255,255,255,0.06); border-radius: 1px;
+        }
+        .ob-progress-fill { height: 100%; background: #CDFF00; border-radius: 1px; transition: width 400ms ease-out; }
     </style>
 </head>
 <body>
@@ -2578,34 +2705,213 @@
             </div>
         </div>
 
-        <!-- Auth: Sign In -->
-        <div id="authScreen" class="screen" style="display: none;">
+        <!-- Onboarding 1: Sport Selection -->
+        <div id="obSportScreen" class="screen" style="display:none;">
             <div class="onboarding-content">
-                <div class="hero-title">ACE<span class="accent">.</span></div>
-                <div class="hero-subtitle">AI TENNIS COACH</div>
-
-                <div class="api-input-group" style="margin-top: 32px;">
-                    <label class="api-label">EMAIL ADDRESS</label>
-                    <div class="api-input-wrapper">
-                        <input
-                            type="email"
-                            id="authEmailInput"
-                            class="api-input"
-                            placeholder="you@example.com"
-                            autocomplete="email"
-                        />
+                <div class="ob-question">What sport do you play?</div>
+                <div class="ob-card-grid">
+                    <div class="ob-card selected" onclick="obSelectSport('tennis')">
+                        <div class="ob-card-icon">&#127934;</div>
+                        <div class="ob-card-text">
+                            <div class="ob-card-title">Tennis</div>
+                            <div class="ob-card-desc">Singles &amp; doubles coaching</div>
+                        </div>
+                        <div class="ob-card-check"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#0A0A0A" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
                     </div>
                 </div>
-
-                <button class="btn-primary" id="authSendBtn" onclick="sendMagicLink()">
-                    SEND MAGIC LINK <span style="margin-left: 4px;">→</span>
-                </button>
-
-                <div id="authStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:16px;text-align:center;min-height:20px;"></div>
             </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:9%"></div></div>
         </div>
 
-        <!-- Onboarding Step 1: Welcome -->
+        <!-- Onboarding 2: Skill Level (NTRP) -->
+        <div id="obSkillScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="ob-question">What's your level?</div>
+                <div class="ob-card-grid" id="obSkillCards">
+                    <div class="ob-card" onclick="obSelectSkill('2.0-2.5', this)">
+                        <div class="ob-card-text"><div class="ob-card-title">2.0 - 2.5</div><div class="ob-card-desc">Beginner &mdash; Learning fundamentals</div></div>
+                        <div class="ob-card-check"></div>
+                    </div>
+                    <div class="ob-card" onclick="obSelectSkill('3.0-3.5', this)" style="animation-delay:80ms">
+                        <div class="ob-card-text"><div class="ob-card-title">3.0 - 3.5</div><div class="ob-card-desc">Intermediate &mdash; Consistent rallies</div></div>
+                        <div class="ob-card-check"></div>
+                    </div>
+                    <div class="ob-card" onclick="obSelectSkill('4.0-4.5', this)" style="animation-delay:160ms">
+                        <div class="ob-card-text"><div class="ob-card-title">4.0 - 4.5</div><div class="ob-card-desc">Advanced &mdash; Strong all-court game</div></div>
+                        <div class="ob-card-check"></div>
+                    </div>
+                    <div class="ob-card" onclick="obSelectSkill('5.0+', this)" style="animation-delay:240ms">
+                        <div class="ob-card-text"><div class="ob-card-title">5.0+</div><div class="ob-card-desc">Elite &mdash; Tournament-level play</div></div>
+                        <div class="ob-card-check"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:18%"></div></div>
+        </div>
+
+        <!-- Onboarding 3: Improvement Goals -->
+        <div id="obGoalsScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="ob-question">What do you want to improve?</div>
+                <div class="ob-subtitle">Select all that apply</div>
+                <div class="ob-chip-grid" id="obGoalChips">
+                    <div class="ob-chip" onclick="obToggleGoal('forehand', this)">Forehand</div>
+                    <div class="ob-chip" onclick="obToggleGoal('backhand', this)">Backhand</div>
+                    <div class="ob-chip" onclick="obToggleGoal('serve', this)">Serve</div>
+                    <div class="ob-chip" onclick="obToggleGoal('volleys', this)">Volleys</div>
+                    <div class="ob-chip" onclick="obToggleGoal('footwork', this)">Footwork</div>
+                    <div class="ob-chip" onclick="obToggleGoal('consistency', this)">Consistency</div>
+                    <div class="ob-chip" onclick="obToggleGoal('power', this)">Power</div>
+                    <div class="ob-chip" onclick="obToggleGoal('strategy', this)">Strategy</div>
+                </div>
+                <input class="ob-input" id="obCustomGoal" placeholder="Something else? Tell us..." style="margin-bottom:24px;" />
+                <button class="btn-primary" id="obGoalsContinue" onclick="obSubmitGoals()" disabled>
+                    CONTINUE <span style="margin-left:4px;">&rarr;</span>
+                </button>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:27%"></div></div>
+        </div>
+
+        <!-- Onboarding 4: About You (skippable) -->
+        <div id="obAboutScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="ob-question">Tell us about yourself</div>
+                <div class="ob-subtitle">Optional &mdash; helps personalize coaching</div>
+                <input class="ob-input" id="obNameInput" placeholder="Your name" style="margin-bottom:12px;" />
+                <input class="ob-input" id="obAgeInput" placeholder="Age" type="number" min="5" max="99" style="margin-bottom:24px;" />
+                <button class="btn-primary" onclick="obSubmitAbout()">
+                    CONTINUE <span style="margin-left:4px;">&rarr;</span>
+                </button>
+                <button class="btn-skip" onclick="obSkipAbout()">Skip</button>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:36%"></div></div>
+        </div>
+
+        <!-- Onboarding 5: Choose Your Coach -->
+        <div id="obCoachScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="ob-question">Choose your coach</div>
+                <div class="ob-card-grid" id="obCoachCards"></div>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:45%"></div></div>
+        </div>
+
+        <!-- Onboarding 6: Meet Your Coach (voice) -->
+        <div id="obMeetScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div id="obMeetCoachName" style="font-size:12px;color:#555;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">COACH ALEX</div>
+                <div class="ob-question" style="margin-bottom:16px;">Let's chat!</div>
+                <div class="ob-coach-wave" id="obCoachWave">
+                    <div class="bar" style="animation-delay:0s;height:12px;"></div>
+                    <div class="bar" style="animation-delay:0.15s;height:20px;"></div>
+                    <div class="bar" style="animation-delay:0.3s;height:28px;"></div>
+                    <div class="bar" style="animation-delay:0.45s;height:20px;"></div>
+                    <div class="bar" style="animation-delay:0.6s;height:12px;"></div>
+                </div>
+                <div style="font-size:13px;color:#666;text-align:center;margin-bottom:32px;" id="obMeetStatus">Connecting...</div>
+                <button class="btn-primary" id="obLetsHitBtn" onclick="obFinishMeetCoach()">
+                    LET'S HIT! <span style="margin-left:4px;">&rarr;</span>
+                </button>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:54%"></div></div>
+        </div>
+
+        <!-- Onboarding 7: Camera Permission -->
+        <div id="obCameraScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div style="font-size:48px;margin-bottom:24px;">&#128247;</div>
+                <div class="ob-question">I need to see your strokes</div>
+                <div style="font-size:13px;color:#555;text-align:center;margin-bottom:32px;line-height:1.6;">
+                    ACE uses your camera to analyze your technique in real time.<br>No video is stored or sent to servers.
+                </div>
+                <button class="btn-primary" onclick="obRequestTrialCamera()">
+                    ALLOW CAMERA <span style="margin-left:4px;">&rarr;</span>
+                </button>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:63%"></div></div>
+        </div>
+
+        <!-- Onboarding 8: Trial overlay (shows on top of main app) -->
+        <div id="obTrialOverlay" style="display:none;">
+            <div class="ob-trial-counter" id="obTrialCounter">Stroke 0/5</div>
+        </div>
+
+        <!-- Onboarding 9: Report Card -->
+        <div id="obReportScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div style="font-size:12px;color:#555;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">YOUR REPORT CARD</div>
+                <div class="ob-question" style="font-size:48px;margin-bottom:8px;" id="obReportScore">--</div>
+                <div style="font-size:13px;color:#666;margin-bottom:24px;">Average Quality Score</div>
+                <div class="ob-report-card" id="obReportDetails"></div>
+                <div style="background:rgba(205,255,0,0.05);border:1px solid rgba(205,255,0,0.15);border-radius:12px;padding:16px;margin:24px 0;">
+                    <div style="font-size:11px;color:#CDFF00;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Your coach says...</div>
+                    <div style="font-size:14px;color:#ccc;line-height:1.5;" id="obCoachNoteText"></div>
+                </div>
+                <button class="btn-primary" onclick="obGoToSignup()">
+                    SIGN UP TO KEEP IMPROVING <span style="margin-left:4px;">&rarr;</span>
+                </button>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:81%"></div></div>
+        </div>
+
+        <!-- Onboarding 10: Sign Up (magic link) -->
+        <div id="obSignupScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="hero-title" style="font-size:48px;">ACE<span class="accent">.</span></div>
+                <div class="ob-question" style="font-size:18px;">Create your account</div>
+                <div class="api-input-group" style="width:100%;">
+                    <label class="api-label">EMAIL ADDRESS</label>
+                    <div class="api-input-wrapper">
+                        <input type="email" id="obSignupEmail" class="api-input" placeholder="you@example.com" autocomplete="email" />
+                    </div>
+                </div>
+                <button class="btn-primary" id="obSignupBtn" onclick="obSendMagicLink()" style="margin-top:16px;">
+                    SEND MAGIC LINK <span style="margin-left:4px;">&rarr;</span>
+                </button>
+                <div id="obSignupStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
+                <button class="btn-skip" onclick="obSkipSignup()">Continue without account</button>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:90%"></div></div>
+        </div>
+
+        <!-- Onboarding 11: Pricing -->
+        <div id="obPricingScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="ob-question">Choose your plan</div>
+                <div class="ob-pricing-grid">
+                    <div class="ob-pricing-card highlight">
+                        <div class="ob-pricing-badge">RECOMMENDED</div>
+                        <div class="ob-pricing-name">Pro</div>
+                        <div class="ob-pricing-price">$14.99/mo or $99.99/yr</div>
+                        <ul class="ob-pricing-features">
+                            <li>Unlimited sessions</li>
+                            <li>Unlimited stroke analysis</li>
+                            <li>Full voice coaching</li>
+                            <li>Improvement tracking &amp; plans</li>
+                            <li>Instant replay</li>
+                            <li>Drills &amp; curriculum</li>
+                        </ul>
+                    </div>
+                    <div class="ob-pricing-card">
+                        <div class="ob-pricing-name">Free</div>
+                        <div class="ob-pricing-price">$0/mo</div>
+                        <ul class="ob-pricing-features">
+                            <li>1 session per month</li>
+                            <li>10 strokes analyzed</li>
+                            <li>2 coaching observations</li>
+                        </ul>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="obStartFreeTrial()">
+                    START 7-DAY FREE TRIAL <span style="margin-left:4px;">&rarr;</span>
+                </button>
+                <div style="font-size:11px;color:#555;text-align:center;margin-top:8px;">No credit card required</div>
+                <button class="btn-skip" onclick="obContinueWithFree()">Continue with Free</button>
+            </div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:100%"></div></div>
+        </div>
+
+        <!-- Returning User Welcome -->
         <div id="permissionScreen" class="screen" style="display: none;">
             <div class="onboarding-content">
                 <div class="hero-title">ACE<span class="accent">.</span></div>
@@ -2614,123 +2920,22 @@
 
                 <div class="feature-list" id="featureList">
                     <div class="feature-card">
-                        <div class="feature-icon">
-                            <!-- Waveform/pulse icon -->
-                            <svg viewBox="0 0 24 24">
-                                <polyline points="2 12 5 12 7 8 10 16 13 10 16 14 19 12 22 12"/>
-                            </svg>
-                        </div>
-                        <div class="feature-content">
-                            <div class="feature-title">Real-Time Analysis</div>
-                            <div class="feature-desc">30fps pose detection</div>
-                        </div>
+                        <div class="feature-icon"><svg viewBox="0 0 24 24"><polyline points="2 12 5 12 7 8 10 16 13 10 16 14 19 12 22 12"/></svg></div>
+                        <div class="feature-content"><div class="feature-title">Real-Time Analysis</div><div class="feature-desc">30fps pose detection</div></div>
                     </div>
                     <div class="feature-card">
-                        <div class="feature-icon">
-                            <!-- Sound wave icon (3 bars) -->
-                            <svg viewBox="0 0 24 24">
-                                <line x1="8" y1="8" x2="8" y2="16"/>
-                                <line x1="12" y1="5" x2="12" y2="19"/>
-                                <line x1="16" y1="8" x2="16" y2="16"/>
-                            </svg>
-                        </div>
-                        <div class="feature-content">
-                            <div class="feature-title">Voice Coaching</div>
-                            <div class="feature-desc">Real-time spoken feedback</div>
-                        </div>
+                        <div class="feature-icon"><svg viewBox="0 0 24 24"><line x1="8" y1="8" x2="8" y2="16"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="16" y1="8" x2="16" y2="16"/></svg></div>
+                        <div class="feature-content"><div class="feature-title">Voice Coaching</div><div class="feature-desc">Real-time spoken feedback</div></div>
                     </div>
                     <div class="feature-card">
-                        <div class="feature-icon">
-                            <!-- Bar chart icon -->
-                            <svg viewBox="0 0 24 24">
-                                <line x1="6" y1="20" x2="6" y2="14"/>
-                                <line x1="12" y1="20" x2="12" y2="8"/>
-                                <line x1="18" y1="20" x2="18" y2="11"/>
-                            </svg>
-                        </div>
-                        <div class="feature-content">
-                            <div class="feature-title">Pro Comparison</div>
-                            <div class="feature-desc">Match elite benchmarks</div>
-                        </div>
+                        <div class="feature-icon"><svg viewBox="0 0 24 24"><line x1="6" y1="20" x2="6" y2="14"/><line x1="12" y1="20" x2="12" y2="8"/><line x1="18" y1="20" x2="18" y2="11"/></svg></div>
+                        <div class="feature-content"><div class="feature-title">Pro Comparison</div><div class="feature-desc">Match elite benchmarks</div></div>
                     </div>
                 </div>
 
                 <button class="btn-primary" onclick="requestCameraPermission()">
-                    GET STARTED <span style="margin-left: 4px;">→</span>
+                    GET STARTED <span style="margin-left: 4px;">&rarr;</span>
                 </button>
-            </div>
-
-            <div class="step-indicator">
-                <div class="step-dot active"></div>
-                <div class="step-dot"></div>
-                <div class="step-dot"></div>
-            </div>
-        </div>
-
-        <!-- Onboarding Step 2: Voice Coach Setup -->
-        <div id="apiKeyScreen" class="screen" style="display: none;">
-            <div class="onboarding-content">
-                <div class="voice-header">
-                    <div class="voice-title">VOICE<br>COACH</div>
-                    <div class="voice-label">OPTIONAL</div>
-                    <div class="voice-tagline">Real-time voice feedback on your form.</div>
-                </div>
-
-                <div class="api-input-group">
-                    <label class="api-label">OPENAI API KEY</label>
-                    <div class="api-input-wrapper">
-                        <input
-                            type="password"
-                            id="apiKeyInput"
-                            class="api-input"
-                            placeholder="sk-..."
-                            autocomplete="off"
-                        />
-                        <div class="api-checkmark" id="apiCheckmark">
-                            <svg viewBox="0 0 24 24">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" class="api-link">
-                        Get an API key →
-                    </a>
-                </div>
-
-                <div class="api-input-group" style="margin-top: 16px;">
-                    <label class="api-label">GOOGLE GEMINI API KEY <span style="opacity:0.5">(OPTIONAL)</span></label>
-                    <div class="api-input-wrapper">
-                        <input
-                            type="password"
-                            id="geminiKeyInput"
-                            class="api-input"
-                            placeholder="AI..."
-                            autocomplete="off"
-                        />
-                        <div class="api-checkmark" id="geminiCheckmark">
-                            <svg viewBox="0 0 24 24">
-                                <polyline points="20 6 9 17 4 12"/>
-                            </svg>
-                        </div>
-                    </div>
-                    <div style="font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px;">
-                        Enables rally tracking &amp; scene analysis.
-                        <a href="https://ai.google.dev" target="_blank" rel="noopener" class="api-link" style="font-size: 11px;">Get a free key →</a>
-                    </div>
-                </div>
-
-                <button class="btn-primary" id="connectBtn" onclick="connectGPTCoach()">
-                    CONNECT <span style="margin-left: 4px;">→</span>
-                </button>
-                <button class="btn-skip" onclick="skipGPTCoach()">
-                    Continue without voice
-                </button>
-            </div>
-
-            <div class="step-indicator">
-                <div class="step-dot active"></div>
-                <div class="step-dot active"></div>
-                <div class="step-dot"></div>
             </div>
         </div>
 
@@ -4230,89 +4435,505 @@
         }
 
         // ============================================
-        // ONBOARDING FLOW
+        // PREMIUM ONBOARDING STATE MACHINE
         // ============================================
 
+        const onboardingState = {
+            sport: 'tennis',
+            ntrpLevel: null,
+            goals: [],
+            customGoal: '',
+            displayName: null,
+            age: null,
+            coachPreference: 'alex',
+            trialStrokes: [],
+            trialSessionActive: false,
+            meetCoachTimer: null,
+        };
+
+        const NTRP_TO_SKILL = {
+            '2.0-2.5': 'beginner',
+            '3.0-3.5': 'intermediate',
+            '4.0-4.5': 'advanced',
+            '5.0+': 'elite'
+        };
+
+        // --- Returning user flow (post-onboarding) ---
         async function requestCameraPermission() {
-            // Haptic trigger point: navigator.vibrate && navigator.vibrate(10);
             if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
-                // Authenticated via Supabase — skip API key screen, go straight to loading
                 transitionScreens('permissionScreen', 'loadingScreen', async () => {
-                    await gptVoiceCoach.initialize(null); // Uses Edge Function
+                    const profile = await supabaseClient.loadProfile();
+                    const coachKey = profile?.coachPreference || 'alex';
+                    const configs = GPTVoiceCoach.getCoachConfigs();
+                    const coach = configs[coachKey] || configs.alex;
+                    await gptVoiceCoach.initialize(null, {
+                        voice: coach.voice,
+                        coachName: coach.name,
+                        coachPersonality: coach.personality
+                    });
                     tennisAI = new TennisAI();
                     window.tennisAI = tennisAI;
                 });
             } else {
-                // Legacy flow — show API key input screen
-                transitionScreens('permissionScreen', 'apiKeyScreen');
+                // No Supabase auth — use local onboarding data
+                transitionScreens('permissionScreen', 'loadingScreen', async () => {
+                    const localOb = JSON.parse(localStorage.getItem('ace_onboarding') || '{}');
+                    const coachKey = localOb.coachPreference || 'alex';
+                    const configs = GPTVoiceCoach.getCoachConfigs();
+                    const coach = configs[coachKey] || configs.alex;
+                    const apiKey = localStorage.getItem('ace_openai_key');
+                    if (apiKey) {
+                        await gptVoiceCoach.initialize(apiKey, {
+                            voice: coach.voice,
+                            coachName: coach.name,
+                            coachPersonality: coach.personality
+                        });
+                    } else {
+                        gptVoiceCoach.fallbackToSpeechSynthesis();
+                    }
+                    tennisAI = new TennisAI();
+                    window.tennisAI = tennisAI;
+                });
             }
         }
 
-        function saveGeminiKey() {
-            const geminiInput = document.getElementById('geminiKeyInput');
-            if (geminiInput && geminiInput.value.trim()) {
-                try {
-                    localStorage.setItem('ace_gemini_key', geminiInput.value.trim());
-                    document.getElementById('geminiCheckmark').classList.add('visible');
-                } catch (e) {}
+        // --- Screen 1: Sport Selection ---
+        function obSelectSport(sport) {
+            onboardingState.sport = sport;
+            setTimeout(() => transitionScreens('obSportScreen', 'obSkillScreen'), 400);
+        }
+
+        // --- Screen 2: Skill Level ---
+        function obSelectSkill(level, el) {
+            onboardingState.ntrpLevel = level;
+            document.querySelectorAll('#obSkillCards .ob-card').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+            setTimeout(() => transitionScreens('obSkillScreen', 'obGoalsScreen'), 400);
+        }
+
+        // --- Screen 3: Goals ---
+        function obToggleGoal(goal, el) {
+            el.classList.toggle('selected');
+            const idx = onboardingState.goals.indexOf(goal);
+            if (idx >= 0) onboardingState.goals.splice(idx, 1);
+            else onboardingState.goals.push(goal);
+            // Enable continue when custom text entered OR at least 1 goal selected
+            const hasCustom = document.getElementById('obCustomGoal').value.trim().length > 0;
+            document.getElementById('obGoalsContinue').disabled = onboardingState.goals.length === 0 && !hasCustom;
+        }
+
+        // Also enable continue button on custom goal text input
+        document.addEventListener('DOMContentLoaded', () => {
+            const customGoalInput = document.getElementById('obCustomGoal');
+            if (customGoalInput) {
+                customGoalInput.addEventListener('input', () => {
+                    const hasCustom = customGoalInput.value.trim().length > 0;
+                    document.getElementById('obGoalsContinue').disabled = onboardingState.goals.length === 0 && !hasCustom;
+                });
+            }
+        });
+
+        function obSubmitGoals() {
+            onboardingState.customGoal = document.getElementById('obCustomGoal').value.trim();
+            transitionScreens('obGoalsScreen', 'obAboutScreen');
+        }
+
+        // --- Screen 4: About You ---
+        function obSubmitAbout() {
+            onboardingState.displayName = document.getElementById('obNameInput').value.trim() || null;
+            const ageVal = parseInt(document.getElementById('obAgeInput').value);
+            onboardingState.age = (ageVal && ageVal >= 5 && ageVal <= 99) ? ageVal : null;
+            transitionScreens('obAboutScreen', 'obCoachScreen');
+            obPopulateCoachCards();
+        }
+
+        function obSkipAbout() {
+            transitionScreens('obAboutScreen', 'obCoachScreen');
+            obPopulateCoachCards();
+        }
+
+        // --- Screen 5: Choose Coach ---
+        function obPopulateCoachCards() {
+            const container = document.getElementById('obCoachCards');
+            if (container.children.length > 0) return;
+            const configs = GPTVoiceCoach.getCoachConfigs();
+            const colors = { alex: '#4CAF50', jordan: '#2196F3', sam: '#FF9800' };
+            const emojis = { alex: '\u{1F31F}', jordan: '\u{1F3AF}', sam: '\u{26A1}' };
+
+            for (const [key, config] of Object.entries(configs)) {
+                const card = document.createElement('div');
+                card.className = 'ob-coach-card' + (key === 'alex' ? ' selected' : '');
+                card.dataset.coachKey = key;
+                card.onclick = () => obSelectCoach(key);
+                card.innerHTML = `
+                    <div class="ob-coach-header">
+                        <div class="ob-coach-avatar" style="background:${colors[key]}20;color:${colors[key]}">${emojis[key]}</div>
+                        <div>
+                            <div class="ob-coach-name">${config.name}</div>
+                            <div class="ob-coach-tagline">${config.tagline} &mdash; ${config.description}</div>
+                        </div>
+                    </div>
+                    <button class="ob-preview-btn" onclick="event.stopPropagation(); obPreviewVoice('${key}')">&#9654; Preview voice</button>
+                `;
+                container.appendChild(card);
             }
         }
 
-        async function connectGPTCoach() {
-            const input = document.getElementById('apiKeyInput');
-            const apiKey = input.value;
-            const connectBtn = document.getElementById('connectBtn');
+        function obSelectCoach(key) {
+            onboardingState.coachPreference = key;
+            document.querySelectorAll('#obCoachCards .ob-coach-card').forEach(c => c.classList.remove('selected'));
+            document.querySelector(`[data-coach-key="${key}"]`).classList.add('selected');
+            setTimeout(() => {
+                transitionScreens('obCoachScreen', 'obMeetScreen');
+                obInitMeetCoach();
+            }, 500);
+        }
 
-            if (!apiKey || !apiKey.startsWith('sk-')) {
-                showToast('Please enter a valid OpenAI API key');
-                input.focus();
+        function obPreviewVoice(key) {
+            const configs = GPTVoiceCoach.getCoachConfigs();
+            const config = configs[key];
+            if (!config || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(config.previewText);
+            utterance.rate = 1.0;
+            utterance.pitch = key === 'sam' ? 1.1 : key === 'jordan' ? 0.9 : 1.0;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        // --- Screen 6: Meet Your Coach ---
+        async function obInitMeetCoach() {
+            const configs = GPTVoiceCoach.getCoachConfigs();
+            const coach = configs[onboardingState.coachPreference] || configs.alex;
+
+            document.getElementById('obMeetCoachName').textContent = coach.name.toUpperCase();
+            document.getElementById('obMeetStatus').textContent = 'Connecting...';
+
+            const skillLabel = onboardingState.ntrpLevel || '3.0-3.5';
+            const goalsStr = onboardingState.goals.join(', ') || 'general improvement';
+            const nameStr = onboardingState.displayName ? ` Their name is ${onboardingState.displayName}.` : '';
+
+            const meetInstructions = `You are ${coach.name}, an AI tennis coach. ${coach.personality}
+This is your first time meeting this player.${nameStr}
+They are a ${skillLabel} NTRP player who wants to improve: ${goalsStr}.${onboardingState.customGoal ? ' They also mentioned: ' + onboardingState.customGoal + '.' : ''}
+Introduce yourself conversationally (2-3 sentences). Be warm, reference their goals, and get them excited to hit.
+Keep it under 15 seconds. Do NOT mention being AI.`;
+
+            try {
+                const tokenData = await supabaseClient.getGuestToken(meetInstructions, coach.voice);
+                if (!tokenData?.ephemeralKey) {
+                    document.getElementById('obMeetStatus').textContent = 'Ready to go!';
+                    return;
+                }
+
+                gptVoiceCoach.voice = coach.voice;
+                gptVoiceCoach.coachName = coach.name;
+                gptVoiceCoach.coachPersonality = coach.personality;
+
+                // Ensure audio element exists
+                if (!gptVoiceCoach.audioElement) {
+                    gptVoiceCoach.audioElement = document.createElement('audio');
+                    gptVoiceCoach.audioElement.autoplay = true;
+                    gptVoiceCoach.audioElement.playsInline = true;
+                    document.body.appendChild(gptVoiceCoach.audioElement);
+                }
+
+                await gptVoiceCoach.connectWebRTC(tokenData.ephemeralKey);
+                gptVoiceCoach.isConnected = true;
+                document.getElementById('obMeetStatus').textContent = 'Listening...';
+
+                // Override greeting to use meet-coach prompt instead of normal session greeting
+                gptVoiceCoach.dataChannel.send(JSON.stringify({
+                    type: 'session.update',
+                    session: { instructions: meetInstructions, turn_detection: { type: 'server_vad' } }
+                }));
+                setTimeout(() => {
+                    gptVoiceCoach.dataChannel.send(JSON.stringify({
+                        type: 'conversation.item.create',
+                        item: { type: 'message', role: 'user', content: [{ type: 'input_text', text: 'Introduce yourself to this new player. Keep it to 2-3 sentences.' }] }
+                    }));
+                    gptVoiceCoach.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+                }, 500);
+
+                // Auto-advance after 30s
+                onboardingState.meetCoachTimer = setTimeout(() => obFinishMeetCoach(), 30000);
+            } catch (e) {
+                console.error('Meet coach connection failed:', e);
+                document.getElementById('obMeetStatus').textContent = 'Ready to go!';
+            }
+        }
+
+        function obFinishMeetCoach() {
+            if (onboardingState.meetCoachTimer) {
+                clearTimeout(onboardingState.meetCoachTimer);
+                onboardingState.meetCoachTimer = null;
+            }
+            // Disconnect meet-coach session (will reconnect for trial)
+            if (gptVoiceCoach.pc) {
+                gptVoiceCoach.pc.close();
+                gptVoiceCoach.pc = null;
+                gptVoiceCoach.isConnected = false;
+            }
+            transitionScreens('obMeetScreen', 'obCameraScreen');
+        }
+
+        // --- Screen 7: Camera Permission ---
+        async function obRequestTrialCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                stream.getTracks().forEach(t => t.stop());
+                transitionScreens('obCameraScreen', 'loadingScreen', async () => {
+                    await obStartTrialSession();
+                });
+            } catch (e) {
+                showToast('Camera permission is required for stroke analysis');
+            }
+        }
+
+        // --- Screen 8: Trial Session ---
+        async function obStartTrialSession() {
+            onboardingState.trialSessionActive = true;
+            onboardingState.trialStrokes = [];
+
+            const configs = GPTVoiceCoach.getCoachConfigs();
+            const coach = configs[onboardingState.coachPreference] || configs.alex;
+
+            // Get a new guest token for the trial
+            const trialInstructions = `You are ${coach.name}, an AI tennis coach. ${coach.personality}
+You are coaching a ${onboardingState.ntrpLevel || '3.0-3.5'} NTRP player in their first trial session.
+Give quick, encouraging feedback on each stroke. Keep it to 1-2 sentences.
+This is a demo — make them feel excited about the coaching experience.`;
+
+            const tokenData = await supabaseClient.getGuestToken(trialInstructions, coach.voice);
+
+            if (tokenData?.ephemeralKey) {
+                gptVoiceCoach.voice = coach.voice;
+                gptVoiceCoach.coachName = coach.name;
+                gptVoiceCoach.coachPersonality = coach.personality;
+
+                if (!gptVoiceCoach.audioElement) {
+                    gptVoiceCoach.audioElement = document.createElement('audio');
+                    gptVoiceCoach.audioElement.autoplay = true;
+                    gptVoiceCoach.audioElement.playsInline = true;
+                    document.body.appendChild(gptVoiceCoach.audioElement);
+                }
+
+                await gptVoiceCoach.connectWebRTC(tokenData.ephemeralKey);
+                gptVoiceCoach.isConnected = true;
+                gptVoiceCoach.sessionStartTime = Date.now();
+            }
+
+            // Initialize TennisAI (camera + pose detection)
+            tennisAI = new TennisAI();
+            window.tennisAI = tennisAI;
+
+            // Show trial counter overlay
+            document.getElementById('obTrialOverlay').style.display = 'block';
+            obUpdateTrialCounter(0);
+
+            // Hook into stroke detection for trial counting
+            const checkTrialHook = setInterval(() => {
+                if (tennisAI?.enhancedAnalyzer) {
+                    const originalCallback = tennisAI.enhancedAnalyzer.onStrokeCallback;
+                    tennisAI.enhancedAnalyzer.onStrokeCallback = (strokeData, historySnapshot) => {
+                        if (originalCallback) originalCallback(strokeData, historySnapshot);
+
+                        if (onboardingState.trialSessionActive) {
+                            onboardingState.trialStrokes.push(strokeData);
+                            obUpdateTrialCounter(onboardingState.trialStrokes.length);
+                            if (onboardingState.trialStrokes.length >= 5) {
+                                obEndTrialSession();
+                            }
+                        }
+                    };
+                    clearInterval(checkTrialHook);
+                }
+            }, 200);
+        }
+
+        function obUpdateTrialCounter(count) {
+            const el = document.getElementById('obTrialCounter');
+            if (el) el.textContent = `Stroke ${count}/5`;
+        }
+
+        function obEndTrialSession() {
+            onboardingState.trialSessionActive = false;
+            document.getElementById('obTrialOverlay').style.display = 'none';
+
+            // Stop camera
+            if (tennisAI?.camera) {
+                tennisAI.camera.stop();
+            }
+
+            // Disconnect voice
+            if (gptVoiceCoach.pc) {
+                gptVoiceCoach.pc.close();
+                gptVoiceCoach.pc = null;
+                gptVoiceCoach.isConnected = false;
+            }
+
+            obBuildReportCard();
+
+            // Hide camera, show report screen
+            document.getElementById('cameraContainer').style.display = 'none';
+            document.querySelector('.container').style.display = 'flex';
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
+            const reportScreen = document.getElementById('obReportScreen');
+            reportScreen.style.display = 'flex';
+            reportScreen.classList.add('entering');
+            reportScreen.offsetHeight;
+            reportScreen.classList.add('active');
+            setTimeout(() => reportScreen.classList.remove('entering', 'active'), 400);
+        }
+
+        // --- Screen 9: Report Card ---
+        function obBuildReportCard() {
+            const strokes = onboardingState.trialStrokes;
+            if (strokes.length === 0) {
+                document.getElementById('obReportScore').textContent = '--';
+                document.getElementById('obCoachNoteText').textContent = 'Hit some strokes next time and I\'ll give you a full breakdown!';
                 return;
             }
 
-            // Save API key for future sessions
-            try {
-                localStorage.setItem('ace_openai_key', apiKey);
-            } catch (e) {}
+            const scores = strokes.map(s => s.quality?.overall || s.quality || 0);
+            const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+            const bestScore = Math.round(Math.max(...scores));
 
-            // Save Gemini key if provided
-            saveGeminiKey();
+            const types = {};
+            strokes.forEach(s => { const t = s.type || s.strokeType || 'Unknown'; types[t] = (types[t] || 0) + 1; });
+            const dominantType = Object.entries(types).sort((a, b) => b[1] - a[1])[0]?.[0] || 'Unknown';
 
-            // Micro-interaction: flash input border
-            input.classList.add('flash');
+            let topStrength = avgScore >= 70 ? 'Strong fundamentals' : avgScore >= 50 ? 'Solid technique basics' : 'Good effort';
+            let topImprovement = 'Keep practicing';
 
-            // Show checkmark
-            document.getElementById('apiCheckmark').classList.add('visible');
+            const allFaults = strokes.flatMap(s =>
+                (s.biomechanicalEvaluation?.detectedFaults || s.biomechanical?.faults || []).map(f => typeof f === 'string' ? f : f.name)
+            ).filter(Boolean);
+            const faultCounts = {};
+            allFaults.forEach(f => { faultCounts[f] = (faultCounts[f] || 0) + 1; });
+            const topFault = Object.entries(faultCounts).sort((a, b) => b[1] - a[1])[0];
+            if (topFault) topImprovement = topFault[0].replace(/([A-Z])/g, ' $1').trim();
 
-            // Change button text to CONNECTED
-            const originalHTML = connectBtn.innerHTML;
-            connectBtn.innerHTML = 'CONNECTED <span style="margin-left: 4px;">✓</span>';
-            connectBtn.disabled = true;
+            document.getElementById('obReportScore').textContent = avgScore;
+            document.getElementById('obReportDetails').innerHTML = `
+                <div class="ob-report-stat"><div class="ob-report-stat-label">Strokes Analyzed</div><div class="ob-report-stat-value">${strokes.length}</div></div>
+                <div class="ob-report-stat"><div class="ob-report-stat-label">Best Stroke</div><div class="ob-report-stat-value">${bestScore}/100</div></div>
+                <div class="ob-report-stat"><div class="ob-report-stat-label">Most Hit</div><div class="ob-report-stat-value">${dominantType}</div></div>
+                <div class="ob-report-stat"><div class="ob-report-stat-label">Top Strength</div><div class="ob-report-stat-value" style="color:#CDFF00">${topStrength}</div></div>
+                <div class="ob-report-stat"><div class="ob-report-stat-label">Focus Area</div><div class="ob-report-stat-value" style="color:#FF9800">${topImprovement}</div></div>
+            `;
 
-            // Haptic trigger point: navigator.vibrate && navigator.vibrate([10, 50, 10]);
-
-            // Wait for micro-interaction to complete
-            await new Promise(r => setTimeout(r, 800));
-
-            // Transition to loading
-            transitionScreens('apiKeyScreen', 'loadingScreen', async () => {
-                // Initialize GPT coach
-                await gptVoiceCoach.initialize(apiKey);
-
-                // Start tennis AI initialization
-                tennisAI = new TennisAI();
-                window.tennisAI = tennisAI;
-            });
+            const nameRef = onboardingState.displayName ? `, ${onboardingState.displayName}` : '';
+            document.getElementById('obCoachNoteText').textContent =
+                `Great first session${nameRef}! I can see you have a solid ${dominantType.toLowerCase()}. ` +
+                `Let's work on your ${topImprovement.toLowerCase()} together - I know we can take your game to the next level.`;
         }
 
-        function skipGPTCoach() {
-            // Save Gemini key if provided (works even without OpenAI key)
-            saveGeminiKey();
+        // --- Screen 10: Sign Up ---
+        function obGoToSignup() {
+            transitionScreens('obReportScreen', 'obSignupScreen');
+        }
 
-            transitionScreens('apiKeyScreen', 'loadingScreen', () => {
-                // Use fallback coaching
-                gptVoiceCoach.fallbackToSpeechSynthesis();
+        async function obSendMagicLink() {
+            const emailInput = document.getElementById('obSignupEmail');
+            const statusEl = document.getElementById('obSignupStatus');
+            const sendBtn = document.getElementById('obSignupBtn');
 
-                // Start tennis AI initialization
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                statusEl.textContent = 'Please enter a valid email address.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'SENDING...';
+
+            const { error } = await supabaseClient.signInWithMagicLink(email);
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = 'SEND MAGIC LINK <span style="margin-left:4px;">&rarr;</span>';
+            } else {
+                statusEl.textContent = 'Check your email for the magic link!';
+                statusEl.style.color = '#CDFF00';
+                sendBtn.textContent = 'EMAIL SENT \u2713';
+            }
+        }
+
+        function obSkipSignup() {
+            // Continue without account
+            obFinishOnboarding(false);
+        }
+
+        // --- Screen 11: Pricing ---
+        function obStartFreeTrial() {
+            if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                supabaseClient.updateProfile({
+                    subscriptionTier: 'trial',
+                    trialStartDate: new Date().toISOString(),
+                });
+            }
+            obFinishOnboarding(true);
+        }
+
+        function obContinueWithFree() {
+            if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                supabaseClient.updateProfile({ subscriptionTier: 'free' });
+            }
+            obFinishOnboarding(true);
+        }
+
+        // --- Finish Onboarding ---
+        async function obFinishOnboarding(isAuthenticated) {
+            const skillLevel = NTRP_TO_SKILL[onboardingState.ntrpLevel] || 'intermediate';
+
+            if (isAuthenticated && typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                await supabaseClient.updateProfile({
+                    sport: onboardingState.sport,
+                    ntrpLevel: onboardingState.ntrpLevel,
+                    skillLevel: skillLevel,
+                    improvementGoals: onboardingState.goals,
+                    customGoalText: onboardingState.customGoal || null,
+                    coachPreference: onboardingState.coachPreference,
+                    displayName: onboardingState.displayName,
+                    age: onboardingState.age,
+                    onboardingCompleted: true,
+                });
+                await loadUserData();
+            } else {
+                localStorage.setItem('ace_onboarding', JSON.stringify(onboardingState));
+            }
+
+            // Update playerProfile in memory
+            if (typeof playerProfile !== 'undefined') {
+                playerProfile.profile.currentSkillLevel = skillLevel;
+                playerProfile.profile.coachPreference = onboardingState.coachPreference;
+                playerProfile.profile.improvementGoals = onboardingState.goals;
+                playerProfile.profile.displayName = onboardingState.displayName;
+                playerProfile.profile.onboardingCompleted = true;
+            }
+
+            // Transition to full app
+            const visibleScreen = document.querySelector('.screen[style*="display: flex"], .screen:not([style*="display: none"])');
+            const fromId = visibleScreen?.id || 'obPricingScreen';
+
+            transitionScreens(fromId, 'loadingScreen', async () => {
+                const configs = GPTVoiceCoach.getCoachConfigs();
+                const coach = configs[onboardingState.coachPreference] || configs.alex;
+
+                // Set observation limit based on tier
+                if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                    const sub = supabaseClient.getSubscriptionStatus();
+                    gptVoiceCoach.observationLimit = sub.observationLimit;
+                }
+
+                await gptVoiceCoach.initialize(null, {
+                    voice: coach.voice,
+                    coachName: coach.name,
+                    coachPersonality: coach.personality
+                });
+
                 tennisAI = new TennisAI();
                 window.tennisAI = tennisAI;
             });
@@ -5928,44 +6549,12 @@
         // Supabase Configuration
         // ========================================
         // IMPORTANT: Replace these with your actual Supabase project values
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+        const SUPABASE_URL = 'https://apacscxvplslepsdlcmd.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFwYWNzY3h2cGxzbGVwc2RsY21kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3ODU0NzMsImV4cCI6MjA4NjM2MTQ3M30.T9gUpd1hMTx691xt3RUpvUuN0QWlq5eZu2Hns6T8CPI';
 
         // ========================================
         // Auth Functions
         // ========================================
-
-        async function sendMagicLink() {
-            const emailInput = document.getElementById('authEmailInput');
-            const statusEl = document.getElementById('authStatus');
-            const sendBtn = document.getElementById('authSendBtn');
-
-            const email = emailInput.value.trim();
-            if (!email || !email.includes('@')) {
-                statusEl.textContent = 'Please enter a valid email address.';
-                statusEl.style.color = '#ff6b6b';
-                emailInput.focus();
-                return;
-            }
-
-            sendBtn.disabled = true;
-            sendBtn.innerHTML = 'SENDING...';
-            statusEl.textContent = '';
-
-            const { error } = await supabaseClient.signInWithMagicLink(email);
-
-            if (error) {
-                statusEl.textContent = error;
-                statusEl.style.color = '#ff6b6b';
-                sendBtn.disabled = false;
-                sendBtn.innerHTML = 'SEND MAGIC LINK <span style="margin-left: 4px;">→</span>';
-            } else {
-                statusEl.textContent = 'Check your email for the magic link!';
-                statusEl.style.color = '#CDFF00';
-                sendBtn.innerHTML = 'EMAIL SENT ✓';
-                // Keep button disabled — user needs to click the email link
-            }
-        }
 
         async function handleSignOut() {
             if (!confirm('Sign out? Your data is saved in the cloud.')) return;
@@ -6038,41 +6627,60 @@
          * Initialize auth flow on page load.
          */
         async function initializeAuth() {
-            // Initialize Supabase client
             if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
-                // Supabase not configured — fall back to legacy localStorage flow
                 console.log('Supabase not configured, using localStorage mode');
+                // Check if onboarding was already completed locally
+                const localOb = localStorage.getItem('ace_onboarding');
                 document.getElementById('checkingAuthScreen').style.display = 'none';
-                document.getElementById('permissionScreen').style.display = 'flex';
-                initOnboardingLegacy();
+                if (localOb) {
+                    document.getElementById('permissionScreen').style.display = 'flex';
+                    initOnboardingLegacy();
+                } else {
+                    document.getElementById('obSportScreen').style.display = 'flex';
+                }
                 return;
             }
 
             supabaseClient.initialize(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            // Listen for auth state changes
+            // Listen for auth state changes (handles magic link callback from onboarding screen 10)
             supabaseClient.onAuthChange(async (event, session, user) => {
                 if (event === 'SIGNED_IN' && user) {
-                    // Check for localStorage data to migrate
+                    // Migrate old localStorage data if exists
                     if (supabaseClient.hasLocalStorageData()) {
                         showToast('Migrating your data...');
-                        await supabaseClient.migrateFromLocalStorage((step, total, msg) => {
-                            console.log(`Migration: ${msg}`);
-                        });
+                        await supabaseClient.migrateFromLocalStorage();
                         showToast('Data migrated successfully!');
                     }
 
-                    // Load user data
                     await loadUserData();
 
-                    // Transition to welcome screen
-                    const authScreen = document.getElementById('authScreen');
-                    const checkingScreen = document.getElementById('checkingAuthScreen');
-                    if (authScreen.style.display !== 'none') {
-                        transitionScreens('authScreen', 'permissionScreen');
+                    // Check if sign-in happened during onboarding flow (screen 10)
+                    const signupScreen = document.getElementById('obSignupScreen');
+                    if (signupScreen && signupScreen.style.display !== 'none') {
+                        // Save onboarding data to newly created profile
+                        await supabaseClient.updateProfile({
+                            sport: onboardingState.sport,
+                            ntrpLevel: onboardingState.ntrpLevel,
+                            skillLevel: NTRP_TO_SKILL[onboardingState.ntrpLevel] || 'intermediate',
+                            improvementGoals: onboardingState.goals,
+                            customGoalText: onboardingState.customGoal || null,
+                            coachPreference: onboardingState.coachPreference,
+                            displayName: onboardingState.displayName,
+                            age: onboardingState.age,
+                            trialUsed: true,
+                        });
+                        transitionScreens('obSignupScreen', 'obPricingScreen');
+                        return;
+                    }
+
+                    // Normal sign-in (not from onboarding)
+                    const profile = await supabaseClient.loadProfile();
+                    if (profile?.onboardingCompleted) {
                         showWelcomeScreen();
-                    } else if (checkingScreen.style.display !== 'none') {
-                        showWelcomeScreen();
+                    } else {
+                        // Signed in but never completed onboarding
+                        transitionScreens('checkingAuthScreen', 'obSportScreen');
                     }
                 }
             });
@@ -6080,12 +6688,19 @@
             // Check for existing session
             const user = await supabaseClient.getExistingSession();
             if (user) {
-                // Already signed in — load data and show welcome
                 await loadUserData();
-                showWelcomeScreen();
+                const profile = await supabaseClient.loadProfile();
+
+                if (profile?.onboardingCompleted) {
+                    // Returning authenticated user — show welcome
+                    showWelcomeScreen();
+                } else {
+                    // Authenticated but never finished onboarding
+                    transitionScreens('checkingAuthScreen', 'obSportScreen');
+                }
             } else {
-                // Not signed in — show auth screen
-                transitionScreens('checkingAuthScreen', 'authScreen');
+                // Not signed in — start fresh onboarding (no auth needed for trial)
+                transitionScreens('checkingAuthScreen', 'obSportScreen');
             }
         }
 
@@ -6095,34 +6710,26 @@
             initTimelineInteraction();
             initCalibrationUpload();
             initializeAuth();
+
+            // Free tier limit events
+            window.addEventListener('ace:stroke-limit-reached', () => {
+                showToast('Free tier: 10 strokes per session. Upgrade to Pro for unlimited!');
+            });
+            window.addEventListener('ace:session-limit-reached', () => {
+                showToast('Free tier: 1 session per month. Upgrade to Pro for unlimited!');
+            });
         });
 
         // Legacy onboarding for when Supabase is not configured
         function initOnboardingLegacy() {
             try {
-                // Check for saved API key
-                const savedKey = localStorage.getItem('ace_openai_key');
-                if (savedKey && savedKey.startsWith('sk-')) {
-                    const input = document.getElementById('apiKeyInput');
-                    if (input) {
-                        input.value = savedKey;
-                        input.classList.add('validated');
-                        document.getElementById('apiCheckmark').classList.add('visible');
-                    }
+                // Apply saved onboarding data
+                const localOb = JSON.parse(localStorage.getItem('ace_onboarding') || '{}');
+                if (localOb.coachPreference) {
+                    onboardingState.coachPreference = localOb.coachPreference;
                 }
 
-                // Check for saved Gemini key
-                const savedGeminiKey = localStorage.getItem('ace_gemini_key');
-                if (savedGeminiKey) {
-                    const geminiInput = document.getElementById('geminiKeyInput');
-                    if (geminiInput) {
-                        geminiInput.value = savedGeminiKey;
-                        geminiInput.classList.add('validated');
-                        document.getElementById('geminiCheckmark').classList.add('visible');
-                    }
-                }
-
-                // Check if returning user with player profile
+                // Show returning user context on permission screen
                 if (typeof playerProfile !== 'undefined' && playerProfile.isLoaded) {
                     const profile = playerProfile.profile;
                     if (profile && profile.totalSessions > 0) {
@@ -6133,26 +6740,6 @@
                         if (sessionCount) {
                             sessionCount.textContent = `SESSION #${profile.totalSessions + 1}`;
                             sessionCount.style.display = 'block';
-                        }
-
-                        if (profile.totalSessions >= 3) {
-                            const featureList = document.getElementById('featureList');
-                            if (featureList) {
-                                const progressCard = document.createElement('div');
-                                progressCard.className = 'feature-card';
-                                progressCard.innerHTML = `
-                                    <div class="feature-icon">
-                                        <svg viewBox="0 0 24 24">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                    </div>
-                                    <div class="feature-content">
-                                        <div class="feature-title">${profile.totalSessions} Sessions Logged</div>
-                                        <div class="feature-desc">Your progress is saved</div>
-                                    </div>
-                                `;
-                                featureList.appendChild(progressCard);
-                            }
                         }
                     }
                 }

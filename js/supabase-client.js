@@ -220,6 +220,18 @@ class ACESupabaseClient {
       coachingPreferences: row.coaching_preferences || {},
       fatiguePatterns: row.fatigue_patterns || {},
       milestones: row.milestones || [],
+      // Onboarding & subscription fields
+      sport: row.sport || 'tennis',
+      ntrpLevel: row.ntrp_level || null,
+      improvementGoals: row.improvement_goals || [],
+      customGoalText: row.custom_goal_text || null,
+      coachPreference: row.coach_preference || 'alex',
+      displayName: row.display_name || null,
+      age: row.age || null,
+      subscriptionTier: row.subscription_tier || 'free',
+      trialStartDate: row.trial_start_date || null,
+      trialUsed: row.trial_used || false,
+      onboardingCompleted: row.onboarding_completed || false,
       createdAt: row.created_at,
       updatedAt: row.updated_at
     };
@@ -244,7 +256,19 @@ class ACESupabaseClient {
       currentGoal: 'current_goal',
       coachingPreferences: 'coaching_preferences',
       fatiguePatterns: 'fatigue_patterns',
-      milestones: 'milestones'
+      milestones: 'milestones',
+      // Onboarding & subscription fields
+      sport: 'sport',
+      ntrpLevel: 'ntrp_level',
+      improvementGoals: 'improvement_goals',
+      customGoalText: 'custom_goal_text',
+      coachPreference: 'coach_preference',
+      displayName: 'display_name',
+      age: 'age',
+      subscriptionTier: 'subscription_tier',
+      trialStartDate: 'trial_start_date',
+      trialUsed: 'trial_used',
+      onboardingCompleted: 'onboarding_completed'
     };
 
     const result = {};
@@ -740,6 +764,71 @@ class ACESupabaseClient {
       console.error('SupabaseClient: getGeminiKey fetch error', e);
       return null;
     }
+  }
+
+  // ================================================================
+  // Guest Trial Token (unauthenticated)
+  // ================================================================
+
+  /**
+   * Get an OpenAI Realtime ephemeral token for guest trial (no auth required).
+   * @param {string} instructions - GPT coaching instructions
+   * @param {string} voice - voice ID
+   * @returns {{ ephemeralKey: string, expiresAt: number, trialId: string }|null}
+   */
+  async getGuestToken(instructions, voice = 'alloy') {
+    if (!this._functionsUrl) return null;
+
+    try {
+      const response = await fetch(`${this._functionsUrl}/get-guest-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': this.client?.supabaseKey || ''
+        },
+        body: JSON.stringify({ instructions, voice })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('SupabaseClient: getGuestToken error', response.status, errData);
+        return null;
+      }
+
+      return await response.json();
+    } catch (e) {
+      console.error('SupabaseClient: getGuestToken fetch error', e);
+      return null;
+    }
+  }
+
+  // ================================================================
+  // Subscription Helpers
+  // ================================================================
+
+  /**
+   * Get subscription status from cached profile.
+   * @returns {{ tier: string, isActive: boolean, strokeLimit: number|null, observationLimit: number|null, sessionLimitPerMonth: number|null }}
+   */
+  getSubscriptionStatus() {
+    const profile = this._cache.profile?.data;
+    const tier = profile?.subscriptionTier || 'free';
+
+    if (tier === 'pro') {
+      return { tier: 'pro', isActive: true, strokeLimit: null, observationLimit: null, sessionLimitPerMonth: null };
+    }
+
+    if (tier === 'trial') {
+      const trialStart = profile?.trialStartDate ? new Date(profile.trialStartDate) : null;
+      const isActive = trialStart && (Date.now() - trialStart.getTime()) < 7 * 24 * 60 * 60 * 1000;
+      if (isActive) {
+        return { tier: 'trial', isActive: true, strokeLimit: null, observationLimit: null, sessionLimitPerMonth: null };
+      }
+      // Trial expired — falls back to free
+    }
+
+    // Free tier limits
+    return { tier: 'free', isActive: true, strokeLimit: 10, observationLimit: 2, sessionLimitPerMonth: 1 };
   }
 
   // ================================================================

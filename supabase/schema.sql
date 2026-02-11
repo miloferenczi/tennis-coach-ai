@@ -223,3 +223,34 @@ create trigger set_updated_at
 create trigger set_updated_at
   before update on public.curriculum
   for each row execute function public.handle_updated_at();
+
+-- ============================================================
+-- 7. Onboarding & subscription columns on profiles
+-- ============================================================
+-- Run this as a migration if the profiles table already exists:
+--
+-- ALTER TABLE public.profiles
+--   ADD COLUMN IF NOT EXISTS sport text NOT NULL DEFAULT 'tennis',
+--   ADD COLUMN IF NOT EXISTS ntrp_level text,
+--   ADD COLUMN IF NOT EXISTS improvement_goals jsonb NOT NULL DEFAULT '[]'::jsonb,
+--   ADD COLUMN IF NOT EXISTS custom_goal_text text,
+--   ADD COLUMN IF NOT EXISTS coach_preference text NOT NULL DEFAULT 'alex',
+--   ADD COLUMN IF NOT EXISTS display_name text,
+--   ADD COLUMN IF NOT EXISTS age integer,
+--   ADD COLUMN IF NOT EXISTS subscription_tier text NOT NULL DEFAULT 'free',
+--   ADD COLUMN IF NOT EXISTS trial_start_date timestamptz,
+--   ADD COLUMN IF NOT EXISTS trial_used boolean NOT NULL DEFAULT false,
+--   ADD COLUMN IF NOT EXISTS onboarding_completed boolean NOT NULL DEFAULT false;
+
+-- ============================================================
+-- 8. guest_trials — IP-based rate limiting for trial sessions
+-- ============================================================
+create table if not exists public.guest_trials (
+  id uuid primary key default gen_random_uuid(),
+  ip_address text not null,
+  created_at timestamptz not null default now(),
+  stroke_count integer not null default 0
+);
+
+create index if not exists idx_guest_trials_ip
+  on public.guest_trials (ip_address, created_at desc);

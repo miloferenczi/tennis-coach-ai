@@ -47,7 +47,19 @@ class PlayerProfile {
       currentGoal: data.currentGoal || null,
       coachingPreferences: data.coachingPreferences || this.getDefaultProfile().coachingPreferences,
       fatiguePatterns: data.fatiguePatterns || this.getDefaultProfile().fatiguePatterns,
-      milestones: data.milestones || []
+      milestones: data.milestones || [],
+      // Onboarding & subscription
+      sport: data.sport || 'tennis',
+      ntrpLevel: data.ntrpLevel || null,
+      improvementGoals: data.improvementGoals || [],
+      customGoalText: data.customGoalText || null,
+      coachPreference: data.coachPreference || 'alex',
+      displayName: data.displayName || null,
+      age: data.age || null,
+      subscriptionTier: data.subscriptionTier || 'free',
+      trialStartDate: data.trialStartDate || null,
+      trialUsed: data.trialUsed || false,
+      onboardingCompleted: data.onboardingCompleted || false
     };
   }
 
@@ -125,7 +137,20 @@ class PlayerProfile {
       },
 
       // Milestones achieved
-      milestones: []
+      milestones: [],
+
+      // Onboarding & subscription
+      sport: 'tennis',
+      ntrpLevel: null,
+      improvementGoals: [],
+      customGoalText: null,
+      coachPreference: 'alex',
+      displayName: null,
+      age: null,
+      subscriptionTier: 'free',
+      trialStartDate: null,
+      trialUsed: false,
+      onboardingCompleted: false
     };
   }
 
