@@ -7,10 +7,34 @@ class ImprovementTracker {
   constructor() {
     this.storageKey = 'ace_improvement_tracker';
     this.maxSessionsPerType = 10;
-    this.data = this.load();
+    this.data = this._loadFromLocalStorage();
+    this.isLoaded = true;
   }
 
-  load() {
+  /**
+   * Initialize from Supabase (or localStorage fallback).
+   * Call after auth is confirmed.
+   */
+  async init() {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+      const dbData = await supabaseClient.loadImprovementTracker();
+      if (dbData) {
+        this.data = {
+          version: 1,
+          strokeMetrics: dbData.strokeMetrics || {},
+          faultHistory: dbData.faultHistory || {},
+          coachingPlan: dbData.coachingPlan || null
+        };
+        this.isLoaded = true;
+        return;
+      }
+    }
+    // Fallback: localStorage
+    this.data = this._loadFromLocalStorage();
+    this.isLoaded = true;
+  }
+
+  _loadFromLocalStorage() {
     try {
       const raw = localStorage.getItem(this.storageKey);
       if (raw) {
@@ -23,6 +47,10 @@ class ImprovementTracker {
     return this.createEmpty();
   }
 
+  _useSupabase() {
+    return typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated();
+  }
+
   createEmpty() {
     return {
       version: 1,
@@ -32,11 +60,19 @@ class ImprovementTracker {
     };
   }
 
-  save() {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.data));
-    } catch (e) {
-      console.error('ImprovementTracker: failed to save', e);
+  async save() {
+    if (this._useSupabase()) {
+      await supabaseClient.updateImprovementTracker({
+        strokeMetrics: this.data.strokeMetrics,
+        faultHistory: this.data.faultHistory,
+        coachingPlan: this.data.coachingPlan
+      });
+    } else {
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(this.data));
+      } catch (e) {
+        console.error('ImprovementTracker: failed to save', e);
+      }
     }
   }
 
@@ -44,7 +80,7 @@ class ImprovementTracker {
    * Record session metrics from stroke array and summary.
    * Called at session end with the full stroke array from sessionStorage.
    */
-  recordSession(strokes, summary) {
+  async recordSession(strokes, summary) {
     if (!strokes || strokes.length === 0) return;
 
     // Group strokes by type
@@ -92,7 +128,7 @@ class ImprovementTracker {
     // Update fault history
     this.recordFaults(sessionFaults);
 
-    this.save();
+    await this.save();
   }
 
   /**
@@ -291,14 +327,14 @@ class ImprovementTracker {
   /**
    * Store GPT-authored coaching plan from session-end synthesis.
    */
-  updateCoachingPlan(plan) {
+  async updateCoachingPlan(plan) {
     if (!plan || !plan.focusAreas) return;
     this.data.coachingPlan = {
       updatedAt: Date.now(),
       focusAreas: plan.focusAreas.slice(0, 3),
       sessionGoal: plan.sessionGoal || null
     };
-    this.save();
+    await this.save();
   }
 
   /**
@@ -356,9 +392,9 @@ class ImprovementTracker {
   /**
    * Clear all tracking data.
    */
-  reset() {
+  async reset() {
     this.data = this.createEmpty();
-    this.save();
+    await this.save();
   }
 }
 

@@ -48,6 +48,21 @@ class SceneAnalyzer {
   }
 
   /**
+   * Initialize with Gemini key from Supabase Edge Function.
+   * Call after auth is confirmed. Falls back gracefully if no key.
+   */
+  async initializeWithAuth() {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+      const key = await supabaseClient.getGeminiKey();
+      if (key) {
+        this.setApiKey(key);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Set or clear the Gemini API key. Enables/disables the analyzer.
    */
   setApiKey(key) {

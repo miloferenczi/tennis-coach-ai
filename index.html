@@ -25,7 +25,11 @@
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js"></script>
-        
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-client.js"></script>
+
         <!-- Signal processing filters (must load before physics/analysis) -->
     <script src="js/signal-filters.js"></script>
     <script src="js/kalman-velocity-estimator.js"></script>
@@ -2554,12 +2558,55 @@
         .replay-grid-item:hover {
             transform: scale(1.1);
         }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Auth: Checking Session -->
+        <div id="checkingAuthScreen" class="screen">
+            <div class="onboarding-content">
+                <div class="hero-title">ACE<span class="accent">.</span></div>
+                <div class="hero-subtitle">AI TENNIS COACH</div>
+                <div style="margin-top: 40px;">
+                    <div class="loading-spinner" style="width:40px;height:40px;border:3px solid rgba(205,255,0,0.2);border-top-color:#CDFF00;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
+                    <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:16px;">Checking session...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Auth: Sign In -->
+        <div id="authScreen" class="screen" style="display: none;">
+            <div class="onboarding-content">
+                <div class="hero-title">ACE<span class="accent">.</span></div>
+                <div class="hero-subtitle">AI TENNIS COACH</div>
+
+                <div class="api-input-group" style="margin-top: 32px;">
+                    <label class="api-label">EMAIL ADDRESS</label>
+                    <div class="api-input-wrapper">
+                        <input
+                            type="email"
+                            id="authEmailInput"
+                            class="api-input"
+                            placeholder="you@example.com"
+                            autocomplete="email"
+                        />
+                    </div>
+                </div>
+
+                <button class="btn-primary" id="authSendBtn" onclick="sendMagicLink()">
+                    SEND MAGIC LINK <span style="margin-left: 4px;">→</span>
+                </button>
+
+                <div id="authStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:16px;text-align:center;min-height:20px;"></div>
+            </div>
+        </div>
+
         <!-- Onboarding Step 1: Welcome -->
-        <div id="permissionScreen" class="screen">
+        <div id="permissionScreen" class="screen" style="display: none;">
             <div class="onboarding-content">
                 <div class="hero-title">ACE<span class="accent">.</span></div>
                 <div class="hero-subtitle" id="heroSubtitle">AI TENNIS COACH</div>
@@ -2800,6 +2847,9 @@
                 </button>
                 <button class="control-btn text-btn" onclick="resetSession()">
                     RESET
+                </button>
+                <button class="control-btn text-btn" id="signOutBtn" onclick="handleSignOut()" style="display:none;" title="Sign Out">
+                    OUT
                 </button>
             </div>
 
@@ -3256,6 +3306,10 @@
                 this.insightMiner = new InsightMiner();
                 this.proactiveTriggers = new ProactiveTriggers();
                 this.curriculumEngine = new CurriculumEngine();
+                // Init from Supabase if authenticated
+                if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                    this.curriculumEngine.init();
+                }
                 this.shareCardGenerator = new ShareCardGenerator();
                 this.sessionVideoManager = new SessionVideoManager();
                 this.rallyTracker = new RallyTracker();
@@ -3277,10 +3331,14 @@
                     }
                 };
 
-                // Set Gemini key from localStorage if available
-                const savedGeminiKey = localStorage.getItem('ace_gemini_key');
-                if (savedGeminiKey) {
-                    this.sceneAnalyzer.setApiKey(savedGeminiKey);
+                // Set Gemini key: try Supabase Edge Function first, then localStorage
+                if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                    this.sceneAnalyzer.initializeWithAuth();
+                } else {
+                    const savedGeminiKey = localStorage.getItem('ace_gemini_key');
+                    if (savedGeminiKey) {
+                        this.sceneAnalyzer.setApiKey(savedGeminiKey);
+                    }
                 }
 
                 // Fault-to-landmark mapping for visual highlighting
@@ -3777,11 +3835,11 @@
             async resetSession() {
                 // End current session and show summary if strokes were recorded
                 if (typeof sessionStorage !== 'undefined' && sessionStorage.endSession) {
-                    const endedSession = sessionStorage.endSession();
+                    const endedSession = await sessionStorage.endSession();
                     if (endedSession && endedSession.summary && endedSession.summary.totalStrokes > 0) {
                         // Record session in player profile for cross-session tracking
                         if (typeof playerProfile !== 'undefined') {
-                            const milestones = playerProfile.recordSession(endedSession.summary);
+                            const milestones = await playerProfile.recordSession(endedSession.summary);
                             // Show milestones if any achieved
                             if (milestones && milestones.length > 0) {
                                 endedSession.summary.milestones = milestones;
@@ -3790,7 +3848,7 @@
 
                         // Record metrics in improvement tracker
                         if (typeof improvementTracker !== 'undefined') {
-                            improvementTracker.recordSession(endedSession.strokes, endedSession.summary);
+                            await improvementTracker.recordSession(endedSession.strokes, endedSession.summary);
                         }
 
                         // Synthesize notebook entry (while GPT connection still alive)
@@ -3798,7 +3856,7 @@
                             try {
                                 const coachNotes = await gptVoiceCoach.synthesizeNotebookEntry(endedSession.summary);
                                 if (typeof coachNotebook !== 'undefined' && coachNotes) {
-                                    coachNotebook.saveEntry({
+                                    await coachNotebook.saveEntry({
                                         date: Date.now(),
                                         sessionNumber: playerProfile?.profile?.totalSessions || 0,
                                         summary: {
@@ -3827,7 +3885,7 @@
                                     improvementTracker
                                 );
                                 if (plan) {
-                                    improvementTracker.updateCoachingPlan(plan);
+                                    await improvementTracker.updateCoachingPlan(plan);
                                     endedSession.summary.coachingPlan = plan;
                                 }
                             } catch (e) {
@@ -3854,7 +3912,7 @@
 
                         // Record curriculum session
                         if (this.curriculumEngine?.isActive()) {
-                            this.curriculumEngine.recordSession();
+                            await this.curriculumEngine.recordSession();
                         }
 
                         // Speak top insight via GPT at session end
@@ -4016,6 +4074,12 @@
 
                         document.getElementById('aiStatusDot').className = 'status-dot ready';
 
+                        // Show sign-out button if authenticated via Supabase
+                        if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                            const signOutBtn = document.getElementById('signOutBtn');
+                            if (signOutBtn) signOutBtn.style.display = '';
+                        }
+
                         // Create or restore session
                         if (typeof sessionStorage !== 'undefined' && sessionStorage.createSession) {
                             const existingSession = sessionStorage.getCurrentSession();
@@ -4171,7 +4235,17 @@
 
         async function requestCameraPermission() {
             // Haptic trigger point: navigator.vibrate && navigator.vibrate(10);
-            transitionScreens('permissionScreen', 'apiKeyScreen');
+            if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                // Authenticated via Supabase — skip API key screen, go straight to loading
+                transitionScreens('permissionScreen', 'loadingScreen', async () => {
+                    await gptVoiceCoach.initialize(null); // Uses Edge Function
+                    tennisAI = new TennisAI();
+                    window.tennisAI = tennisAI;
+                });
+            } else {
+                // Legacy flow — show API key input screen
+                transitionScreens('permissionScreen', 'apiKeyScreen');
+            }
         }
 
         function saveGeminiKey() {
@@ -5850,28 +5924,189 @@
             });
         }
 
+        // ========================================
+        // Supabase Configuration
+        // ========================================
+        // IMPORTANT: Replace these with your actual Supabase project values
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        // ========================================
+        // Auth Functions
+        // ========================================
+
+        async function sendMagicLink() {
+            const emailInput = document.getElementById('authEmailInput');
+            const statusEl = document.getElementById('authStatus');
+            const sendBtn = document.getElementById('authSendBtn');
+
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                statusEl.textContent = 'Please enter a valid email address.';
+                statusEl.style.color = '#ff6b6b';
+                emailInput.focus();
+                return;
+            }
+
+            sendBtn.disabled = true;
+            sendBtn.innerHTML = 'SENDING...';
+            statusEl.textContent = '';
+
+            const { error } = await supabaseClient.signInWithMagicLink(email);
+
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = 'SEND MAGIC LINK <span style="margin-left: 4px;">→</span>';
+            } else {
+                statusEl.textContent = 'Check your email for the magic link!';
+                statusEl.style.color = '#CDFF00';
+                sendBtn.innerHTML = 'EMAIL SENT ✓';
+                // Keep button disabled — user needs to click the email link
+            }
+        }
+
+        async function handleSignOut() {
+            if (!confirm('Sign out? Your data is saved in the cloud.')) return;
+            if (typeof supabaseClient !== 'undefined') {
+                await supabaseClient.signOut();
+            }
+            window.location.reload();
+        }
+
+        /**
+         * Load all user data from Supabase after sign-in.
+         */
+        async function loadUserData() {
+            try {
+                // Initialize all storage classes from Supabase
+                if (typeof playerProfile !== 'undefined') await playerProfile.init();
+                if (typeof improvementTracker !== 'undefined') await improvementTracker.init();
+                if (typeof coachNotebook !== 'undefined') await coachNotebook.init();
+
+                // CurriculumEngine needs separate init
+                // (instantiated later in TennisAI, but we can pre-load)
+            } catch (e) {
+                console.error('loadUserData error:', e);
+            }
+        }
+
+        /**
+         * Show the welcome/permission screen with returning user context.
+         */
+        function showWelcomeScreen() {
+            // Update welcome for returning users
+            if (typeof playerProfile !== 'undefined' && playerProfile.isLoaded) {
+                const profile = playerProfile.profile;
+                if (profile && profile.totalSessions > 0) {
+                    const subtitle = document.getElementById('heroSubtitle');
+                    if (subtitle) subtitle.textContent = 'WELCOME BACK';
+
+                    const sessionCount = document.getElementById('heroSessionCount');
+                    if (sessionCount) {
+                        sessionCount.textContent = `SESSION #${profile.totalSessions + 1}`;
+                        sessionCount.style.display = 'block';
+                    }
+
+                    if (profile.totalSessions >= 3) {
+                        const featureList = document.getElementById('featureList');
+                        if (featureList) {
+                            const progressCard = document.createElement('div');
+                            progressCard.className = 'feature-card';
+                            progressCard.innerHTML = `
+                                <div class="feature-icon">
+                                    <svg viewBox="0 0 24 24">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                </div>
+                                <div class="feature-content">
+                                    <div class="feature-title">${profile.totalSessions} Sessions Logged</div>
+                                    <div class="feature-desc">Your progress is saved</div>
+                                </div>
+                            `;
+                            featureList.appendChild(progressCard);
+                        }
+                    }
+                }
+            }
+
+            transitionScreens('checkingAuthScreen', 'permissionScreen');
+        }
+
+        /**
+         * Initialize auth flow on page load.
+         */
+        async function initializeAuth() {
+            // Initialize Supabase client
+            if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+                // Supabase not configured — fall back to legacy localStorage flow
+                console.log('Supabase not configured, using localStorage mode');
+                document.getElementById('checkingAuthScreen').style.display = 'none';
+                document.getElementById('permissionScreen').style.display = 'flex';
+                initOnboardingLegacy();
+                return;
+            }
+
+            supabaseClient.initialize(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+            // Listen for auth state changes
+            supabaseClient.onAuthChange(async (event, session, user) => {
+                if (event === 'SIGNED_IN' && user) {
+                    // Check for localStorage data to migrate
+                    if (supabaseClient.hasLocalStorageData()) {
+                        showToast('Migrating your data...');
+                        await supabaseClient.migrateFromLocalStorage((step, total, msg) => {
+                            console.log(`Migration: ${msg}`);
+                        });
+                        showToast('Data migrated successfully!');
+                    }
+
+                    // Load user data
+                    await loadUserData();
+
+                    // Transition to welcome screen
+                    const authScreen = document.getElementById('authScreen');
+                    const checkingScreen = document.getElementById('checkingAuthScreen');
+                    if (authScreen.style.display !== 'none') {
+                        transitionScreens('authScreen', 'permissionScreen');
+                        showWelcomeScreen();
+                    } else if (checkingScreen.style.display !== 'none') {
+                        showWelcomeScreen();
+                    }
+                }
+            });
+
+            // Check for existing session
+            const user = await supabaseClient.getExistingSession();
+            if (user) {
+                // Already signed in — load data and show welcome
+                await loadUserData();
+                showWelcomeScreen();
+            } else {
+                // Not signed in — show auth screen
+                transitionScreens('checkingAuthScreen', 'authScreen');
+            }
+        }
+
         // Initialize on load
         document.addEventListener('DOMContentLoaded', () => {
             initVideoUpload();
             initTimelineInteraction();
             initCalibrationUpload();
-            initOnboarding();
+            initializeAuth();
         });
 
-        // Initialize onboarding - detect returning users
-        function initOnboarding() {
+        // Legacy onboarding for when Supabase is not configured
+        function initOnboardingLegacy() {
             try {
                 // Check for saved API key
                 const savedKey = localStorage.getItem('ace_openai_key');
                 if (savedKey && savedKey.startsWith('sk-')) {
                     const input = document.getElementById('apiKeyInput');
                     if (input) {
-                        // Mask all but last 4 characters
-                        const masked = '••••••••••••' + savedKey.slice(-4);
                         input.value = savedKey;
                         input.classList.add('validated');
-
-                        // Show checkmark
                         document.getElementById('apiCheckmark').classList.add('visible');
                     }
                 }
@@ -5888,24 +6123,19 @@
                 }
 
                 // Check if returning user with player profile
-                if (typeof playerProfile !== 'undefined') {
+                if (typeof playerProfile !== 'undefined' && playerProfile.isLoaded) {
                     const profile = playerProfile.profile;
-                    if (profile && profile.sessionsPlayed > 0) {
-                        // Update hero subtitle for returning user
+                    if (profile && profile.totalSessions > 0) {
                         const subtitle = document.getElementById('heroSubtitle');
-                        if (subtitle) {
-                            subtitle.textContent = 'WELCOME BACK';
-                        }
+                        if (subtitle) subtitle.textContent = 'WELCOME BACK';
 
-                        // Show session count
                         const sessionCount = document.getElementById('heroSessionCount');
                         if (sessionCount) {
-                            sessionCount.textContent = `SESSION #${profile.sessionsPlayed + 1}`;
+                            sessionCount.textContent = `SESSION #${profile.totalSessions + 1}`;
                             sessionCount.style.display = 'block';
                         }
 
-                        // Add progress card for users with 3+ sessions
-                        if (profile.sessionsPlayed >= 3) {
+                        if (profile.totalSessions >= 3) {
                             const featureList = document.getElementById('featureList');
                             if (featureList) {
                                 const progressCard = document.createElement('div');
@@ -5917,7 +6147,7 @@
                                         </svg>
                                     </div>
                                     <div class="feature-content">
-                                        <div class="feature-title">${profile.sessionsPlayed} Sessions Logged</div>
+                                        <div class="feature-title">${profile.totalSessions} Sessions Logged</div>
                                         <div class="feature-desc">Your progress is saved</div>
                                     </div>
                                 `;

@@ -10,7 +10,32 @@
 class CurriculumEngine {
   constructor() {
     this.STORAGE_KEY = 'ace_curriculum';
-    this.curriculum = this.load();
+    this.curriculum = this._loadFromLocalStorage();
+  }
+
+  _useSupabase() {
+    return typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated();
+  }
+
+  /**
+   * Initialize from Supabase (or localStorage fallback).
+   * Call after auth is confirmed.
+   */
+  async init() {
+    if (this._useSupabase()) {
+      this.curriculum = await supabaseClient.loadActiveCurriculum();
+    } else {
+      this.curriculum = this._loadFromLocalStorage();
+    }
+  }
+
+  _loadFromLocalStorage() {
+    try {
+      const data = localStorage.getItem(this.STORAGE_KEY);
+      return data ? JSON.parse(data) : null;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
@@ -19,7 +44,7 @@ class CurriculumEngine {
    * @param {Object} improvementData - from ImprovementTracker
    * @returns {Object} curriculum object
    */
-  generateCurriculum(skillLevel, improvementData) {
+  async generateCurriculum(skillLevel, improvementData) {
     const focusAreas = this.identifyFocusAreas(skillLevel, improvementData);
 
     const startDate = Date.now();
@@ -39,7 +64,14 @@ class CurriculumEngine {
     };
 
     this.curriculum = curriculum;
-    this.save();
+
+    if (this._useSupabase()) {
+      const result = await supabaseClient.createCurriculum(curriculum);
+      if (result) this.curriculum.id = result.id;
+    } else {
+      this.save();
+    }
+
     return curriculum;
   }
 
@@ -191,11 +223,11 @@ class CurriculumEngine {
   /**
    * Record a completed session.
    */
-  recordSession() {
+  async recordSession() {
     if (!this.curriculum) return;
     this.curriculum.sessionsCompleted++;
     this.curriculum.lastSessionDate = Date.now();
-    this.save();
+    await this.save();
   }
 
   /**
@@ -209,20 +241,18 @@ class CurriculumEngine {
 
   // --- Persistence ---
 
-  load() {
-    try {
-      const data = localStorage.getItem(this.STORAGE_KEY);
-      return data ? JSON.parse(data) : null;
-    } catch (e) {
-      return null;
-    }
-  }
-
-  save() {
-    try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.curriculum));
-    } catch (e) {
-      console.error('CurriculumEngine: save failed', e);
+  async save() {
+    if (this._useSupabase()) {
+      await supabaseClient.updateCurriculum({
+        sessionsCompleted: this.curriculum.sessionsCompleted,
+        lastSessionDate: this.curriculum.lastSessionDate
+      });
+    } else {
+      try {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.curriculum));
+      } catch (e) {
+        console.error('CurriculumEngine: save failed', e);
+      }
     }
   }
 

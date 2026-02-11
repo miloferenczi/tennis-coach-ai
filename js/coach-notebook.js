@@ -7,9 +7,26 @@ class CoachNotebook {
   constructor() {
     this.storageKey = 'ace_coach_notebook';
     this.maxEntries = 20;
+    this._entries = null; // In-memory cache
   }
 
-  getEntries() {
+  _useSupabase() {
+    return typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated();
+  }
+
+  /**
+   * Initialize from Supabase (or localStorage fallback).
+   * Call after auth is confirmed.
+   */
+  async init() {
+    if (this._useSupabase()) {
+      this._entries = await supabaseClient.getCoachNotebookEntries();
+    } else {
+      this._entries = this._loadFromLocalStorage();
+    }
+  }
+
+  _loadFromLocalStorage() {
     try {
       const raw = localStorage.getItem(this.storageKey);
       return raw ? JSON.parse(raw) : [];
@@ -19,17 +36,29 @@ class CoachNotebook {
     }
   }
 
-  saveEntry(entry) {
-    try {
-      const entries = this.getEntries();
-      entries.push(entry);
-      // Trim to max entries (keep most recent)
-      while (entries.length > this.maxEntries) {
-        entries.shift();
+  getEntries() {
+    if (this._entries !== null) return this._entries;
+    // Sync fallback for callers that run before init
+    return this._loadFromLocalStorage();
+  }
+
+  async saveEntry(entry) {
+    if (this._useSupabase()) {
+      await supabaseClient.addCoachNotebookEntry(entry);
+      // Refresh cache
+      this._entries = await supabaseClient.getCoachNotebookEntries();
+    } else {
+      try {
+        const entries = this.getEntries();
+        entries.push(entry);
+        while (entries.length > this.maxEntries) {
+          entries.shift();
+        }
+        localStorage.setItem(this.storageKey, JSON.stringify(entries));
+        this._entries = entries;
+      } catch (e) {
+        console.error('CoachNotebook: failed to save entry', e);
       }
-      localStorage.setItem(this.storageKey, JSON.stringify(entries));
-    } catch (e) {
-      console.error('CoachNotebook: failed to save entry', e);
     }
   }
 

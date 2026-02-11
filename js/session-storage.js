@@ -6,6 +6,12 @@ class SessionStorage {
     this.STORAGE_KEY = 'techniqueai_sessions';
     this.CURRENT_SESSION_KEY = 'techniqueai_current_session';
     this.MAX_SESSIONS = 50; // Keep last 50 sessions
+    this._supabaseSessionId = null; // UUID from Supabase
+    this._currentSessionStrokes = []; // In-memory stroke buffer for current session
+  }
+
+  _useSupabase() {
+    return typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated();
   }
 
   /**
@@ -18,7 +24,7 @@ class SessionStorage {
   /**
    * Create a new session
    */
-  createSession() {
+  async createSession() {
     const session = {
       id: this.generateSessionId(),
       startTime: Date.now(),
@@ -26,6 +32,13 @@ class SessionStorage {
       strokes: [],
       summary: null
     };
+
+    this._currentSessionStrokes = [];
+
+    if (this._useSupabase()) {
+      this._supabaseSessionId = await supabaseClient.createSession(session.startTime);
+      session.supabaseId = this._supabaseSessionId;
+    }
 
     this.saveCurrentSession(session);
     return session;
@@ -95,7 +108,13 @@ class SessionStorage {
     };
 
     session.strokes.push(strokeRecord);
+    this._currentSessionStrokes.push(strokeRecord);
     this.saveCurrentSession(session);
+
+    // Buffer stroke for Supabase batch writing
+    if (this._useSupabase()) {
+      supabaseClient.bufferStroke(strokeRecord);
+    }
 
     return strokeRecord;
   }
@@ -103,7 +122,7 @@ class SessionStorage {
   /**
    * End the current session and archive it
    */
-  endSession() {
+  async endSession() {
     const session = this.getCurrentSession();
     if (!session || session.strokes.length === 0) {
       localStorage.removeItem(this.CURRENT_SESSION_KEY);
@@ -113,11 +132,25 @@ class SessionStorage {
     session.endTime = Date.now();
     session.summary = this.generateSessionSummary(session);
 
-    // Archive the session
+    // Flush remaining strokes and update session in Supabase
+    if (this._useSupabase()) {
+      await supabaseClient.flushStrokes();
+      supabaseClient.stopBatchTimer();
+      if (this._supabaseSessionId) {
+        await supabaseClient.updateSession(this._supabaseSessionId, {
+          endTime: session.endTime,
+          summary: session.summary
+        });
+      }
+      this._supabaseSessionId = null;
+    }
+
+    // Archive the session (localStorage backup)
     this.archiveSession(session);
 
     // Clear current session
     localStorage.removeItem(this.CURRENT_SESSION_KEY);
+    this._currentSessionStrokes = [];
 
     return session;
   }
@@ -293,7 +326,10 @@ class SessionStorage {
   /**
    * Get session history (summaries only)
    */
-  getSessionHistory() {
+  async getSessionHistory() {
+    if (this._useSupabase()) {
+      return await supabaseClient.getSessionHistory(this.MAX_SESSIONS);
+    }
     try {
       const data = localStorage.getItem(this.STORAGE_KEY);
       return data ? JSON.parse(data) : [];

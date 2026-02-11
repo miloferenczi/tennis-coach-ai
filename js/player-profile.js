@@ -5,7 +5,65 @@
 class PlayerProfile {
   constructor() {
     this.PROFILE_KEY = 'techniqueai_player_profile';
-    this.profile = this.loadProfile();
+    // Load from localStorage synchronously for immediate availability
+    this.profile = this._loadFromLocalStorage();
+    this.isLoaded = true; // localStorage is sync, so always "loaded"
+  }
+
+  /**
+   * Initialize profile from Supabase (or localStorage fallback).
+   * Call this after auth is confirmed.
+   */
+  async init() {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+      const data = await supabaseClient.loadProfile();
+      if (data) {
+        this.profile = { ...this.getDefaultProfile(), ...this._fromSupabase(data) };
+        this.isLoaded = true;
+        return;
+      }
+    }
+    // Fallback: localStorage
+    this.profile = this._loadFromLocalStorage();
+    this.isLoaded = true;
+  }
+
+  /**
+   * Convert Supabase profile shape to internal profile shape.
+   */
+  _fromSupabase(data) {
+    return {
+      createdAt: data.createdAt ? new Date(data.createdAt).getTime() : Date.now(),
+      lastSessionAt: null,
+      totalSessions: data.totalSessions || 0,
+      totalStrokes: data.totalStrokes || 0,
+      totalPracticeTime: data.totalPracticeTime || 0,
+      currentSkillLevel: data.skillLevel || 'beginner',
+      skillProgress: data.skillProgress || [],
+      weaknesses: data.weaknesses || this.getDefaultProfile().weaknesses,
+      strengths: data.strengths || {},
+      strokeProficiency: data.strokeProficiency || this.getDefaultProfile().strokeProficiency,
+      recentSessions: data.recentSessions || [],
+      currentGoal: data.currentGoal || null,
+      coachingPreferences: data.coachingPreferences || this.getDefaultProfile().coachingPreferences,
+      fatiguePatterns: data.fatiguePatterns || this.getDefaultProfile().fatiguePatterns,
+      milestones: data.milestones || []
+    };
+  }
+
+  /**
+   * Load from localStorage (legacy/fallback).
+   */
+  _loadFromLocalStorage() {
+    try {
+      const data = localStorage.getItem(this.PROFILE_KEY);
+      if (data) {
+        return { ...this.getDefaultProfile(), ...JSON.parse(data) };
+      }
+    } catch (e) {
+      console.error('Failed to load player profile:', e);
+    }
+    return this.getDefaultProfile();
   }
 
   /**
@@ -72,37 +130,38 @@ class PlayerProfile {
   }
 
   /**
-   * Load profile from localStorage
+   * Save profile to Supabase (or localStorage fallback).
    */
-  loadProfile() {
-    try {
-      const data = localStorage.getItem(this.PROFILE_KEY);
-      if (data) {
-        const saved = JSON.parse(data);
-        // Merge with defaults to handle new fields
-        return { ...this.getDefaultProfile(), ...saved };
+  async saveProfile() {
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+      await supabaseClient.updateProfile({
+        skillLevel: this.profile.currentSkillLevel,
+        totalSessions: this.profile.totalSessions,
+        totalStrokes: this.profile.totalStrokes,
+        totalPracticeTime: this.profile.totalPracticeTime,
+        weaknesses: this.profile.weaknesses,
+        strengths: this.profile.strengths,
+        strokeProficiency: this.profile.strokeProficiency,
+        recentSessions: this.profile.recentSessions,
+        skillProgress: this.profile.skillProgress,
+        currentGoal: this.profile.currentGoal,
+        coachingPreferences: this.profile.coachingPreferences,
+        fatiguePatterns: this.profile.fatiguePatterns,
+        milestones: this.profile.milestones
+      });
+    } else {
+      try {
+        localStorage.setItem(this.PROFILE_KEY, JSON.stringify(this.profile));
+      } catch (e) {
+        console.error('Failed to save player profile:', e);
       }
-    } catch (e) {
-      console.error('Failed to load player profile:', e);
-    }
-    return this.getDefaultProfile();
-  }
-
-  /**
-   * Save profile to localStorage
-   */
-  saveProfile() {
-    try {
-      localStorage.setItem(this.PROFILE_KEY, JSON.stringify(this.profile));
-    } catch (e) {
-      console.error('Failed to save player profile:', e);
     }
   }
 
   /**
    * Start a new session - sets goals and prepares context
    */
-  startSession() {
+  async startSession() {
     // Determine session goal based on weaknesses
     const topWeakness = this.getTopWeakness();
     if (topWeakness) {
@@ -121,14 +180,14 @@ class PlayerProfile {
       };
     }
 
-    this.saveProfile();
+    await this.saveProfile();
     return this.profile.currentGoal;
   }
 
   /**
    * Record a completed session
    */
-  recordSession(sessionSummary) {
+  async recordSession(sessionSummary) {
     if (!sessionSummary) return;
 
     this.profile.lastSessionAt = Date.now();
@@ -218,7 +277,7 @@ class PlayerProfile {
     // Clear current goal
     this.profile.currentGoal = null;
 
-    this.saveProfile();
+    await this.saveProfile();
   }
 
   /**
@@ -492,7 +551,7 @@ class PlayerProfile {
   /**
    * Record fatigue pattern
    */
-  recordFatiguePoint(minutesIntoSession) {
+  async recordFatiguePoint(minutesIntoSession) {
     if (!this.profile.fatiguePatterns.avgDeclinePoint) {
       this.profile.fatiguePatterns.avgDeclinePoint = minutesIntoSession;
     } else {
@@ -500,7 +559,7 @@ class PlayerProfile {
       this.profile.fatiguePatterns.avgDeclinePoint =
         (this.profile.fatiguePatterns.avgDeclinePoint + minutesIntoSession) / 2;
     }
-    this.saveProfile();
+    await this.saveProfile();
   }
 
   /**
@@ -525,9 +584,9 @@ class PlayerProfile {
   /**
    * Clear all profile data
    */
-  clearProfile() {
+  async clearProfile() {
     this.profile = this.getDefaultProfile();
-    this.saveProfile();
+    await this.saveProfile();
   }
 }
 

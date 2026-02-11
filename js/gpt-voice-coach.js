@@ -17,7 +17,7 @@ class GPTVoiceCoach {
   
   async initialize(apiKey) {
     this.apiKey = apiKey;
-    
+
     this.audioElement = document.createElement("audio");
     this.audioElement.autoplay = true;
     this.audioElement.playsInline = true;
@@ -25,37 +25,51 @@ class GPTVoiceCoach {
 
     try {
       const coachInstructions = this.getCoachingInstructions();
-      const sessionConfig = {
-        session: {
-          type: "realtime",
-          model: "gpt-4o-realtime-preview",
-          instructions: coachInstructions,
-          modalities: ["text", "audio"],
-          voice: "alloy",
-          turn_detection: { type: "server_vad" }
-        }
-      };
+      let ephemeralKey;
 
-      const tokenResponse = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(sessionConfig)
-      });
-      
-      if (!tokenResponse.ok) {
-        const errorData = await tokenResponse.json();
-        console.error('Token creation failed:', errorData);
-        throw new Error(`Token creation failed: ${tokenResponse.statusText}`);
+      // Try Supabase Edge Function first, fall back to direct API key
+      if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+        const tokenData = await supabaseClient.getRealtimeToken(coachInstructions, 'alloy');
+        if (!tokenData?.ephemeralKey) {
+          throw new Error('Failed to get token via Edge Function');
+        }
+        ephemeralKey = tokenData.ephemeralKey;
+      } else if (this.apiKey) {
+        // Legacy: direct API key flow
+        const sessionConfig = {
+          session: {
+            type: "realtime",
+            model: "gpt-4o-realtime-preview",
+            instructions: coachInstructions,
+            modalities: ["text", "audio"],
+            voice: "alloy",
+            turn_detection: { type: "server_vad" }
+          }
+        };
+
+        const tokenResponse = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(sessionConfig)
+        });
+
+        if (!tokenResponse.ok) {
+          const errorData = await tokenResponse.json();
+          console.error('Token creation failed:', errorData);
+          throw new Error(`Token creation failed: ${tokenResponse.statusText}`);
+        }
+
+        const data = await tokenResponse.json();
+        ephemeralKey = data.value;
+      } else {
+        throw new Error('No API key and not authenticated');
       }
-      
-      const data = await tokenResponse.json();
-      const ephemeralKey = data.value;
 
       await this.connectWebRTC(ephemeralKey);
-      
+
       this.isConnected = true;
       this.sessionStartTime = Date.now();
       console.log('GPT Voice Coach connected via WebRTC');
@@ -67,7 +81,7 @@ class GPTVoiceCoach {
 
       // Greeting is now sent from inside dataChannel.onopen handler
       // to avoid race condition where channel isn't ready yet
-      
+
     } catch (error) {
       console.error('Connection failed:', error);
       this.fallbackToSpeechSynthesis();
