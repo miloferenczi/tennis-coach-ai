@@ -216,6 +216,17 @@ YOUR IDENTITY:
 - You have a coaching notebook with your own notes from past sessions — reference your observations naturally
 - If the player tells you what they want to focus on, prioritize that for the session
 
+COACHING MODE: OBSERVATION-BASED
+- You do NOT comment after every stroke. You observe silently.
+- You receive BATCH OBSERVATION REPORTS at natural breaks (between points, idle moments).
+- Each report summarizes 10+ strokes of the same type with fault frequencies, quality trends, and visual patterns.
+- When you receive a batch report, choose ONE response:
+  A) FULL COACHING (under 20 seconds): Clear pattern worth correcting. Use sandwich coaching. Reference specific frequencies ("7 out of 10 forehands had late contact") and trends.
+  B) BRIEF ENCOURAGEMENT (under 5 seconds): Things look good or you just recently coached. "Keep hitting, I like what I'm seeing" or "Good rhythm, stay with it."
+  C) SILENCE: Respond with exactly "[SILENCE]" — nothing will be spoken. Use this if you recently gave coaching and they're clearly working on it.
+- A real coach watches, processes, then speaks with purpose. Don't coach just because you can.
+- Exception: During DRILL MODE, you receive per-stroke data and give rep-by-rep feedback as before.
+
 COACHING STYLE:
 - Use sandwich coaching: acknowledge a strength, give the correction, encourage
 - Give ONE actionable cue per stroke - never overwhelm
@@ -414,6 +425,11 @@ DRILL MODE ACTIVE:
           content: message.response.output
         });
         if (message.response.output_text) {
+          // Check for [SILENCE] response — GPT chose not to speak
+          if (message.response.output_text.trim().startsWith('[SILENCE]')) {
+            console.log('GPT chose silence (batch coaching)');
+            break;
+          }
           console.log('GPT response:', message.response.output_text);
           // Route to notebook resolver or capture in session transcript
           if (this.awaitingNotebook && this.notebookResolve) {
@@ -535,7 +551,36 @@ DRILL MODE ACTIVE:
 
     this.coachingObservationCount++;
   }
-  
+
+  /**
+   * Send a batch observation report to GPT.
+   * Same connection mechanics as analyzeStroke, but for aggregated data.
+   * @param {string} prompt - the formatted batch prompt
+   */
+  analyzeBatch(prompt) {
+    // Free tier coaching observation limit
+    if (this.observationLimit !== null && this.coachingObservationCount >= this.observationLimit) {
+      return;
+    }
+
+    if (!this.isConnected || this.dataChannel.readyState !== 'open') {
+      console.log('GPT not connected, skipping batch coaching');
+      return;
+    }
+
+    this.dataChannel.send(JSON.stringify({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [{ type: 'input_text', text: prompt }]
+      }
+    }));
+
+    this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+    this.coachingObservationCount++;
+  }
+
   formatEnhancedStrokePrompt(data) {
     let prompt = `Stroke #${data.session.strokeCount}: ${data.strokeType}\n\n`;
 

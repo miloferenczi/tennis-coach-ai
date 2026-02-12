@@ -116,18 +116,29 @@ class RallyTracker {
     if (rally.strokes.length >= 3 && typeof tennisAI !== 'undefined' && tennisAI.sceneAnalyzer?.enabled) {
       const rallySnapshot = { ...rally };
       tennisAI.sceneAnalyzer.analyzeRally(rallySnapshot).then(result => {
-        if (result && typeof tennisAI !== 'undefined' && tennisAI.gptVoiceCoach?.isConnected) {
+        if (result && typeof tennisAI !== 'undefined') {
           rallySnapshot.geminiAnalysis = result;
           this.lastRallyAnalysis = result;
-          // Send to GPT as between-points tactical context
-          tennisAI.gptVoiceCoach.analyzeStroke({
-            type: 'rally_analysis',
-            rallyNumber: rallySnapshot.number,
-            strokeCount: rallySnapshot.strokes.length,
-            avgQuality: rallySnapshot.avgQuality,
-            origin: rallySnapshot.origin,
-            analysis: result
-          });
+          // Queue rally analysis for next batch coaching prompt
+          if (tennisAI.batchAccumulator) {
+            tennisAI.batchAccumulator.addRallyAnalysis({
+              rallyNumber: rallySnapshot.number,
+              strokeCount: rallySnapshot.strokes.length,
+              avgQuality: rallySnapshot.avgQuality,
+              origin: rallySnapshot.origin,
+              analysis: result
+            });
+          } else if (tennisAI.gptVoiceCoach?.isConnected) {
+            // Fallback: send directly to GPT (backward compat)
+            tennisAI.gptVoiceCoach.analyzeStroke({
+              type: 'rally_analysis',
+              rallyNumber: rallySnapshot.number,
+              strokeCount: rallySnapshot.strokes.length,
+              avgQuality: rallySnapshot.avgQuality,
+              origin: rallySnapshot.origin,
+              analysis: result
+            });
+          }
         }
       }).catch(e => {
         console.warn('RallyTracker: Gemini rally analysis failed', e);

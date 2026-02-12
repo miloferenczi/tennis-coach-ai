@@ -707,25 +707,63 @@ class EnhancedTennisAnalyzer {
     // Build enhanced coaching context
     const coachingContext = this.buildCoachingContext(strokeData, coachingRecommendation);
     
-    // Send to GPT Coach with rich context (gated by speech controller)
-    if (coachingRecommendation) {
-      const speechGate = (typeof tennisAI !== 'undefined') ? tennisAI.speechGate : null;
-      if (speechGate) {
-        speechGate.onStroke();
-        const decision = speechGate.shouldSpeak(coachingContext);
-        if (decision === 'speak_now') {
-          // Append brevity instruction if between points
-          if (speechGate.shouldBeBrief()) {
-            coachingContext.brevityInstruction = speechGate.getBrevityInstruction();
+    // Batch coaching: accumulate strokes instead of sending to GPT per-stroke.
+    // Exception: drill mode keeps per-stroke GPT coaching for rep-by-rep feedback.
+    const isDrillActive = typeof drillMode !== 'undefined' && drillMode.isActive;
+    const batchAccumulator = (typeof tennisAI !== 'undefined') ? tennisAI.batchAccumulator : null;
+
+    if (isDrillActive || !batchAccumulator) {
+      // DRILL MODE or no accumulator: per-stroke GPT (legacy path)
+      if (coachingRecommendation) {
+        const speechGate = (typeof tennisAI !== 'undefined') ? tennisAI.speechGate : null;
+        if (speechGate) {
+          speechGate.onStroke();
+          const decision = speechGate.shouldSpeak(coachingContext);
+          if (decision === 'speak_now') {
+            if (speechGate.shouldBeBrief()) {
+              coachingContext.brevityInstruction = speechGate.getBrevityInstruction();
+            }
+            gptVoiceCoach.analyzeStroke(coachingContext);
+          } else if (decision === 'queue') {
+            speechGate.enqueue(coachingContext);
           }
+        } else {
           gptVoiceCoach.analyzeStroke(coachingContext);
-        } else if (decision === 'queue') {
-          speechGate.enqueue(coachingContext);
         }
-        // 'suppress' → do nothing
-      } else {
-        gptVoiceCoach.analyzeStroke(coachingContext);
       }
+    } else {
+      // BATCH MODE: accumulate for later batch coaching
+      const speechGate = (typeof tennisAI !== 'undefined') ? tennisAI.speechGate : null;
+      if (speechGate) speechGate.onStroke(); // still track timing + interrupt
+
+      // Extract fields for batch entry
+      const bio = strokeData.biomechanicalEvaluation;
+      const faults = (bio?.detectedFaults || []).map(f => ({
+        id: f.id || f.faultId,
+        name: f.name || f.faultName || f.id,
+        fix: f.fix || f.correction || ''
+      }));
+      const strengths = coachingRecommendation?.strengths || [];
+      const issue = coachingRecommendation?.issue
+        ? { id: coachingRecommendation.issue, name: coachingRecommendation.issue, cue: coachingRecommendation.cue || '' }
+        : null;
+
+      this._lastBatchEntry = batchAccumulator.addStroke(strokeData.type, {
+        quality: strokeData.quality.overall,
+        formScore: bio?.overall ?? null,
+        powerScore: strokeData.quality.breakdown?.power ?? null,
+        faults,
+        strengths,
+        orchestratorIssue: issue,
+        hipSep: strokeData.hipShoulderSeparation ?? null,
+        elbowAngle: strokeData.elbowAngle ?? null,
+        rotation: strokeData.rotation ?? null,
+        smoothness: strokeData.smoothness ?? null,
+        velocity: strokeData.velocity?.magnitude ?? null,
+        acceleration: strokeData.acceleration?.magnitude ?? null,
+        footwork: strokeData.footwork || null,
+        serveAnalysis: strokeData.serveAnalysis || null
+      });
     }
     
     // Update UI
@@ -734,15 +772,22 @@ class EnhancedTennisAnalyzer {
     // Check proactive triggers (pattern alerts, personal bests, etc.)
     if (typeof tennisAI !== 'undefined' && tennisAI.proactiveTriggers) {
       const trigger = tennisAI.proactiveTriggers.check(strokeData, this.sessionStats);
-      if (trigger && typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
-        // Send proactive message to GPT after a brief delay to not overlap with main coaching
-        setTimeout(() => {
-          gptVoiceCoach.analyzeStroke({
-            type: 'proactive_trigger',
-            triggerType: trigger.type,
-            message: trigger.message
-          });
-        }, 3000);
+      if (trigger) {
+        if (isDrillActive || !batchAccumulator) {
+          // Drill mode: send immediately to GPT
+          if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+            setTimeout(() => {
+              gptVoiceCoach.analyzeStroke({
+                type: 'proactive_trigger',
+                triggerType: trigger.type,
+                message: trigger.message
+              });
+            }, 3000);
+          }
+        } else {
+          // Batch mode: queue for next batch prompt
+          batchAccumulator.addTrigger(trigger);
+        }
       }
     }
 
@@ -810,23 +855,52 @@ class EnhancedTennisAnalyzer {
     if (!sa || !sa.enabled || !vm) return;
 
     const faults = strokeData.biomechanicalEvaluation?.detectedFaults || [];
-    sa.analyzeStroke(strokeData.type, faults).then(visualResult => {
+
+    // Build Gemini options: plan-aware focus areas + phase labels
+    const geminiOpts = {};
+    if (typeof improvementTracker !== 'undefined') {
+      const plan = improvementTracker.getCoachingPlan?.();
+      if (plan?.focusAreas?.length) {
+        geminiOpts.focusAreas = plan.focusAreas.map(f => f.area);
+      }
+    }
+    if (strokeData.sequenceAnalysis?.phases) {
+      geminiOpts.phaseLabels = ['preparation', 'loading', 'acceleration', 'contact', 'follow-through'];
+    }
+
+    sa.analyzeStroke(strokeData.type, faults, geminiOpts).then(visualResult => {
       if (!visualResult) return;
 
       const merged = vm.merge(strokeData, visualResult);
       if (!merged) return;
 
-      const followUp = vm.buildVisualFollowUpPrompt(merged, strokeData.type);
-      if (!followUp) return;
+      // Store visual analysis on session video bookmark
+      if (tennisAI.sessionVideoManager && merged) {
+        const latestIdx = tennisAI.replayManager?.getReplayCount() - 1;
+        if (latestIdx >= 0) {
+          tennisAI.sessionVideoManager.addVisualAnalysis(latestIdx, JSON.stringify(merged));
+        }
+      }
 
-      // Send as follow-up to GPT (same pattern as shot_outcome_followup)
-      if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
-        gptVoiceCoach.analyzeStroke({
-          type: 'visual_analysis_followup',
-          strokeType: strokeData.type,
-          visualResult: merged,
-          prompt: followUp
-        });
+      // Attach visual analysis to batch entry if in batch mode, else send to GPT directly
+      const isDrill = typeof drillMode !== 'undefined' && drillMode.isActive;
+      const accumulator = (typeof tennisAI !== 'undefined') ? tennisAI.batchAccumulator : null;
+
+      if (!isDrill && accumulator && this._lastBatchEntry) {
+        // Batch mode: attach merged result to the batch entry for aggregation
+        this._lastBatchEntry.visualAnalysis = merged;
+      } else {
+        // Drill mode or no accumulator: send follow-up to GPT directly
+        const followUp = vm.buildVisualFollowUpPrompt(merged, strokeData.type);
+        if (!followUp) return;
+        if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+          gptVoiceCoach.analyzeStroke({
+            type: 'visual_analysis_followup',
+            strokeType: strokeData.type,
+            visualResult: merged,
+            prompt: followUp
+          });
+        }
       }
     }).catch(err => {
       console.warn('Visual analysis follow-up failed:', err);

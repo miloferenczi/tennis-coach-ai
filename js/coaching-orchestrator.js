@@ -137,10 +137,14 @@ class CoachingOrchestrator {
      * Evaluate detection conditions against metrics
      */
     evaluateConditions(conditions, metrics) {
+        let evaluatedCount = 0;
+
         for (const [metricName, rule] of Object.entries(conditions)) {
             const metricValue = this.getMetricValue(metricName, metrics);
-            
+
             if (metricValue === null) continue;
+
+            evaluatedCount++;
 
             // Check min condition
             if (rule.min !== undefined && metricValue < rule.min) {
@@ -156,7 +160,15 @@ class CoachingOrchestrator {
             if (rule.equals !== undefined && metricValue !== rule.equals) {
                 return false;
             }
+
+            // Check notEquals condition
+            if (rule.notEquals !== undefined && metricValue === rule.notEquals) {
+                return false;
+            }
         }
+
+        // If no conditions were actually evaluated (all metrics null), don't match
+        if (evaluatedCount === 0) return false;
 
         return true;
     }
@@ -205,7 +217,10 @@ class CoachingOrchestrator {
             'geminiRacketFaceScore': metrics.geminiRacketFaceScore ?? null,
             'geminiContactPointScore': metrics.geminiContactPointScore ?? null,
             'geminiGrip': metrics.geminiGrip ?? null,
-            'geminiConfidence': metrics.geminiConfidence ?? null
+            'geminiConfidence': metrics.geminiConfidence ?? null,
+            'geminiTossPlacement': metrics.geminiTossPlacement ?? null,
+            'geminiTrophyDepth': metrics.geminiTrophyDepth ?? null,
+            'geminiContactPoint': metrics.geminiContactPoint ?? null
         };
 
         return metricMap[metricName] !== undefined ? metricMap[metricName] : null;
@@ -611,6 +626,9 @@ class CoachingOrchestrator {
         }
         if ((playerMetrics.geminiContactPointScore || 0) > 70) {
             strengths.push('Clean contact point');
+        }
+        if (playerMetrics.geminiTossPlacement === 'in_front') {
+            strengths.push('Good toss placement');
         }
 
         return strengths;

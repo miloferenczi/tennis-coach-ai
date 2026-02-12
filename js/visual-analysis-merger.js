@@ -17,7 +17,7 @@ class VisualAnalysisMerger {
       'racket_face_open':      'racketFaceOpen',
       'racket_face_closed':    'racketFaceOpen',       // same coaching tree entry
       'contact_behind_body':   'contactBehindBody',
-      'contact_too_far_front': 'contactBehindBody',
+      'contact_too_far_front': 'contactTooFarFront',
       'late_racket_prep':      'latePreparation',      // maps to existing issue
       'wrong_grip':            'wrongGrip',
       'wrist_laid_back':       null,                    // informational only
@@ -81,8 +81,13 @@ class VisualAnalysisMerger {
       contactPoint: visualResult.contactPoint || null,
       gripType: visualResult.gripType || null,
       bodyPosition: visualResult.bodyPosition || null,
+      positives: visualResult.positives || null,
       visualConfidence: visualResult.confidence || 0,
-      rawFaults: visualFaults
+      rawFaults: visualFaults,
+      // Serve-specific fields (null for groundstrokes)
+      tossPlacement: visualResult.tossPlacement || null,
+      trophyVisual: visualResult.trophyVisual || null,
+      legExtension: visualResult.legExtension || null
     };
   }
 
@@ -116,6 +121,26 @@ class VisualAnalysisMerger {
 
     if (visualResult.bodyPosition) {
       prompt += `- Body position: ${visualResult.bodyPosition}\n`;
+    }
+
+    // Serve-specific visual data
+    if (visualResult.tossPlacement) {
+      const tp = visualResult.tossPlacement;
+      prompt += `- Toss placement: ${tp.position || 'unknown'}`;
+      if (tp.consistency) prompt += ` (${tp.consistency})`;
+      prompt += `\n`;
+    }
+    if (visualResult.trophyVisual) {
+      const tv = visualResult.trophyVisual;
+      prompt += `- Trophy depth: ${tv.depth || 'unknown'}`;
+      if (tv.elbowPosition) prompt += ` — elbow: ${tv.elbowPosition}`;
+      prompt += `\n`;
+    }
+    if (visualResult.legExtension) {
+      const le = visualResult.legExtension;
+      prompt += `- Leg extension: knee drive ${le.kneeDrive || 'unknown'}`;
+      if (le.jumpVisible != null) prompt += `, jump ${le.jumpVisible ? 'visible' : 'not visible'}`;
+      prompt += `\n`;
     }
 
     const newInsights = visualResult.newInsights || [];
@@ -158,6 +183,14 @@ class VisualAnalysisMerger {
     const insights = this.lastVisualResult.newInsights || [];
     if (insights.length > 0) {
       block += `- Visual issues: ${insights.map(i => i.description).join(', ')}\n`;
+    }
+
+    // Serve context for next serve
+    if (this.lastVisualResult.tossPlacement) {
+      block += `- Last toss: ${this.lastVisualResult.tossPlacement.position || '?'}\n`;
+    }
+    if (this.lastVisualResult.trophyVisual) {
+      block += `- Last trophy depth: ${this.lastVisualResult.trophyVisual.depth || '?'}\n`;
     }
 
     return block;
@@ -206,6 +239,14 @@ class VisualAnalysisMerger {
     }
 
     metrics.geminiConfidence = visualResult.confidence || 0;
+
+    // Serve-specific metrics
+    if (visualResult.tossPlacement) {
+      metrics.geminiTossPlacement = visualResult.tossPlacement.position || 'unknown';
+    }
+    if (visualResult.trophyVisual) {
+      metrics.geminiTrophyDepth = visualResult.trophyVisual.depth || 'unknown';
+    }
 
     return metrics;
   }

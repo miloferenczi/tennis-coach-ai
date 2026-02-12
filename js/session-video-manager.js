@@ -55,6 +55,15 @@ class SessionVideoManager {
   }
 
   /**
+   * Attach Gemini visual analysis text to a bookmark.
+   * Called when async visual analysis completes after stroke detection.
+   */
+  addVisualAnalysis(replayIndex, analysisText) {
+    const bm = this.bookmarks.find(b => b.replayIndex === replayIndex);
+    if (bm) bm.visualAnalysisText = analysisText;
+  }
+
+  /**
    * Get notable bookmarks for session summary display.
    * Returns up to 6 notable strokes (best, worst, best per type).
    */

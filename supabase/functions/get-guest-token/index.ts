@@ -104,11 +104,14 @@ Deno.serve(async (req) => {
 
     const tokenData = await tokenResponse.json();
 
+    const geminiKey = Deno.env.get("GEMINI_API_KEY") || null;
+
     return new Response(
       JSON.stringify({
         ephemeralKey: tokenData.client_secret?.value,
         expiresAt: tokenData.client_secret?.expires_at,
         trialId: trial?.id,
+        geminiKey,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

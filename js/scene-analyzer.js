@@ -149,7 +149,7 @@ class SceneAnalyzer {
    * @param {Array} detectedFaults - biomechanical faults already detected by MediaPipe
    * @returns {Promise<Object|null>} Visual analysis result or null on failure
    */
-  async analyzeStroke(strokeType, detectedFaults) {
+  async analyzeStroke(strokeType, detectedFaults, options = {}) {
     if (!this.enabled || !this.geminiApiKey) return null;
     if (this.isAnalyzingStroke) return null;
     if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
@@ -157,8 +157,10 @@ class SceneAnalyzer {
 
     this.isAnalyzingStroke = true;
 
-    // Extract 5 evenly-spaced frames from the rolling buffer
-    const buf = this.rollingFrameBuffer;
+    // Filter to frames from the last 2 seconds to exclude stale non-stroke frames
+    const cutoff = Date.now() - 2000;
+    let buf = this.rollingFrameBuffer.filter(f => f.timestamp >= cutoff);
+    if (buf.length < 5) buf = this.rollingFrameBuffer; // fallback to full buffer
     const indices = [
       0,
       Math.floor(buf.length * 0.25),
@@ -169,6 +171,114 @@ class SceneAnalyzer {
     const frames = indices.map(i => buf[i].base64);
 
     const faultList = (detectedFaults || []).map(f => f.name || f.id).join(', ') || 'none';
+    const isServe = strokeType.toLowerCase().includes('serve');
+
+    // Build context additions
+    const phaseLabels = options.phaseLabels?.join(' → ') || 'preparation → loading → acceleration → contact → follow-through';
+    const focusLine = options.focusAreas?.length
+      ? `\nThis player is specifically working on: ${options.focusAreas.join(', ')}. Pay special attention to visual indicators of these focus areas.`
+      : '';
+
+    // Branch prompt for serves vs groundstrokes
+    let promptText;
+    if (isServe) {
+      promptText = `You are an expert tennis coach analyzing a serve motion.
+These 5 frames show the serve from preparation to follow-through (chronological order).
+Frame phases: ${phaseLabels}
+
+The skeleton-based analysis already detected these faults: ${faultList}${focusLine}
+
+Analyze this serve motion:
+1. Toss placement relative to body (in front, behind, left, right)
+2. Trophy position depth — racquet fully behind head?
+3. Visible knee drive and jump/leg extension at contact
+4. Pronation visible at contact
+5. Racket face angle at contact (flat/slice/kick indicators)
+6. Positive observations
+
+Be specific and concise.`;
+    } else {
+      promptText = `You are an expert tennis coach analyzing a ${strokeType} stroke.
+These 5 frames show the stroke from preparation to follow-through (chronological order).
+Frame phases: ${phaseLabels}
+
+The skeleton-based analysis already detected these faults: ${faultList}${focusLine}
+
+Analyze what the CAMERA can see that skeletons CANNOT:
+1. Racket face angle at contact (open/closed/neutral)
+2. Grip type if visible (eastern/semi-western/western/continental)
+3. Contact point relative to body (in front/beside/behind, high/low)
+4. Any visual faults not covered by the skeleton analysis
+5. Positive observations about form
+
+Be specific and concise.`;
+    }
+
+    // Build response schema (serve gets extra fields)
+    const schemaProperties = {
+      racketFace: {
+        type: 'OBJECT',
+        properties: {
+          state: { type: 'STRING', enum: ['open', 'closed', 'neutral', 'unknown'] },
+          atContact: { type: 'BOOLEAN' }
+        },
+        required: ['state']
+      },
+      contactPoint: {
+        type: 'OBJECT',
+        properties: {
+          position: { type: 'STRING', enum: ['in_front', 'beside', 'behind_body', 'unknown'] },
+          height: { type: 'STRING', enum: ['high', 'waist', 'low', 'unknown'] },
+          relative_to_body: { type: 'STRING', enum: ['optimal', 'behind', 'too_far_front', 'unknown'] }
+        },
+        required: ['position']
+      },
+      gripType: { type: 'STRING', enum: ['eastern', 'semi_western', 'western', 'continental', 'unknown'] },
+      bodyPosition: { type: 'STRING' },
+      faults: {
+        type: 'ARRAY',
+        items: {
+          type: 'OBJECT',
+          properties: {
+            id: { type: 'STRING' },
+            description: { type: 'STRING' },
+            confidence: { type: 'NUMBER' },
+            severity: { type: 'STRING', enum: ['low', 'medium', 'high'] }
+          },
+          required: ['id', 'description', 'confidence']
+        }
+      },
+      positives: {
+        type: 'ARRAY',
+        items: { type: 'STRING' }
+      },
+      confidence: { type: 'NUMBER' }
+    };
+
+    // Add serve-specific schema fields
+    if (isServe) {
+      schemaProperties.tossPlacement = {
+        type: 'OBJECT',
+        properties: {
+          position: { type: 'STRING', enum: ['in_front', 'behind', 'left', 'right', 'unknown'] },
+          consistency: { type: 'STRING', enum: ['consistent', 'inconsistent', 'unknown'] }
+        }
+      };
+      schemaProperties.trophyVisual = {
+        type: 'OBJECT',
+        properties: {
+          depth: { type: 'STRING', enum: ['full', 'partial', 'shallow', 'unknown'] },
+          elbowPosition: { type: 'STRING' }
+        }
+      };
+      schemaProperties.legExtension = {
+        type: 'OBJECT',
+        properties: {
+          jumpVisible: { type: 'BOOLEAN' },
+          kneeDrive: { type: 'STRING', enum: ['strong', 'moderate', 'minimal', 'unknown'] }
+        }
+      };
+    }
 
     const requestBody = {
       contents: [{
@@ -179,66 +289,14 @@ class SceneAnalyzer {
               data: base64
             }
           })),
-          {
-            text: `You are an expert tennis coach analyzing a ${strokeType} stroke.
-These 5 frames show the stroke from preparation to follow-through (chronological order).
-
-The skeleton-based analysis already detected these faults: ${faultList}
-
-Analyze what the CAMERA can see that skeletons CANNOT:
-1. Racket face angle at contact (open/closed/neutral)
-2. Grip type if visible (eastern/semi-western/western/continental)
-3. Contact point relative to body (in front/beside/behind, high/low)
-4. Any visual faults not covered by the skeleton analysis
-5. Positive observations about form
-
-Be specific and concise.`
-          }
+          { text: promptText }
         ]
       }],
       generationConfig: {
         responseMimeType: 'application/json',
         responseSchema: {
           type: 'OBJECT',
-          properties: {
-            racketFace: {
-              type: 'OBJECT',
-              properties: {
-                state: { type: 'STRING', enum: ['open', 'closed', 'neutral', 'unknown'] },
-                atContact: { type: 'BOOLEAN' }
-              },
-              required: ['state']
-            },
-            contactPoint: {
-              type: 'OBJECT',
-              properties: {
-                position: { type: 'STRING', enum: ['in_front', 'beside', 'behind_body', 'unknown'] },
-                height: { type: 'STRING', enum: ['high', 'waist', 'low', 'unknown'] },
-                relative_to_body: { type: 'STRING', enum: ['optimal', 'behind', 'too_far_front', 'unknown'] }
-              },
-              required: ['position']
-            },
-            gripType: { type: 'STRING', enum: ['eastern', 'semi_western', 'western', 'continental', 'unknown'] },
-            bodyPosition: { type: 'STRING' },
-            faults: {
-              type: 'ARRAY',
-              items: {
-                type: 'OBJECT',
-                properties: {
-                  id: { type: 'STRING' },
-                  description: { type: 'STRING' },
-                  confidence: { type: 'NUMBER' },
-                  severity: { type: 'STRING', enum: ['low', 'medium', 'high'] }
-                },
-                required: ['id', 'description', 'confidence']
-              }
-            },
-            positives: {
-              type: 'ARRAY',
-              items: { type: 'STRING' }
-            },
-            confidence: { type: 'NUMBER' }
-          },
+          properties: schemaProperties,
           required: ['racketFace', 'contactPoint', 'confidence']
         },
         temperature: 0.2,
@@ -433,6 +491,137 @@ Analyze these ${frames.length} keyframes from the rally and provide tactical ins
       } else {
         console.warn('SceneAnalyzer: rally analysis failed', e);
       }
+      this.consecutiveErrors++;
+      return null;
+    }
+  }
+
+  /**
+   * Analyze session progress by comparing best and worst strokes (text-only, no images).
+   * Called at session end. Returns a short textual comparison or null.
+   */
+  async analyzeSessionProgress(context) {
+    if (!this.enabled || !this.geminiApiKey) return null;
+    if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
+
+    const requestBody = {
+      contents: [{
+        parts: [{
+          text: `You are a tennis coach reviewing a practice session. Compare the player's best and worst strokes:
+
+BEST (${context.bestType}, quality ${context.bestQuality}/100): ${context.bestVisual}
+WORST (${context.worstType}, quality ${context.worstQuality}/100): ${context.worstVisual}
+
+${context.focusAreas?.length ? `Player focus areas: ${context.focusAreas.join(', ')}` : ''}
+
+In 2-3 sentences: What visual difference explains the quality gap? What should they focus on next session?`
+        }]
+      }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 200
+      }
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.geminiApiKey
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeout);
+      if (!response.ok) { this.consecutiveErrors++; return null; }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) { this.consecutiveErrors++; return null; }
+
+      this.consecutiveErrors = 0;
+      console.log('SceneAnalyzer: session progress analysis complete');
+      return text.trim();
+
+    } catch (e) {
+      clearTimeout(timeout);
+      this.consecutiveErrors++;
+      return null;
+    }
+  }
+
+  /**
+   * Analyze drill execution visually using Gemini.
+   * Sends 3 frames from rolling buffer with drill-specific prompt.
+   * @returns {Promise<string|null>} Text assessment or null
+   */
+  async analyzeDrill(drillFocus, repCount, totalReps, isComplete) {
+    if (!this.enabled || !this.geminiApiKey) return null;
+    if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
+    if (this.rollingFrameBuffer.length < 3) return null;
+
+    const buf = this.rollingFrameBuffer;
+    const indices = [0, Math.floor(buf.length / 2), buf.length - 1];
+    const frames = indices.map(i => buf[i].base64);
+
+    const phase = isComplete ? 'completed' : 'midpoint';
+    const promptText = `You are a tennis coach watching a drill focused on: ${drillFocus}.
+Rep ${repCount}/${totalReps} (${phase}).
+Assess the player's execution of the drill focus in these 3 frames.
+Give one specific adjustment in 1-2 sentences. Be encouraging but precise.`;
+
+    const requestBody = {
+      contents: [{
+        parts: [
+          ...frames.map(base64 => ({
+            inline_data: { mime_type: 'image/jpeg', data: base64 }
+          })),
+          { text: promptText }
+        ]
+      }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 150
+      }
+    };
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.geminiApiKey
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal
+        }
+      );
+
+      clearTimeout(timeout);
+      if (!response.ok) { this.consecutiveErrors++; return null; }
+
+      const data = await response.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) { this.consecutiveErrors++; return null; }
+
+      this.consecutiveErrors = 0;
+      return text.trim();
+
+    } catch (e) {
+      clearTimeout(timeout);
       this.consecutiveErrors++;
       return null;
     }

@@ -216,25 +216,48 @@ class DrillMode {
    * Sends summary + keyframes from rolling buffer for drill-specific analysis.
    */
   fireGeminiDrillAssessment(drill, isComplete) {
-    if (typeof tennisAI === 'undefined' || !tennisAI.sceneAnalyzer?.enabled) return;
-
     const summary = this.getSummary();
     if (!summary) return;
 
     const avg = Math.round(summary.average);
     const phase = isComplete ? 'completed' : 'midpoint';
 
-    // Use the existing stroke analysis with a drill-specific prompt context
+    // Try Gemini visual drill assessment first
+    if (typeof tennisAI !== 'undefined' && tennisAI.sceneAnalyzer?.enabled) {
+      tennisAI.sceneAnalyzer.analyzeDrill(
+        drill.name, drill.currentRep, drill.totalReps, isComplete
+      ).then(visualAssessment => {
+        if (visualAssessment) {
+          // Combine visual assessment with drill stats for GPT
+          const drillContext = `DRILL VISUAL ASSESSMENT (${phase}): "${drill.name}" — ${drill.currentRep}/${drill.totalReps} reps, avg ${avg} (target: ${drill.target}). ` +
+            `Hit rate: ${summary.repsAtTarget}/${drill.currentRep}. ` +
+            `Visual observation: ${visualAssessment}`;
+          this._sendDrillToGPT(drillContext);
+        } else {
+          // Fall back to text-only
+          this._fireTextOnlyAssessment(drill, summary, avg, phase, isComplete);
+        }
+      }).catch(() => {
+        this._fireTextOnlyAssessment(drill, summary, avg, phase, isComplete);
+      });
+    } else {
+      this._fireTextOnlyAssessment(drill, summary, avg, phase, isComplete);
+    }
+  }
+
+  _fireTextOnlyAssessment(drill, summary, avg, phase, isComplete) {
     const drillContext = `DRILL ASSESSMENT (${phase}): "${drill.name}" — ${drill.currentRep}/${drill.totalReps} reps, average ${avg} (target: ${drill.target}). ` +
       `Hit rate: ${summary.repsAtTarget}/${drill.currentRep}. Trend: ${summary.trend || 'stable'}. ` +
       `${isComplete ? 'Give a brief drill summary and one thing to work on next.' : 'Give one mid-drill adjustment.'}`;
+    this._sendDrillToGPT(drillContext);
+  }
 
-    // Send to GPT as a proactive trigger
+  _sendDrillToGPT(message) {
     if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
       setTimeout(() => {
         gptVoiceCoach.analyzeStroke({
           type: 'proactive_trigger',
-          message: drillContext
+          message
         });
       }, 1500);
     }

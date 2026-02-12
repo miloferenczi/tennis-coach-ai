@@ -58,12 +58,14 @@
     <script src="js/improvement-tracker.js"></script>
     <script src="js/player-profile.js"></script>
     <script src="js/ghost-overlay.js"></script>
+    <script src="js/corrected-pose-engine.js"></script>
     <script src="js/stroke-replay.js"></script>
     <script src="js/scene-analyzer.js"></script>
     <script src="js/visual-analysis-merger.js"></script>
     <script src="js/live-feedback-overlay.js"></script>
     <script src="js/court-position-analyzer.js"></script>
     <script src="js/speech-gate.js"></script>
+    <script src="js/batch-coaching-accumulator.js"></script>
     <script src="js/insight-miner.js"></script>
     <script src="js/proactive-triggers.js"></script>
     <script src="js/curriculum-engine.js"></script>
@@ -2507,6 +2509,20 @@
             color: #FF3B30;
         }
 
+        .coaches-eye-btn {
+            background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05));
+            border: 1px solid rgba(255,215,0,0.4);
+            color: #FFD700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+        .coaches-eye-btn.active {
+            background: linear-gradient(135deg, rgba(255,215,0,0.35), rgba(255,215,0,0.15));
+            border-color: #FFD700;
+            box-shadow: 0 0 12px rgba(255,215,0,0.3);
+        }
+
         .replay-btn {
             position: fixed;
             bottom: calc(220px + env(safe-area-inset-bottom));
@@ -3447,6 +3463,7 @@
             <button class="replay-ctrl-btn" onclick="setReplaySpeed(1)" data-speed="1">1x</button>
             <button class="replay-ctrl-btn" onclick="replayStepFrame(-1)">&lt;</button>
             <button class="replay-ctrl-btn" onclick="replayStepFrame(1)">&gt;</button>
+            <button class="replay-ctrl-btn coaches-eye-btn" onclick="toggleCoachesEye()" id="coachesEyeBtn" style="display:none">COACH'S EYE</button>
             <button class="replay-ctrl-btn close-btn" onclick="closeReplay()">CLOSE</button>
         </div>
     </div>
@@ -3497,6 +3514,10 @@
                 this.replayManager = new StrokeReplayManager();
                 window.strokeReplayManager = this.replayManager;
 
+                // Corrected Pose Engine (Coach's Eye ghost skeleton)
+                this.correctedPoseEngine = new CorrectedPoseEngine();
+                this.replayManager.correctedPoseEngine = this.correctedPoseEngine;
+
                 // Ball Tracking (in-browser color detection, no server needed)
                 this.ballTracker = new BallTrackingClient({
                     onShotAnalyzed: this.onShotAnalyzed.bind(this)
@@ -3508,6 +3529,7 @@
                 this.liveFeedbackOverlay = new LiveFeedbackOverlay();
                 this.courtPositionAnalyzer = new CourtPositionAnalyzer();
                 this.speechGate = new SpeechGate();
+                this.batchAccumulator = new BatchCoachingAccumulator({ batchThreshold: 10, trialThreshold: 3 });
                 this.insightMiner = new InsightMiner();
                 this.proactiveTriggers = new ProactiveTriggers();
                 this.curriculumEngine = new CurriculumEngine();
@@ -3529,10 +3551,27 @@
                     this.updateRallyIndicator();
                 };
 
-                // Speech gate flush: send queued coaching when transitioning to between-points
-                this.speechGate.onFlush = (coachingContext) => {
+                // Batch coaching flush: deliver ready batches at natural breaks
+                this.speechGate.onBatchFlush = () => {
+                    if (!this.batchAccumulator) return;
+                    const ready = this.batchAccumulator.getReadyBatches();
+                    if (ready.length === 0) return;
+                    const summaries = ready.map(t => this.batchAccumulator.buildBatchSummary(t));
+                    const triggers = this.batchAccumulator.pendingTriggers.splice(0);
+                    const rallyAnalyses = this.batchAccumulator.pendingRallyAnalyses.splice(0);
+                    const prompt = this.buildBatchPrompt(summaries, triggers, rallyAnalyses);
                     if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
-                        gptVoiceCoach.analyzeStroke(coachingContext);
+                        gptVoiceCoach.analyzeBatch(prompt);
+                    }
+                    ready.forEach(t => this.batchAccumulator.markDelivered(t));
+                };
+
+                // Speech gate flush: send queued coaching only during drill mode
+                this.speechGate.onFlush = (coachingContext) => {
+                    if (typeof drillMode !== 'undefined' && drillMode.isActive) {
+                        if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+                            gptVoiceCoach.analyzeStroke(coachingContext);
+                        }
                     }
                 };
 
@@ -4056,6 +4095,19 @@
                             await improvementTracker.recordSession(endedSession.strokes, endedSession.summary);
                         }
 
+                        // Force-flush all batch coaching at session end
+                        if (this.batchAccumulator && typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+                            const endSummaries = this.batchAccumulator.getAllBatchSummaries();
+                            if (endSummaries.length > 0) {
+                                const triggers = this.batchAccumulator.pendingTriggers.splice(0);
+                                const rallyAnalyses = this.batchAccumulator.pendingRallyAnalyses.splice(0);
+                                let prompt = this.buildBatchPrompt(endSummaries, triggers, rallyAnalyses);
+                                prompt += '\n\nThis is END OF SESSION. Always respond with option A or B, not silence. Summarize what you observed and give them something specific to work on next time.';
+                                gptVoiceCoach.analyzeBatch(prompt);
+                                endSummaries.forEach(s => this.batchAccumulator.markDelivered(s.strokeType));
+                            }
+                        }
+
                         // Synthesize notebook entry (while GPT connection still alive)
                         if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.synthesizeNotebookEntry) {
                             try {
@@ -4131,6 +4183,25 @@
                             }
                         }
 
+                        // Visual progress analysis (Gemini text-only comparison of best vs worst)
+                        if (this.sceneAnalyzer?.enabled && this.sessionVideoManager) {
+                            const best = this.sessionVideoManager.sessionBest;
+                            const worst = this.sessionVideoManager.sessionWorst;
+                            if (best?.visualAnalysisText && worst?.visualAnalysisText) {
+                                try {
+                                    const focusAreas = typeof improvementTracker !== 'undefined'
+                                        ? improvementTracker.getCoachingPlan?.()?.focusAreas?.map(f => f.area) || []
+                                        : [];
+                                    const progress = await this.sceneAnalyzer.analyzeSessionProgress({
+                                        bestType: best.type, bestQuality: best.quality, bestVisual: best.visualAnalysisText,
+                                        worstType: worst.type, worstQuality: worst.quality, worstVisual: worst.visualAnalysisText,
+                                        focusAreas
+                                    });
+                                    if (progress) endedSession.summary.visualProgress = progress;
+                                } catch (e) { console.error('Visual progress analysis failed:', e); }
+                            }
+                        }
+
                         showSessionSummary(endedSession.summary);
                     }
                     // Create new session
@@ -4150,6 +4221,7 @@
                 if (this.visualMerger) this.visualMerger.reset();
                 if (this.courtPositionAnalyzer) this.courtPositionAnalyzer.reset();
                 if (this.speechGate) this.speechGate.reset();
+                if (this.batchAccumulator) this.batchAccumulator.reset();
                 if (this.proactiveTriggers) this.proactiveTriggers.reset();
                 if (this.sessionVideoManager) this.sessionVideoManager.reset();
                 if (this.sceneAnalyzer) {
@@ -4171,6 +4243,108 @@
                     'Session reset! Ready to analyze your technique.';
                 document.getElementById('analysisCard').classList.remove('visible');
                 this.updateRallyIndicator();
+            }
+
+            /**
+             * Build text prompt for batch coaching from aggregated summaries.
+             */
+            buildBatchPrompt(summaries, triggers, rallyAnalyses) {
+                let prompt = 'BATCH OBSERVATION REPORT\n';
+                prompt += `You observed the following strokes at a natural break. Choose your response: A) Full coaching, B) Brief encouragement, or C) [SILENCE].\n\n`;
+
+                for (const s of summaries) {
+                    prompt += `--- ${s.strokeType.toUpperCase()} (${s.count} strokes) ---\n`;
+                    prompt += `Quality: avg ${s.avgQuality}, range ${s.minQuality}-${s.maxQuality}`;
+                    if (s.trend > 2) prompt += ` (IMPROVING +${s.trend})`;
+                    else if (s.trend < -2) prompt += ` (DECLINING ${s.trend})`;
+                    prompt += '\n';
+                    if (s.avgForm != null) prompt += `Form: ${s.avgForm} | Power: ${s.avgPower}\n`;
+
+                    if (s.topFaults.length > 0) {
+                        prompt += 'Top faults: ' + s.topFaults.map(f =>
+                            `${f.name} (${f.count}/${s.count})${f.fix ? ' — fix: ' + f.fix : ''}`
+                        ).join('; ') + '\n';
+                    }
+
+                    if (s.topIssue) {
+                        prompt += `Primary coaching issue: ${s.topIssue.name} (${s.topIssue.count}/${s.count})`;
+                        if (s.topIssue.cue) prompt += ` — cue: "${s.topIssue.cue}"`;
+                        prompt += '\n';
+                    }
+
+                    if (s.consistentStrengths.length > 0) {
+                        prompt += `Consistent strengths: ${s.consistentStrengths.join(', ')}\n`;
+                    }
+
+                    // Metric averages
+                    const mKeys = Object.entries(s.metricAvgs).filter(([, v]) => v != null);
+                    if (mKeys.length > 0) {
+                        prompt += 'Metrics: ' + mKeys.map(([k, v]) => `${k}=${v}`).join(', ') + '\n';
+                    }
+
+                    // Visual insights
+                    if (s.visualInsights) {
+                        const vi = s.visualInsights;
+                        const parts = [];
+                        if (vi.commonRacketFace) parts.push(`racket face: ${vi.commonRacketFace}`);
+                        if (vi.commonGrip) parts.push(`grip: ${vi.commonGrip}`);
+                        if (vi.recurringVisualFaults?.length > 0) {
+                            parts.push('visual faults: ' + vi.recurringVisualFaults.map(f => `${f.name}(${f.count}x)`).join(', '));
+                        }
+                        if (parts.length > 0) prompt += `Visual: ${parts.join(' | ')}\n`;
+                    }
+
+                    // Footwork
+                    if (s.footwork) {
+                        prompt += `Footwork: score ${s.footwork.avgScore}`;
+                        if (s.footwork.commonStance) prompt += `, common stance: ${s.footwork.commonStance}`;
+                        prompt += '\n';
+                    }
+
+                    // Serve
+                    if (s.serve) {
+                        const sv = s.serve;
+                        const parts = [];
+                        if (sv.avgScore != null) parts.push(`score=${sv.avgScore}`);
+                        if (sv.avgTrophy != null) parts.push(`trophy=${sv.avgTrophy}`);
+                        if (sv.avgLegDrive != null) parts.push(`legDrive=${sv.avgLegDrive}`);
+                        if (sv.avgContactHeight != null) parts.push(`contactHeight=${sv.avgContactHeight}`);
+                        if (parts.length > 0) prompt += `Serve: ${parts.join(', ')}\n`;
+                    }
+
+                    prompt += '\n';
+                }
+
+                // Triggers
+                if (triggers.length > 0) {
+                    prompt += 'ALERTS:\n';
+                    triggers.forEach(t => {
+                        prompt += `- [${t.type || 'alert'}] ${t.message}\n`;
+                    });
+                    prompt += '\n';
+                }
+
+                // Rally analyses
+                if (rallyAnalyses.length > 0) {
+                    prompt += 'RALLY OBSERVATIONS:\n';
+                    rallyAnalyses.forEach(r => {
+                        const a = r.analysis || r;
+                        prompt += `- Rally #${r.rallyNumber || '?'} (${r.strokeCount || '?'} strokes): `;
+                        if (a.overallAssessment) prompt += a.overallAssessment;
+                        if (a.suggestion) prompt += ` Suggestion: ${a.suggestion}`;
+                        prompt += '\n';
+                    });
+                    prompt += '\n';
+                }
+
+                // Improvement plan context
+                if (typeof improvementTracker !== 'undefined') {
+                    const planContext = improvementTracker.formatForSystemPrompt?.();
+                    if (planContext) prompt += planContext + '\n';
+                }
+
+                prompt += 'Choose ONE response: A) Full coaching (under 20 sec), B) Brief encouragement (under 5 sec), or C) respond with exactly "[SILENCE]".\n';
+                return prompt;
             }
 
             /**
@@ -4726,6 +4900,11 @@ This is a demo — make them feel excited about the coaching experience.`;
             tennisAI = new TennisAI();
             window.tennisAI = tennisAI;
 
+            // Enable Gemini visual analysis for guests if key available
+            if (tokenData?.geminiKey && tennisAI.sceneAnalyzer) {
+                tennisAI.sceneAnalyzer.setApiKey(tokenData.geminiKey);
+            }
+
             // Show trial counter overlay
             document.getElementById('obTrialOverlay').style.display = 'block';
             obUpdateTrialCounter(0);
@@ -5240,6 +5419,19 @@ This is a demo — make them feel excited about the coaching experience.`;
                                     ${m.label}
                                 </span>
                             `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Visual Progress card (Gemini best-vs-worst comparison)
+            if (summary.visualProgress) {
+                html += `
+                    <div class="summary-section" style="background: rgba(255,215,0,0.06); border-radius: 10px;
+                                padding: 14px 16px; border-left: 3px solid rgba(255,215,0,0.5);">
+                        <div class="summary-section-title" style="color: #FFD700;">Visual Progress</div>
+                        <div style="font-size: 14px; color: rgba(255,255,255,0.85); line-height: 1.5;">
+                            ${summary.visualProgress}
                         </div>
                     </div>
                 `;
@@ -7060,16 +7252,27 @@ This is a demo — make them feel excited about the coaching experience.`;
             overlay.classList.add('visible');
             const ctx = canvas.getContext('2d');
 
+            const replay = mgr.getReplay(idx);
             mgr.startPlayback(idx, canvas, ctx, {
                 speed: 0.5,
                 loop: true,
                 faultLandmarkMap: window.tennisAI.faultLandmarkMap,
-                dominantHand: window.tennisAI.enhancedAnalyzer?.dominantHand
+                dominantHand: window.tennisAI.enhancedAnalyzer?.dominantHand,
+                skillLevel: replay?.strokeData?.skillLevel || 'intermediate'
             });
 
             // Hide the replay button
             const btn = document.getElementById('replayBtn');
             if (btn) btn.classList.remove('visible');
+
+            // Show/hide Coach's Eye button based on faults
+            const hasFaults = replay?.strokeData?.biomechanicalFaults?.length > 0;
+            const eyeBtn = document.getElementById('coachesEyeBtn');
+            if (eyeBtn) {
+                eyeBtn.style.display = hasFaults ? '' : 'none';
+                eyeBtn.classList.remove('active');
+                mgr.ghostEnabled = false;
+            }
 
             // Update speed button states
             updateSpeedButtons(0.5);
@@ -7081,6 +7284,31 @@ This is a demo — make them feel excited about the coaching experience.`;
             if (overlay) overlay.classList.remove('visible');
             if (window.tennisAI?.replayManager) {
                 window.tennisAI.replayManager.stopPlayback();
+                window.tennisAI.replayManager.ghostEnabled = false;
+            }
+            const eyeBtn = document.getElementById('coachesEyeBtn');
+            if (eyeBtn) eyeBtn.classList.remove('active');
+        }
+
+        function toggleCoachesEye() {
+            const mgr = window.tennisAI?.replayManager;
+            if (!mgr) return;
+            mgr.ghostEnabled = !mgr.ghostEnabled;
+            document.getElementById('coachesEyeBtn')?.classList.toggle('active', mgr.ghostEnabled);
+            // Redraw current frame if paused
+            if (mgr.isPaused && mgr.currentReplayIndex >= 0) {
+                const canvas = document.getElementById('replayCanvas');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    const replay = mgr.getReplay(mgr.currentReplayIndex);
+                    if (replay) {
+                        mgr.drawReplayFrame(ctx, canvas, replay, mgr.currentFrameIndex, {
+                            faultLandmarkMap: window.tennisAI.faultLandmarkMap,
+                            dominantHand: window.tennisAI.enhancedAnalyzer?.dominantHand,
+                            skillLevel: replay.strokeData?.skillLevel || 'intermediate'
+                        });
+                    }
+                }
             }
         }
 

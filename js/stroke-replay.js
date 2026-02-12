@@ -27,6 +27,15 @@ class StrokeReplayManager {
       // Left leg
       [23, 25], [25, 27]
     ];
+
+    // Coach's Eye ghost skeleton state
+    this.ghostEnabled = false;
+    this.ghostBreathPhase = 0;
+    this.correctedPoseEngine = null;
+    this._pendingAnnotations = null;
+
+    // Body landmark indices (skip face/hands)
+    this.bodyIndices = new Set([11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]);
   }
 
   /**
@@ -97,7 +106,8 @@ class StrokeReplayManager {
           legDriveScore: strokeData.serveAnalysis.legDrive?.score
         } : null,
         smoothness: strokeData.smoothness || 0,
-        estimatedBallSpeed: strokeData.estimatedBallSpeed || null
+        estimatedBallSpeed: strokeData.estimatedBallSpeed || null,
+        skillLevel: strokeData.proComparison?.skillLevel || 'intermediate'
       },
       timestamp: Date.now()
     };
@@ -243,6 +253,25 @@ class StrokeReplayManager {
     ctx.fillStyle = 'rgba(10, 10, 10, 0.85)';
     ctx.fillRect(0, 0, w, h);
 
+    // Coach's Eye ghost skeleton (drawn behind player skeleton)
+    if (this.ghostEnabled && this.correctedPoseEngine) {
+      const corrected = this.correctedPoseEngine.computeCorrected(
+        frame.landmarks,
+        replay.strokeData.biomechanicalFaults,
+        replay.strokeData.type,
+        frame.phase,
+        options.skillLevel || replay.strokeData.skillLevel || 'intermediate',
+        options.dominantHand || 'right'
+      );
+      if (corrected) {
+        this.ghostBreathPhase++;
+        this.drawGhostSkeleton(ctx, corrected, frame.landmarks, w, h, this.ghostBreathPhase);
+        this._pendingAnnotations = corrected.annotations;
+      } else {
+        this._pendingAnnotations = null;
+      }
+    }
+
     // Draw skeleton connections
     const lm = frame.landmarks;
     const color = phaseColors[frame.phase] || phaseColors.unknown;
@@ -282,6 +311,12 @@ class StrokeReplayManager {
 
     // Enhanced wrist swing trail — velocity-colored with acceleration-proportional width
     this.drawEnhancedWristTrail(ctx, replay, frameIndex, w, h, options);
+
+    // Coach's Eye angle annotations (after trail, before text)
+    if (this.ghostEnabled && this._pendingAnnotations) {
+      const showDetailed = this.isPaused || this.playbackSpeed <= 0.25;
+      this.drawAngleAnnotations(ctx, this._pendingAnnotations, frame.landmarks, w, h, showDetailed);
+    }
 
     // Text overlays
     ctx.font = 'bold 16px Inter, sans-serif';
@@ -355,6 +390,109 @@ class StrokeReplayManager {
     return [...this.replays]
       .sort((a, b) => b.strokeData.quality - a.strokeData.quality)
       .slice(0, n);
+  }
+
+  // ========== Coach's Eye: Ghost Skeleton ==========
+
+  /**
+   * Draw the "corrected" ghost skeleton in gold.
+   * Breathing opacity, soft glow, emphasized corrected joints.
+   */
+  drawGhostSkeleton(ctx, correctedData, originalLandmarks, w, h, animPhase) {
+    const lm = correctedData.landmarks;
+    const corrected = correctedData.correctedIndices;
+
+    // Breathing opacity
+    const baseAlpha = 0.28 + 0.05 * Math.sin(animPhase * 0.05);
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(255, 215, 0, 0.5)';
+    ctx.shadowBlur = 10;
+
+    // Draw connections
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = `rgba(255, 215, 0, ${baseAlpha + 0.12})`;
+    for (const [a, b] of this.connections) {
+      if (!this.bodyIndices.has(a) && !this.bodyIndices.has(b)) continue;
+      if (!lm[a] || !lm[b]) continue;
+      if ((lm[a].visibility || 0) < 0.3 || (lm[b].visibility || 0) < 0.3) continue;
+      ctx.beginPath();
+      ctx.moveTo(lm[a].x * w, lm[a].y * h);
+      ctx.lineTo(lm[b].x * w, lm[b].y * h);
+      ctx.stroke();
+    }
+
+    // Draw joints
+    for (const idx of this.bodyIndices) {
+      const pt = lm[idx];
+      if (!pt || (pt.visibility || 0) < 0.3) continue;
+
+      const isCorrected = corrected.has(idx);
+      const px = pt.x * w;
+      const py = pt.y * h;
+
+      if (isCorrected) {
+        // Emphasized corrected joint — larger, brighter, with glow ring
+        ctx.shadowBlur = 14;
+        ctx.beginPath();
+        ctx.arc(px, py, 6, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 215, 0, 0.8)`;
+        ctx.fill();
+
+        // Outer glow ring
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(px, py, 10, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255, 215, 0, ${baseAlpha + 0.2})`;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      } else {
+        // Subtle non-corrected joint
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(px, py, 3, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255, 215, 0, ${baseAlpha + 0.07})`;
+        ctx.fill();
+      }
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Draw angle annotations at corrected joints.
+   * Gold = target angle (above), Red = actual angle (below).
+   * Full detail only when paused or at 0.25x speed.
+   */
+  drawAngleAnnotations(ctx, annotations, originalLandmarks, w, h, showDetailed) {
+    ctx.save();
+    for (const ann of annotations) {
+      const lm = originalLandmarks[ann.index];
+      if (!lm || (lm.visibility || 0) < 0.3) continue;
+
+      const px = lm.x * w;
+      const py = lm.y * h;
+
+      // Always show label
+      ctx.font = 'bold 10px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 3;
+
+      // Label above joint
+      ctx.fillStyle = 'rgba(255, 215, 0, 0.9)';
+      ctx.fillText(ann.label, px, py - 18);
+
+      // Angle detail only in slow/paused mode
+      if (showDetailed && ann.targetAngle != null && ann.actualAngle != null) {
+        ctx.font = 'bold 11px Inter, sans-serif';
+        ctx.fillStyle = '#FFD700';
+        ctx.fillText(`${ann.targetAngle}°`, px, py - 30);
+        ctx.fillStyle = '#FF3B30';
+        ctx.fillText(`${ann.actualAngle}°`, px, py + 26);
+      }
+    }
+    ctx.restore();
   }
 
   // ========== Phase 3B: Enhanced Swing Path Visualization ==========

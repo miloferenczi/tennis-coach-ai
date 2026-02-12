@@ -16,6 +16,7 @@ class SpeechGate {
     this.lastStrokeTime = 0;
     this.idleThreshold = 15000;       // 15 seconds of no strokes = idle
     this.onFlush = null;              // callback(queuedItems) when queue flushes
+    this.onBatchFlush = null;          // callback() when batch should be delivered
   }
 
   /**
@@ -26,9 +27,10 @@ class SpeechGate {
     const oldState = this.gameState;
     this.gameState = newState;
 
-    // Flush queue when entering a speakable state
+    // Flush batch coaching then per-stroke queue when entering a speakable state
     if ((newState === 'between_points' || newState === 'idle') &&
         (oldState === 'rallying' || oldState === 'serving')) {
+      this.flushBatch();
       this.flushQueue();
     }
   }
@@ -61,11 +63,19 @@ class SpeechGate {
    * Also interrupts any in-flight GPT audio.
    */
   onStroke() {
-    this.lastStrokeTime = Date.now();
+    const now = Date.now();
+    const gap = now - this.lastStrokeTime;
+    this.lastStrokeTime = now;
 
     // Interrupt GPT audio when a new stroke arrives during speech
     if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.interruptSpeech) {
       gptVoiceCoach.interruptSpeech();
+    }
+
+    // If no SceneAnalyzer (gameState stays 'unknown'), use idle gap to trigger batch flush.
+    // A gap > idleThreshold between strokes implies a natural break occurred.
+    if (this.gameState === 'unknown' && gap > this.idleThreshold) {
+      this.flushBatch();
     }
   }
 
@@ -90,6 +100,20 @@ class SpeechGate {
     // Drop oldest if over max
     if (this.queue.length > this.maxQueue) {
       this.queue.shift();
+    }
+  }
+
+  /**
+   * Flush batch coaching — notify accumulator to deliver ready batches.
+   * Called before flushQueue on state transitions.
+   */
+  flushBatch() {
+    if (this.onBatchFlush) {
+      try {
+        this.onBatchFlush();
+      } catch (e) {
+        console.error('SpeechGate: batch flush callback error', e);
+      }
     }
   }
 

@@ -21,8 +21,8 @@
 "foundation": ["latePreparation", "inconsistentContactPoint", "poorFootwork"],
 "power": ["lowRacquetSpeed", "insufficientRotation", "poorWeightTransfer"],
 "refinement": ["collapsingElbowChickenWing", "closedStanceLimitingPower", "poorFollowThrough", "racketFaceOpen", "contactBehindBody"],
-"serve": ["poorServeTossArm", "noServeLegDrive", "noServeTrophyPosition", "lowServeContactPoint"],
-"visual": ["wrongGrip"],
+"serve": ["poorServeTossArm", "noServeLegDrive", "noServeTrophyPosition", "lowServeContactPoint", "poorServeToss"],
+"visual": ["wrongGrip", "contactTooFarFront"],
 "positioning": ["lingeringNoMansLand", "poorRecoveryPosition", "noSplitStepAtNet"]
 },
 "issues": [
@@ -587,6 +587,74 @@
 "expectedImprovement": {
 "quality": { "increase": 8 },
 "consistency": { "increase": 10 }
+}
+},
+{
+"id": "poorServeToss",
+"name": "Poor Serve Toss Placement",
+"priority": 5,
+"category": "serve",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"geminiTossPlacement": { "notEquals": "in_front" }
+},
+"confirming": {
+"geminiConfidence": { "min": 0.5 }
+}
+},
+"diagnosis": {
+"rootCause": "toss_placement_inconsistent",
+"symptoms": ["serve_direction_unpredictable", "loss_of_power", "poor_contact_point"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["serve_accuracy", "serve_power"],
+"requires": ["basic_serve_motion"]
+},
+"cueSelection": {
+"beginner": "Toss the ball out in front of you, like placing it on a shelf above your hitting shoulder.",
+"intermediate": "Your toss should land about a foot inside the baseline if you let it drop. Release at eye level with a straight arm.",
+"advanced": "Consistent toss placement in front and slightly to the right (for right-handers) allows a full kinetic chain extension at contact."
+},
+"keyMetrics": ["geminiTossPlacement", "geminiConfidence"],
+"expectedImprovement": {
+"serveScore": { "increase": 10 },
+"quality": { "increase": 8 }
+}
+},
+{
+"id": "contactTooFarFront",
+"name": "Contact Point Too Far in Front",
+"priority": 5,
+"category": "visual",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"geminiContactPoint": { "equals": "too_far_front" }
+},
+"confirming": {
+"geminiConfidence": { "min": 0.5 }
+}
+},
+"diagnosis": {
+"rootCause": "over_reaching_or_early_swing",
+"symptoms": ["loss_of_power", "wrist_strain", "pushed_shots"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["power_loss", "inconsistent_depth"],
+"requires": ["footwork", "spacing"]
+},
+"cueSelection": {
+"beginner": "Let the ball come to you a bit more — hit it when it's right beside your front hip.",
+"intermediate": "You're reaching too far forward. Wait a split second longer so the ball is in your power zone at contact.",
+"advanced": "Adjust your spacing and timing so contact happens at arm's comfortable extension — not at full reach."
+},
+"keyMetrics": ["geminiContactPoint", "geminiConfidence"],
+"expectedImprovement": {
+"quality": { "increase": 8 },
+"velocity": { "increase": 0.01 }
 }
 },
 {
