@@ -7973,7 +7973,7 @@ This is a demo — make them feel excited about the coaching experience.`;
 
                 // --- Plan card ---
                 if (typeof improvementTracker !== 'undefined') {
-                    const plan = improvementTracker.getPlan?.() || improvementTracker.plan;
+                    const plan = improvementTracker.getCoachingPlan?.();
                     if (plan && plan.focusAreas && plan.focusAreas.length > 0) {
                         document.getElementById('homePlanCard').style.display = '';
                         const planContainer = document.getElementById('homePlanItems');
