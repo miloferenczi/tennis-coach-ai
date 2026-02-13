@@ -2653,7 +2653,7 @@
         .home-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             margin-bottom: 28px;
         }
 
@@ -2666,6 +2666,25 @@
 
         .home-greeting .accent {
             color: var(--accent-volt);
+        }
+
+        .home-greeting-coach {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .home-greeting-progress {
+            font-size: 13px;
+            color: var(--accent-volt);
+            margin-top: 8px;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .home-greeting-progress.muted {
+            color: var(--text-muted);
+            font-weight: 400;
         }
 
         .home-settings-btn {
@@ -2988,6 +3007,34 @@
             color: var(--danger);
         }
 
+        /* Profile header */
+        .profile-header { display: flex; flex-direction: column; align-items: center; padding: 24px 0 20px; }
+        .profile-avatar { width: 56px; height: 56px; border-radius: 16px; background: rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: center; margin-bottom: 12px; }
+        .profile-avatar svg { width: 28px; height: 28px; }
+        .profile-name { font-size: 22px; font-weight: 800; color: var(--text-primary); }
+        .profile-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 8px; align-items: center; }
+
+        /* Tier badge */
+        .profile-tier-badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .profile-tier-badge.pro { background: var(--accent-volt); color: #0A0A0A; }
+        .profile-tier-badge.trial { background: rgba(79,195,247,0.2); color: #4FC3F7; }
+        .profile-tier-badge.free { background: rgba(255,255,255,0.08); color: var(--text-muted); }
+
+        /* Stroke proficiency */
+        .profile-proficiency-row { padding: 12px 0; border-bottom: 1px solid var(--border-subtle); }
+        .profile-proficiency-row:last-child { border-bottom: none; }
+        .profile-proficiency-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+        .profile-proficiency-type { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .profile-proficiency-score { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .profile-proficiency-bar { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-bottom: 4px; }
+        .profile-proficiency-bar-fill { height: 100%; border-radius: 2px; }
+        .profile-proficiency-detail { font-size: 11px; color: var(--text-muted); }
+
+        /* Milestones & Goals pills */
+        .profile-milestones, .profile-goals { display: flex; flex-wrap: wrap; gap: 8px; }
+        .profile-milestone-pill { padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: var(--text-primary); font-weight: 500; }
+        .profile-goal-chip { padding: 6px 12px; border-radius: 8px; background: rgba(205,255,0,0.08); border: 1px solid rgba(205,255,0,0.15); font-size: 12px; color: var(--accent-volt); font-weight: 500; }
+
         /* ============================================
            LIVE SESSION CONTROLS
            ============================================ */
@@ -3158,9 +3205,490 @@
         }
 
         /* ============================================
+           SESSION RECAP — FULL-SCREEN OVERLAY
+           ============================================ */
+        .session-recap {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: #0A0A0A;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+            overflow: hidden;
+        }
+        .session-recap.visible {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .recap-scroll {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 20px calc(env(safe-area-inset-bottom, 20px) + 20px);
+        }
+        .recap-card {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 16px;
+            opacity: 0;
+            animation: fadeSlideUp 0.5s ease forwards;
+        }
+        .recap-card-transparent {
+            background: none;
+            border: none;
+            padding: 20px;
+            margin-bottom: 16px;
+            opacity: 0;
+            animation: fadeSlideUp 0.5s ease forwards;
+        }
+        .recap-label {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.45);
+            margin-bottom: 14px;
+            font-weight: 600;
+        }
+
+        /* Hero Score */
+        .recap-hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+            padding-bottom: 10px;
+        }
+        .recap-score-ring-wrap {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            margin-bottom: 16px;
+        }
+        .recap-score-ring {
+            width: 120px;
+            height: 120px;
+            transform: rotate(-90deg);
+        }
+        .recap-score-ring .ring-bg {
+            fill: none;
+            stroke: rgba(255,255,255,0.08);
+            stroke-width: 6;
+        }
+        .recap-score-ring .ring-fill {
+            fill: none;
+            stroke: var(--accent-volt);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 339.292;
+            stroke-dashoffset: 339.292;
+            animation: ringDraw 1s cubic-bezier(0.16, 1, 0.3, 1) 0.3s forwards;
+        }
+        .recap-score-value {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 42px;
+            font-weight: 800;
+            color: #fff;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
+        }
+        .recap-score-value small {
+            font-size: 14px;
+            font-weight: 400;
+            color: rgba(255,255,255,0.4);
+            margin-top: 2px;
+        }
+        .recap-meta {
+            display: flex;
+            gap: 20px;
+            color: rgba(255,255,255,0.5);
+            font-size: 13px;
+            margin-bottom: 14px;
+        }
+        .recap-improvement-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .recap-improvement-pill.positive {
+            background: rgba(50,215,75,0.15);
+            color: #32D74B;
+        }
+        .recap-improvement-pill.negative {
+            background: rgba(255,59,48,0.15);
+            color: #FF3B30;
+        }
+        .recap-improvement-pill.neutral {
+            background: rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.5);
+        }
+        .recap-milestones {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: center;
+        }
+        .recap-milestone {
+            background: linear-gradient(135deg, var(--accent-volt), #a0cc00);
+            color: #0A0A0A;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        /* Sparkline */
+        .recap-sparkline {
+            width: 100%;
+            overflow: hidden;
+        }
+        .recap-sparkline svg {
+            display: block;
+            width: 100%;
+            height: 80px;
+        }
+
+        /* Insight */
+        .recap-insight {
+            background: linear-gradient(135deg, rgba(79,195,247,0.12), rgba(205,255,0,0.08));
+            border: 1px solid rgba(79,195,247,0.25);
+            border-radius: 14px;
+            padding: 20px;
+            margin-bottom: 16px;
+            opacity: 0;
+            animation: fadeSlideUp 0.5s ease forwards;
+        }
+        .recap-insight-headline {
+            font-size: 17px;
+            font-weight: 700;
+            color: #fff;
+            line-height: 1.35;
+            margin-bottom: 6px;
+        }
+        .recap-insight-detail {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            line-height: 1.45;
+            margin-bottom: 8px;
+        }
+        .recap-insight-action {
+            font-size: 13px;
+            color: var(--accent-volt);
+            font-weight: 600;
+        }
+
+        /* Stroke Breakdown */
+        .recap-breakdown-row {
+            padding: 12px 0;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .recap-breakdown-row:last-of-type {
+            border-bottom: none;
+        }
+        .recap-breakdown-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .recap-breakdown-type {
+            font-size: 15px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+        }
+        .recap-breakdown-score {
+            font-size: 18px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .recap-breakdown-bar-track {
+            height: 6px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .recap-breakdown-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .recap-breakdown-count {
+            font-size: 12px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 4px;
+        }
+        .recap-breakdown-detail {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .recap-breakdown-row.expanded .recap-breakdown-detail {
+            max-height: 120px;
+        }
+        .recap-breakdown-detail-inner {
+            padding: 10px 0 4px;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+        .recap-detail-chip {
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.7);
+        }
+        .recap-detail-chip.fault {
+            background: rgba(255,59,48,0.15);
+            color: #FF6961;
+        }
+        .recap-rally-footer {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+        }
+
+        /* Coach's Notes */
+        .recap-coach {
+            display: flex;
+            gap: 14px;
+            align-items: flex-start;
+        }
+        .recap-coach-avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .recap-coach-avatar svg {
+            width: 22px;
+            height: 22px;
+        }
+        .recap-coach-name {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            color: rgba(255,255,255,0.45);
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+        .recap-coach-quote {
+            font-size: 14px;
+            font-style: italic;
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }
+        .recap-visual-progress {
+            margin-top: 12px;
+            font-size: 13px;
+            color: rgba(255,215,0,0.85);
+            line-height: 1.5;
+            font-style: normal;
+        }
+
+        /* Best Moments */
+        .recap-moments-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+            scrollbar-width: none;
+        }
+        .recap-moments-scroll::-webkit-scrollbar { display: none; }
+        .recap-moment {
+            flex: 0 0 90px;
+            height: 140px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            scroll-snap-align: start;
+            cursor: pointer;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .recap-moment:active {
+            border-color: var(--accent-volt);
+        }
+        .recap-moment canvas {
+            width: 90px;
+            height: 100px;
+            display: block;
+        }
+        .recap-moment-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 4px 0;
+            gap: 1px;
+        }
+        .recap-moment-score {
+            font-size: 16px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+        }
+        .recap-moment-label {
+            font-size: 9px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Progress */
+        .recap-progress-section {
+            margin-bottom: 14px;
+        }
+        .recap-progress-section:last-child {
+            margin-bottom: 0;
+        }
+        .recap-progress-sublabel {
+            font-size: 12px;
+            color: rgba(255,255,255,0.35);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .recap-progress-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            background: rgba(255,255,255,0.04);
+            border-radius: 8px;
+        }
+        .recap-progress-type {
+            color: rgba(255,255,255,0.8);
+            font-size: 14px;
+        }
+        .recap-progress-delta {
+            font-weight: 600;
+            font-size: 14px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* Plan */
+        .recap-plan-card {
+            background: rgba(255,255,255,0.04);
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+        }
+        .recap-plan-area {
+            font-weight: 600;
+            color: #4FC3F7;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+        .recap-plan-target {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 10px;
+        }
+        .recap-plan-drill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border: 1px solid var(--accent-volt);
+            border-radius: 8px;
+            color: var(--accent-volt);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            background: rgba(205,255,0,0.06);
+            transition: background 0.2s;
+        }
+        .recap-plan-drill:active {
+            background: rgba(205,255,0,0.15);
+        }
+        .recap-plan-goal {
+            margin-top: 10px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+            font-style: italic;
+        }
+
+        /* Actions */
+        .recap-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .recap-btn-primary {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent-volt), #a0cc00);
+            color: #0A0A0A;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            letter-spacing: 0.3px;
+        }
+        .recap-btn-secondary {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.8);
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes ringDraw {
+            to { stroke-dashoffset: var(--ring-target); }
+        }
+
+        /* ============================================
            RESPONSIVE — SMALL PHONES
            ============================================ */
         @media (max-width: 380px) {
+            .recap-score-ring-wrap,
+            .recap-score-ring {
+                width: 100px;
+                height: 100px;
+            }
+            .recap-score-value {
+                font-size: 36px;
+            }
+            .recap-moment {
+                flex: 0 0 80px;
+                height: 120px;
+            }
+            .recap-moment canvas {
+                width: 80px;
+                height: 85px;
+            }
             .tab-btn span {
                 font-size: 9px;
             }
@@ -3680,7 +4208,11 @@
             <!-- Home Tab -->
             <div class="tab-panel active" id="tabHome">
                 <div class="home-header">
-                    <div class="home-greeting">ACE<span class="accent">.</span></div>
+                    <div>
+                        <div class="home-greeting" id="homeGreetingText">ACE<span class="accent">.</span></div>
+                        <div class="home-greeting-coach" id="homeCoachLine"></div>
+                        <div class="home-greeting-progress" id="homeProgressTidbit"></div>
+                    </div>
                     <button class="home-settings-btn" onclick="openSettings()">
                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08z"/></svg>
                     </button>
@@ -3767,7 +4299,6 @@
 
             <!-- Profile Tab -->
             <div class="tab-panel" id="tabProfile">
-                <div class="tab-section-title">Profile</div>
                 <div id="profileTabContent"></div>
             </div>
         </div>
@@ -3833,19 +4364,22 @@
         <!-- Stroke Quality Flash Overlay -->
         <div id="strokeFlashOverlay" class="stroke-flash-overlay"></div>
 
-        <!-- Session Summary Modal -->
-        <div id="sessionSummaryModal" class="modal-overlay">
+        <!-- Session Recap (full-screen overlay) -->
+        <div id="sessionRecap" class="session-recap">
+            <div class="recap-scroll" id="recapScroll">
+                <!-- Dynamic content from showSessionSummary() -->
+            </div>
+        </div>
+
+        <!-- Export Modal (reused from old session summary modal) -->
+        <div id="exportModal" class="modal-overlay">
             <div class="modal">
                 <div class="modal-header">
-                    <div class="modal-title">Session Complete</div>
-                    <button class="modal-close" onclick="closeSessionSummary()">&times;</button>
+                    <div class="modal-title">Export</div>
+                    <button class="modal-close" onclick="document.getElementById('exportModal').classList.remove('visible')">&times;</button>
                 </div>
-                <div id="sessionSummaryContent">
-                    <!-- Dynamic content inserted here -->
+                <div id="exportModalContent">
                 </div>
-                <button class="btn" onclick="closeSessionSummary()" style="width: 100%; margin-top: 16px;">
-                    Done
-                </button>
             </div>
         </div>
 
@@ -5858,389 +6392,340 @@ This is a demo — make them feel excited about the coaching experience.`;
             showToast(`Locked "${stroke.name}" as ghost reference`);
         }
 
-        // Session Summary Modal
+        // Session Recap — Full-Screen Overlay
         function showSessionSummary(summary) {
             if (!summary) return;
+            window._lastSessionSummary = summary;
 
+            const cards = [];
+            let cardIndex = 0;
+
+            // --- Card 1: Hero Score ---
             const duration = formatDuration(summary.duration);
-            const improvementClass = summary.improvement > 0 ? 'positive' :
-                                     summary.improvement < 0 ? 'negative' : 'neutral';
-            const improvementText = summary.improvement > 0 ? `+${summary.improvement}` :
-                                    summary.improvement < 0 ? `${summary.improvement}` : '0';
+            const avgScore = summary.averageScore || 0;
+            const ringCircumference = 339.292; // 2 * PI * 54
+            const ringTarget = ringCircumference - (avgScore / 100) * ringCircumference;
+            const improvementClass = summary.improvement > 0 ? 'positive' : summary.improvement < 0 ? 'negative' : 'neutral';
+            const improvementArrow = summary.improvement > 0 ? '↑' : summary.improvement < 0 ? '↓' : '→';
+            const improvementText = summary.improvement > 0 ? `+${summary.improvement}` : summary.improvement < 0 ? `${summary.improvement}` : '0';
 
-            let html = `
-                <div class="summary-stats">
-                    <div class="summary-stat highlight">
-                        <div class="summary-stat-value">${summary.averageScore}</div>
-                        <div class="summary-stat-label">Average Score</div>
-                    </div>
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${summary.totalStrokes}</div>
-                        <div class="summary-stat-label">Total Strokes</div>
-                    </div>
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${duration}</div>
-                        <div class="summary-stat-label">Duration</div>
-                    </div>
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${summary.bestScore}</div>
-                        <div class="summary-stat-label">Best Stroke</div>
-                    </div>
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${summary.consistency}</div>
-                        <div class="summary-stat-label">Consistency</div>
-                    </div>
-                </div>
-
-                <div class="summary-section">
-                    <div class="summary-section-title">Session Trend</div>
-                    <span class="improvement-badge ${improvementClass}">
-                        ${summary.improvement > 0 ? '↑' : summary.improvement < 0 ? '↓' : '→'}
-                        ${improvementText} points from start to finish
-                    </span>
-                </div>
-            `;
-
-            // Hero insight card (from pattern mining)
-            if (summary.insights && summary.insights.length > 0) {
-                const heroInsight = summary.insights[0];
-                html += `
-                    <div class="summary-section" style="background: linear-gradient(135deg, rgba(79,195,247,0.15), rgba(205,255,0,0.1));
-                                border-radius: 12px; padding: 16px; margin-top: 12px; border: 1px solid rgba(79,195,247,0.3);">
-                        <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #4FC3F7; margin-bottom: 8px;">
-                            Session Insight
-                        </div>
-                        <div style="font-size: 18px; font-weight: 700; color: #fff; line-height: 1.3; margin-bottom: 6px;">
-                            ${heroInsight.headline}
-                        </div>
-                        <div style="font-size: 13px; color: rgba(255,255,255,0.7); line-height: 1.4; margin-bottom: 8px;">
-                            ${heroInsight.detail}
-                        </div>
-                        <div style="font-size: 13px; color: var(--accent-volt); font-weight: 500;">
-                            ${heroInsight.actionable}
+            let heroHtml = `
+                <div class="recap-hero">
+                    <div class="recap-score-ring-wrap">
+                        <svg class="recap-score-ring" viewBox="0 0 120 120">
+                            <circle class="ring-bg" cx="60" cy="60" r="54"/>
+                            <circle class="ring-fill" cx="60" cy="60" r="54" style="--ring-target: ${ringTarget}"/>
+                        </svg>
+                        <div class="recap-score-value">
+                            <span id="recapScoreNum">0</span>
+                            <small>/100</small>
                         </div>
                     </div>
-                `;
-
-                // Additional insights
-                if (summary.insights.length > 1) {
-                    html += `<div class="summary-section">
-                        <div class="summary-section-title">More Insights</div>`;
-                    for (let i = 1; i < summary.insights.length; i++) {
-                        const ins = summary.insights[i];
-                        html += `
-                            <div style="padding: 10px 14px; margin-bottom: 8px; background: rgba(255,255,255,0.05);
-                                        border-radius: 8px; border-left: 3px solid rgba(79,195,247,0.5);">
-                                <div style="font-weight: 600; color: rgba(255,255,255,0.9); font-size: 14px; margin-bottom: 2px;">${ins.headline}</div>
-                                <div style="color: rgba(255,255,255,0.6); font-size: 12px;">${ins.actionable}</div>
-                            </div>
-                        `;
-                    }
-                    html += `</div>`;
-                }
+                    <div class="recap-meta">
+                        <span>${summary.totalStrokes} strokes</span>
+                        <span>${duration}</span>
+                        <span>Best ${summary.bestScore || 0}</span>
+                    </div>
+                    <span class="recap-improvement-pill ${improvementClass}">
+                        ${improvementArrow} ${improvementText} from start
+                    </span>`;
+            if (summary.milestones && summary.milestones.length > 0) {
+                heroHtml += `<div class="recap-milestones">
+                    ${summary.milestones.map(m => `<span class="recap-milestone">${m.label}</span>`).join('')}
+                </div>`;
             }
+            heroHtml += `</div>`;
+            cards.push({ html: heroHtml, cls: 'recap-card-transparent' });
 
-            // Quality sparkline (inline SVG)
+            // --- Card 2: Quality Sparkline ---
             if (summary.totalStrokes >= 5) {
                 const currentSession = typeof sessionStorage !== 'undefined' ? sessionStorage.getCurrentSession() : null;
                 const strokes = currentSession?.strokes;
                 if (strokes && strokes.length >= 5) {
                     const scores = strokes.map(s => s.quality);
-                    const maxS = Math.max(...scores, 100);
-                    const minS = Math.min(...scores, 0);
+                    const maxS = Math.max(...scores);
+                    const minS = Math.min(...scores);
                     const range = maxS - minS || 1;
-                    const w = 280;
-                    const h = 50;
-                    const points = scores.map((s, i) => {
-                        const x = (i / (scores.length - 1)) * w;
-                        const y = h - ((s - minS) / range) * h;
-                        return `${x.toFixed(1)},${y.toFixed(1)}`;
-                    }).join(' ');
+                    const svgW = 300, svgH = 70, padY = 8;
 
-                    html += `
-                        <div class="summary-section">
-                            <div class="summary-section-title">Quality Over Time</div>
-                            <svg width="${w}" height="${h + 10}" style="display: block; margin: 0 auto;">
-                                <polyline points="${points}" fill="none" stroke="var(--accent-volt)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <line x1="0" y1="${h - ((summary.averageScore - minS) / range) * h}" x2="${w}" y2="${h - ((summary.averageScore - minS) / range) * h}"
-                                      stroke="rgba(255,255,255,0.2)" stroke-width="1" stroke-dasharray="4,4"/>
-                                <text x="${w}" y="${h - ((summary.averageScore - minS) / range) * h - 4}" text-anchor="end"
-                                      fill="rgba(255,255,255,0.4)" font-size="10">avg ${summary.averageScore}</text>
+                    const pts = scores.map((s, i) => {
+                        const x = (i / (scores.length - 1)) * svgW;
+                        const y = padY + (svgH - 2 * padY) - ((s - minS) / range) * (svgH - 2 * padY);
+                        return { x, y, score: s };
+                    });
+                    const polyPoints = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+                    const fillPoints = `0,${svgH} ${polyPoints} ${svgW},${svgH}`;
+
+                    // Best and worst
+                    const bestIdx = scores.indexOf(Math.max(...scores));
+                    const worstIdx = scores.indexOf(Math.min(...scores));
+                    const avgY = padY + (svgH - 2 * padY) - ((avgScore - minS) / range) * (svgH - 2 * padY);
+
+                    cards.push({ html: `
+                        <div class="recap-label">QUALITY OVER TIME</div>
+                        <div class="recap-sparkline">
+                            <svg viewBox="0 0 ${svgW} ${svgH + 14}" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="var(--accent-volt)" stop-opacity="0.2"/>
+                                        <stop offset="100%" stop-color="var(--accent-volt)" stop-opacity="0"/>
+                                    </linearGradient>
+                                </defs>
+                                <polygon points="${fillPoints}" fill="url(#sparkFill)"/>
+                                <polyline points="${polyPoints}" fill="none" stroke="var(--accent-volt)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <line x1="0" y1="${avgY.toFixed(1)}" x2="${svgW}" y2="${avgY.toFixed(1)}" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="4,4"/>
+                                <text x="${svgW}" y="${avgY - 3}" text-anchor="end" fill="rgba(255,255,255,0.35)" font-size="9">avg ${avgScore}</text>
+                                <circle cx="${pts[bestIdx].x.toFixed(1)}" cy="${pts[bestIdx].y.toFixed(1)}" r="3.5" fill="var(--accent-volt)"/>
+                                <text x="${pts[bestIdx].x.toFixed(1)}" y="${pts[bestIdx].y - 6}" text-anchor="middle" fill="var(--accent-volt)" font-size="9" font-weight="700">${scores[bestIdx]}</text>
+                                ${worstIdx !== bestIdx ? `
+                                <circle cx="${pts[worstIdx].x.toFixed(1)}" cy="${pts[worstIdx].y.toFixed(1)}" r="3" fill="#FF3B30"/>
+                                <text x="${pts[worstIdx].x.toFixed(1)}" y="${pts[worstIdx].y + 12}" text-anchor="middle" fill="#FF3B30" font-size="9">${scores[worstIdx]}</text>` : ''}
                             </svg>
                         </div>
-                    `;
+                    ` });
                 }
             }
 
-            if (summary.weaknesses && summary.weaknesses.length > 0) {
-                html += `
-                    <div class="summary-section">
-                        <div class="summary-section-title">Areas to Improve</div>
-                        ${summary.weaknesses.map(w => `<span class="weakness-tag">${w}</span>`).join('')}
-                    </div>
-                `;
+            // --- Card 3: Session Insight ---
+            let insightSource = null;
+            if (summary.insights && summary.insights.length > 0) {
+                insightSource = summary.insights[0];
+            } else if (summary.lastRallyAnalysis?.overallAssessment) {
+                insightSource = {
+                    headline: 'Tactical Summary',
+                    detail: summary.lastRallyAnalysis.overallAssessment,
+                    actionable: summary.lastRallyAnalysis.suggestion || ''
+                };
+            }
+            if (insightSource) {
+                cards.push({ html: `
+                    <div class="recap-label" style="color: #4FC3F7;">SESSION INSIGHT</div>
+                    <div class="recap-insight-headline">${insightSource.headline}</div>
+                    ${insightSource.detail ? `<div class="recap-insight-detail">${insightSource.detail}</div>` : ''}
+                    ${insightSource.actionable ? `<div class="recap-insight-action">${insightSource.actionable}</div>` : ''}
+                `, cls: 'recap-insight' });
             }
 
-            if (summary.drillRecommendation) {
-                html += `
-                    <div class="summary-section">
-                        <div class="summary-section-title">Recommended Drill</div>
-                        <div class="drill-card">
-                            <div class="drill-name">${summary.drillRecommendation.name}</div>
-                            <div class="drill-description">${summary.drillRecommendation.description}</div>
-                            <div class="drill-duration">${summary.drillRecommendation.duration}</div>
-                        </div>
-                    </div>
-                `;
-            }
+            // --- Card 4: Stroke Breakdown ---
+            if (summary.strokeTypeBreakdowns && Object.keys(summary.strokeTypeBreakdowns).length > 0) {
+                const breakdowns = summary.strokeTypeBreakdowns;
+                const maxCount = Math.max(...Object.values(breakdowns).map(b => b.count));
+                // Within-session progress
+                let withinProgress = {};
+                if (tennisAI?.sessionVideoManager?.bookmarks?.length >= 3) {
+                    try { withinProgress = tennisAI.sessionVideoManager.getWithinSessionProgress(); } catch(e) {}
+                }
 
-            // Show coach's notebook notes
-            if (summary.coachNotes) {
-                html += `
-                    <div class="summary-section">
-                        <div class="summary-section-title">Coach's Notes</div>
-                        <div style="font-style: italic; color: rgba(255,255,255,0.8); font-size: 14px;
-                                    line-height: 1.6; padding: 12px 16px; background: rgba(255,255,255,0.05);
-                                    border-radius: 8px; border-left: 3px solid var(--accent-volt);">
-                            "${summary.coachNotes}"
-                        </div>
-                    </div>
-                `;
-            }
-
-            // Show coaching plan / next session goal
-            const plan = summary.coachingPlan || (typeof improvementTracker !== 'undefined' ? improvementTracker.getCoachingPlan() : null);
-            if (plan?.focusAreas?.length > 0) {
-                html += `
-                    <div class="summary-section">
-                        <div class="summary-section-title">Improvement Plan</div>
-                        ${plan.focusAreas.map(f => `
-                            <div style="padding: 10px 14px; margin-bottom: 8px; background: rgba(255,255,255,0.05);
-                                        border-radius: 8px; border-left: 3px solid #4FC3F7;">
-                                <div style="font-weight: 600; color: #4FC3F7; font-size: 14px; margin-bottom: 4px;">${f.area}</div>
-                                <div style="color: rgba(255,255,255,0.7); font-size: 13px; line-height: 1.4;">
-                                    ${f.why || ''}${f.drill ? ` Drill: ${f.drill}` : ''}
+                let breakdownHtml = `<div class="recap-label">YOUR STROKES</div>`;
+                for (const [type, bd] of Object.entries(breakdowns)) {
+                    const score = bd.avgQuality || 0;
+                    const barColor = score >= 75 ? '#32D74B' : score >= 60 ? 'var(--accent-volt)' : '#FF3B30';
+                    const barWidth = maxCount > 0 ? Math.round((bd.count / maxCount) * 100) : 0;
+                    const wp = withinProgress[type];
+                    const topFault = bd.topFault || null;
+                    breakdownHtml += `
+                        <div class="recap-breakdown-row" onclick="this.classList.toggle('expanded')">
+                            <div class="recap-breakdown-header">
+                                <span class="recap-breakdown-type">${type}</span>
+                                <span class="recap-breakdown-score" style="color:${barColor}">${Math.round(score)}</span>
+                            </div>
+                            <div class="recap-breakdown-bar-track">
+                                <div class="recap-breakdown-bar" style="width:${barWidth}%; background:${barColor}"></div>
+                            </div>
+                            <div class="recap-breakdown-count">${bd.count} stroke${bd.count !== 1 ? 's' : ''}</div>
+                            <div class="recap-breakdown-detail">
+                                <div class="recap-breakdown-detail-inner">
+                                    ${bd.avgFormScore ? `<span class="recap-detail-chip">Form ${Math.round(bd.avgFormScore)}</span>` : ''}
+                                    ${bd.avgRotation ? `<span class="recap-detail-chip">Power ${Math.round(bd.avgRotation)}</span>` : ''}
+                                    ${topFault ? `<span class="recap-detail-chip fault">${topFault}</span>` : ''}
+                                    ${wp && wp.delta !== 0 ? `<span class="recap-detail-chip" style="color:${wp.delta > 0 ? '#32D74B' : '#FF3B30'}">${wp.firstQuality} → ${wp.lastQuality}</span>` : ''}
                                 </div>
                             </div>
-                        `).join('')}
-                        ${plan.sessionGoal ? `
-                            <div style="margin-top: 10px; padding: 10px 14px; background: rgba(200,230,255,0.08);
-                                        border-radius: 8px; font-size: 14px; color: rgba(255,255,255,0.9);">
-                                Next session goal: ${plan.sessionGoal}
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
+                        </div>`;
+                }
+
+                // Rally stats footer
+                if (summary.rallyStats && summary.rallyStats.totalRallies > 0) {
+                    const rs = summary.rallyStats;
+                    breakdownHtml += `<div class="recap-rally-footer">${rs.totalRallies} rallies · avg ${rs.avgRallyLength} strokes · longest ${rs.longestRally}</div>`;
+                }
+
+                cards.push({ html: breakdownHtml });
             }
 
-            // Show milestones if any achieved
-            if (summary.milestones && summary.milestones.length > 0) {
-                html += `
-                    <div class="summary-section">
-                        <div class="summary-section-title">Milestones Achieved!</div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                            ${summary.milestones.map(m => `
-                                <span style="background: linear-gradient(135deg, var(--accent-volt), #a0cc00); color: #0A0A0A; padding: 8px 16px; border-radius: 20px; font-weight: bold; font-size: 13px;">
-                                    ${m.label}
-                                </span>
-                            `).join('')}
-                        </div>
-                    </div>
-                `;
+            // --- Card 5: Coach's Notes ---
+            const coachPref = (typeof onboardingState !== 'undefined' && onboardingState.coachPreference) || 'alex';
+            const coachConfigs = { alex: { name: 'Coach Alex', icon: 'star' }, jordan: { name: 'Coach Jordan', icon: 'target' }, sam: { name: 'Coach Sam', icon: 'lightning' } };
+            const coach = coachConfigs[coachPref] || coachConfigs.alex;
+            const coachIcons = {
+                star: `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-volt)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+                target: `<svg viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
+                lightning: `<svg viewBox="0 0 24 24" fill="none" stroke="#FFD60A" stroke-width="2"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`
+            };
+            if (summary.coachNotes || summary.visualProgress) {
+                let coachHtml = `<div class="recap-coach">
+                    <div class="recap-coach-avatar">${coachIcons[coach.icon] || coachIcons.star}</div>
+                    <div>
+                        <div class="recap-coach-name">${coach.name}</div>`;
+                if (summary.coachNotes) {
+                    coachHtml += `<div class="recap-coach-quote">"${summary.coachNotes}"</div>`;
+                }
+                if (summary.visualProgress) {
+                    coachHtml += `<div class="recap-visual-progress">${summary.visualProgress}</div>`;
+                }
+                coachHtml += `</div></div>`;
+                cards.push({ html: coachHtml });
             }
 
-            // Visual Progress card (Gemini best-vs-worst comparison)
-            if (summary.visualProgress) {
-                html += `
-                    <div class="summary-section" style="background: rgba(255,215,0,0.06); border-radius: 10px;
-                                padding: 14px 16px; border-left: 3px solid rgba(255,215,0,0.5);">
-                        <div class="summary-section-title" style="color: #FFD700;">Visual Progress</div>
-                        <div style="font-size: 14px; color: rgba(255,255,255,0.85); line-height: 1.5;">
-                            ${summary.visualProgress}
-                        </div>
-                    </div>
-                `;
+            // --- Card 6: Best Moments ---
+            const replays = typeof window.strokeReplayManager !== 'undefined' ? window.strokeReplayManager.getAllReplays() : [];
+            let notableStrokes = [];
+            if (tennisAI?.sessionVideoManager?.getNotableStrokes) {
+                try { notableStrokes = tennisAI.sessionVideoManager.getNotableStrokes(); } catch(e) {}
             }
+            if (replays.length > 0 || notableStrokes.length > 0) {
+                // Merge: use notables first (they have labels), fill with replays sorted by quality
+                const momentCards = [];
+                const usedReplayIndices = new Set();
+                for (const n of notableStrokes) {
+                    if (n.replayIndex >= 0 && n.replayIndex < replays.length) {
+                        momentCards.push({ replayIndex: n.replayIndex, quality: n.quality, label: n.label, type: n.type });
+                        usedReplayIndices.add(n.replayIndex);
+                    }
+                }
+                // Add remaining replays sorted by quality
+                const remaining = replays.map((r, i) => ({ replayIndex: i, quality: r.quality || 0, label: '', type: r.strokeType || '' }))
+                    .filter(r => !usedReplayIndices.has(r.replayIndex))
+                    .sort((a, b) => b.quality - a.quality);
+                for (const r of remaining) {
+                    if (momentCards.length >= 10) break;
+                    momentCards.push(r);
+                }
 
-            // Gemini tactical summary (from rally analysis)
-            if (tennisAI?.rallyTracker?.getLastRallyAnalysis) {
-                const ra = tennisAI.rallyTracker.getLastRallyAnalysis();
-                if (ra && ra.overallAssessment) {
-                    html += `
-                        <div class="summary-section" style="background: rgba(79,195,247,0.08); border-radius: 10px;
-                                    padding: 14px 16px; border-left: 3px solid rgba(79,195,247,0.5);">
-                            <div class="summary-section-title" style="color: #4FC3F7;">Tactical Summary</div>
-                            <div style="font-size: 14px; color: rgba(255,255,255,0.85); line-height: 1.5; margin-bottom: 8px;">
-                                ${ra.overallAssessment}
-                            </div>
-                            ${ra.suggestion ? `<div style="font-size: 13px; color: var(--accent-volt); font-weight: 500;">
-                                Next time: ${ra.suggestion}
-                            </div>` : ''}
-                        </div>
-                    `;
+                if (momentCards.length > 0) {
+                    let momentsHtml = `<div class="recap-label">BEST MOMENTS</div><div class="recap-moments-scroll">`;
+                    for (const m of momentCards) {
+                        const qColor = m.quality >= 80 ? '#32D74B' : m.quality >= 60 ? 'var(--accent-volt)' : '#FF3B30';
+                        momentsHtml += `
+                            <div class="recap-moment" onclick="playNotableReplay(${m.replayIndex})">
+                                <canvas width="180" height="200" data-replay-index="${m.replayIndex}"></canvas>
+                                <div class="recap-moment-info">
+                                    <span class="recap-moment-score" style="color:${qColor}">${Math.round(m.quality)}</span>
+                                    <span class="recap-moment-label">${m.label || m.type}</span>
+                                </div>
+                            </div>`;
+                    }
+                    momentsHtml += `</div>`;
+                    cards.push({ html: momentsHtml });
                 }
             }
 
-            // Rally stats (if rally tracker has data)
-            if (summary.rallyStats && summary.rallyStats.totalRallies > 0) {
-                const rs = summary.rallyStats;
-                html += `
-                    <div class="summary-section">
-                        <div class="summary-section-title">Rally Stats</div>
-                        <div class="summary-stats" style="margin-top: 8px;">
-                            <div class="summary-stat">
-                                <div class="summary-stat-value">${rs.totalRallies}</div>
-                                <div class="summary-stat-label">Rallies</div>
-                            </div>
-                            <div class="summary-stat">
-                                <div class="summary-stat-value">${rs.avgRallyLength}</div>
-                                <div class="summary-stat-label">Avg Length</div>
-                            </div>
-                            <div class="summary-stat">
-                                <div class="summary-stat-value">${rs.longestRally}</div>
-                                <div class="summary-stat-label">Longest</div>
-                            </div>
-                            <div class="summary-stat">
-                                <div class="summary-stat-value">${rs.servePercentage}%</div>
-                                <div class="summary-stat-label">Serve Points</div>
-                            </div>
-                        </div>
-                        ${rs.avgPointQuality > 0 ? `
-                            <div style="margin-top: 8px; font-size: 13px; color: rgba(255,255,255,0.6);">
-                                Average point quality: ${rs.avgPointQuality}/100
-                                ${rs.recentTrend !== 'stable' && rs.recentTrend !== 'none' ? ` · Trend: ${rs.recentTrend}` : ''}
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
+            // --- Card 7: Progress ---
+            let progressHtml = '';
+            // Within-session
+            if (tennisAI?.sessionVideoManager?.bookmarks?.length >= 3) {
+                try {
+                    const progress = tennisAI.sessionVideoManager.getWithinSessionProgress();
+                    const entries = Object.entries(progress).filter(([, d]) => d.delta !== 0);
+                    if (entries.length > 0) {
+                        progressHtml += `<div class="recap-progress-section">
+                            <div class="recap-progress-sublabel">This Session</div>
+                            ${entries.map(([type, d]) => {
+                                const color = d.delta > 0 ? '#32D74B' : '#FF3B30';
+                                const arrow = d.delta > 0 ? '↑' : '↓';
+                                return `<div class="recap-progress-row">
+                                    <span class="recap-progress-type">${type}</span>
+                                    <span class="recap-progress-delta" style="color:${color}">${d.firstQuality} → ${d.lastQuality} ${arrow}${Math.abs(d.delta)}</span>
+                                </div>`;
+                            }).join('')}
+                        </div>`;
+                    }
+                } catch(e) {}
             }
-
-            // Cross-session progress (vs last session)
+            // Cross-session
             if (typeof improvementTracker !== 'undefined' && improvementTracker.data) {
                 const types = Object.keys(improvementTracker.data.strokeTypes || {});
                 const crossDeltas = [];
                 for (const type of types) {
                     const history = improvementTracker.data.strokeTypes[type];
-                    if (history && history.quality && history.quality.length >= 2) {
+                    if (history?.quality?.length >= 2) {
                         const prev = history.quality[history.quality.length - 2];
                         const current = history.quality[history.quality.length - 1];
                         const delta = Math.round(current - prev);
-                        if (delta !== 0) {
-                            crossDeltas.push({ type, prev: Math.round(prev), current: Math.round(current), delta });
-                        }
+                        if (delta !== 0) crossDeltas.push({ type, prev: Math.round(prev), current: Math.round(current), delta });
                     }
                 }
                 if (crossDeltas.length > 0) {
-                    html += `
-                        <div class="summary-section">
-                            <div class="summary-section-title">vs Last Session</div>
-                            ${crossDeltas.map(d => {
-                                const arrow = d.delta > 0 ? '↑' : '↓';
-                                const color = d.delta > 0 ? '#32D74B' : '#FF3B30';
-                                return `<div style="display: flex; justify-content: space-between; align-items: center;
-                                            padding: 8px 12px; margin-bottom: 4px; background: rgba(255,255,255,0.04); border-radius: 8px;">
-                                    <span style="color: rgba(255,255,255,0.8); font-size: 14px;">${d.type}</span>
-                                    <span style="color: ${color}; font-weight: 600; font-size: 14px;">
-                                        ${d.prev} → ${d.current} ${arrow}${Math.abs(d.delta)}
-                                    </span>
-                                </div>`;
-                            }).join('')}
-                        </div>
-                    `;
+                    progressHtml += `<div class="recap-progress-section">
+                        <div class="recap-progress-sublabel">vs Last Session</div>
+                        ${crossDeltas.map(d => {
+                            const color = d.delta > 0 ? '#32D74B' : '#FF3B30';
+                            const arrow = d.delta > 0 ? '↑' : '↓';
+                            return `<div class="recap-progress-row">
+                                <span class="recap-progress-type">${d.type}</span>
+                                <span class="recap-progress-delta" style="color:${color}">${d.prev} → ${d.current} ${arrow}${Math.abs(d.delta)}</span>
+                            </div>`;
+                        }).join('')}
+                    </div>`;
                 }
             }
-
-            // Within-session progress (from session video manager)
-            if (tennisAI?.sessionVideoManager?.bookmarks?.length >= 3) {
-                const progress = tennisAI.sessionVideoManager.getWithinSessionProgress();
-                const progressEntries = Object.entries(progress).filter(([, d]) => d.delta !== 0);
-                if (progressEntries.length > 0) {
-                    html += `
-                        <div class="summary-section">
-                            <div class="summary-section-title">Within-Session Progress</div>
-                            ${progressEntries.map(([type, d]) => {
-                                const arrow = d.delta > 0 ? '↑' : '↓';
-                                const color = d.delta > 0 ? '#32D74B' : '#FF3B30';
-                                return `<div style="display: flex; justify-content: space-between; align-items: center;
-                                            padding: 8px 12px; margin-bottom: 4px; background: rgba(255,255,255,0.04); border-radius: 8px;">
-                                    <span style="color: rgba(255,255,255,0.8); font-size: 14px;">${type}</span>
-                                    <span style="color: ${color}; font-weight: 600; font-size: 14px;">
-                                        ${d.firstQuality} → ${d.lastQuality} ${arrow}${Math.abs(d.delta)}
-                                    </span>
-                                </div>`;
-                            }).join('')}
-                        </div>
-                    `;
-                }
-
-                // Notable strokes
-                const notables = tennisAI.sessionVideoManager.getNotableStrokes();
-                if (notables.length > 0) {
-                    html += `
-                        <div class="summary-section">
-                            <div class="summary-section-title">Notable Strokes</div>
-                            <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                                ${notables.map(n => {
-                                    const qColor = n.quality >= 80 ? '#32D74B' : n.quality >= 60 ? '#CDFF00' : '#FF3B30';
-                                    return `<div style="padding: 8px 14px; background: rgba(255,255,255,0.05); border-radius: 8px;
-                                                border-left: 3px solid ${qColor}; cursor: ${n.replayIndex >= 0 ? 'pointer' : 'default'};"
-                                            ${n.replayIndex >= 0 ? `onclick="playNotableReplay(${n.replayIndex})"` : ''}>
-                                        <div style="font-size: 11px; color: rgba(255,255,255,0.5); text-transform: uppercase; letter-spacing: 0.5px;">${n.label}</div>
-                                        <div style="font-size: 16px; font-weight: 700; color: ${qColor};">${n.quality}</div>
-                                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">${n.type}</div>
-                                    </div>`;
-                                }).join('')}
-                            </div>
-                        </div>
-                    `;
-                }
+            if (progressHtml) {
+                cards.push({ html: `<div class="recap-label">PROGRESS</div>${progressHtml}` });
             }
 
-            // Curriculum drill suggestion
-            if (typeof drillMode !== 'undefined') {
-                const suggestion = drillMode.getCurriculumDrillSuggestion();
-                if (suggestion) {
-                    html += `
-                        <div class="summary-section">
-                            <div class="summary-section-title">Suggested Drill</div>
-                            <div style="padding: 12px 16px; background: rgba(79,195,247,0.1); border-radius: 10px;
-                                        border: 1px solid rgba(79,195,247,0.3);">
-                                <div style="font-size: 12px; color: #4FC3F7; margin-bottom: 4px;">${suggestion.reason}</div>
-                                <div style="font-size: 16px; font-weight: 600; color: #fff; margin-bottom: 4px;">${suggestion.drill.name}</div>
-                                <div style="font-size: 13px; color: rgba(255,255,255,0.6);">${suggestion.drill.description}</div>
-                            </div>
-                        </div>
-                    `;
+            // --- Card 8: Your Plan ---
+            const plan = summary.coachingPlan || (typeof improvementTracker !== 'undefined' ? improvementTracker.getCoachingPlan() : null);
+            if (plan?.focusAreas?.length > 0) {
+                let planHtml = `<div class="recap-label">YOUR PLAN</div>`;
+                for (const f of plan.focusAreas.slice(0, 3)) {
+                    planHtml += `<div class="recap-plan-card">
+                        <div class="recap-plan-area">${f.area}</div>
+                        ${f.target ? `<div class="recap-plan-target">Target: ${f.target}</div>` : (f.why ? `<div class="recap-plan-target">${f.why}</div>` : '')}
+                        ${f.drill ? `<div class="recap-plan-drill" onclick="closeSessionSummary(); setTimeout(() => startDrillFromTab('${(f.drill || '').replace(/'/g, '')}'), 300);">
+                            ${f.drill} ▸
+                        </div>` : ''}
+                    </div>`;
                 }
+                if (plan.sessionGoal) {
+                    planHtml += `<div class="recap-plan-goal">"${plan.sessionGoal}"</div>`;
+                }
+                cards.push({ html: planHtml });
             }
 
-            // Share button
-            html += `
-                <div class="summary-section" style="text-align: center; padding-top: 8px;">
-                    <button onclick="shareSessionCard()" style="background: linear-gradient(135deg, var(--accent-volt), #a0cc00);
-                        color: #0A0A0A; border: none; padding: 14px 32px; border-radius: 12px; font-weight: 700;
-                        font-size: 16px; cursor: pointer; letter-spacing: 0.5px;">
-                        Share Session Card
-                    </button>
+            // --- Card 9: Actions ---
+            cards.push({ html: `
+                <div class="recap-actions">
+                    <button class="recap-btn-primary" onclick="shareSessionCard()">Share Session Card</button>
+                    <button class="recap-btn-secondary" onclick="closeSessionSummary()">Done</button>
                 </div>
-            `;
+            `, cls: 'recap-card-transparent' });
 
-            document.getElementById('sessionSummaryContent').innerHTML = html;
+            // --- Render ---
+            const recapScroll = document.getElementById('recapScroll');
+            recapScroll.innerHTML = '';
+            cards.forEach((card, i) => {
+                const div = document.createElement('div');
+                div.className = card.cls || 'recap-card';
+                div.style.animationDelay = `${i * 100}ms`;
+                div.innerHTML = card.html;
+                recapScroll.appendChild(div);
+            });
 
-            // Store summary for share card
-            window._lastSessionSummary = summary;
+            // Show overlay
+            document.getElementById('sessionRecap').classList.add('visible');
+            recapScroll.scrollTop = 0;
 
-            // Add stroke review grid if replays are available
-            const summaryContent = document.getElementById('sessionSummaryContent');
-            if (typeof buildStrokeReviewGrid === 'function') {
-                buildStrokeReviewGrid(summaryContent);
-            }
+            // Post-DOM: animated score count-up
+            animateScoreCountUp(document.getElementById('recapScoreNum'), avgScore);
 
-            document.getElementById('sessionSummaryModal').classList.add('visible');
+            // Post-DOM: render mini skeletons
+            requestAnimationFrame(() => renderMiniSkeletons());
         }
 
         function closeSessionSummary() {
-            document.getElementById('sessionSummaryModal').classList.remove('visible');
+            document.getElementById('sessionRecap').classList.remove('visible');
+            // Force profile tab to re-populate with fresh data next visit
+            _profileTabPopulated = false;
             // Return to browse mode if we're in live mode
             if (appMode === 'live') {
                 appMode = 'browse';
@@ -6250,6 +6735,89 @@ This is a demo — make them feel excited about the coaching experience.`;
                 document.getElementById('tabContent').classList.add('active');
                 switchTab('home');
             }
+        }
+
+        // Animated score count-up (0 → target over 800ms, ease-out)
+        function animateScoreCountUp(el, target) {
+            if (!el || !target) return;
+            const duration = 800;
+            const start = performance.now();
+            function tick(now) {
+                const t = Math.min((now - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - t, 3); // ease-out cubic
+                el.textContent = Math.round(eased * target);
+                if (t < 1) requestAnimationFrame(tick);
+            }
+            requestAnimationFrame(tick);
+        }
+
+        // Render mini skeleton on a small canvas from replay data
+        function renderMiniSkeleton(canvas, replay) {
+            if (!canvas || !replay?.frames?.length) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width, h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+
+            // Find contact frame or middle frame
+            let frameIdx = Math.floor(replay.frames.length / 2);
+            for (let i = 0; i < replay.frames.length; i++) {
+                if (replay.frames[i].phase === 'contact' || replay.frames[i].phase === 'acceleration') {
+                    frameIdx = i;
+                    break;
+                }
+            }
+            const frame = replay.frames[frameIdx];
+            if (!frame?.landmarks) return;
+            const lm = frame.landmarks;
+
+            const connections = [
+                [11, 12], [11, 23], [12, 24], [23, 24],
+                [12, 14], [14, 16], [11, 13], [13, 15],
+                [24, 26], [26, 28], [23, 25], [25, 27]
+            ];
+
+            // Phase colors
+            const phaseColors = {
+                preparation: '#4FC3F7', loading: '#FFD60A',
+                acceleration: '#FF9500', contact: '#FF3B30',
+                followThrough: '#32D74B'
+            };
+            const color = phaseColors[frame.phase] || 'rgba(205,255,0,0.8)';
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.lineCap = 'round';
+
+            for (const [a, b] of connections) {
+                if (lm[a] && lm[b]) {
+                    ctx.beginPath();
+                    ctx.moveTo(lm[a].x * w, lm[a].y * h);
+                    ctx.lineTo(lm[b].x * w, lm[b].y * h);
+                    ctx.stroke();
+                }
+            }
+
+            // Joint dots
+            ctx.fillStyle = color;
+            for (const idx of [11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28]) {
+                if (lm[idx]) {
+                    ctx.beginPath();
+                    ctx.arc(lm[idx].x * w, lm[idx].y * h, 2.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        // Render all mini skeletons in the recap moments row
+        function renderMiniSkeletons() {
+            const canvases = document.querySelectorAll('.recap-moment canvas');
+            const allReplays = typeof window.strokeReplayManager !== 'undefined' ? window.strokeReplayManager.getAllReplays() : [];
+            canvases.forEach(canvas => {
+                const idx = parseInt(canvas.dataset.replayIndex);
+                if (!isNaN(idx) && allReplays[idx]) {
+                    renderMiniSkeleton(canvas, allReplays[idx]);
+                }
+            });
         }
 
         function shareSessionCard() {
@@ -6262,8 +6830,8 @@ This is a demo — make them feel excited about the coaching experience.`;
 
         function playNotableReplay(replayIndex) {
             if (typeof window.strokeReplayManager === 'undefined') return;
-            if (typeof showReplayOverlay === 'function') {
-                showReplayOverlay(replayIndex);
+            if (typeof openReplay === 'function') {
+                openReplay(replayIndex);
             }
         }
 
@@ -7168,29 +7736,111 @@ This is a demo — make them feel excited about the coaching experience.`;
             const container = document.getElementById('profileTabContent');
             let html = '';
 
-            // Session history
-            html += '<div class="profile-section">';
-            html += '<div class="profile-section-title">Session History</div>';
+            // --- Data sources ---
+            const profile = (typeof playerProfile !== 'undefined') ? playerProfile.profile : null;
+            const localOb = (() => { try { return JSON.parse(localStorage.getItem('ace_onboarding') || '{}'); } catch(e) { return {}; } })();
+            const displayName = profile?.displayName || (typeof onboardingState !== 'undefined' && onboardingState.displayName) || localOb.displayName || null;
+            const coachKey = profile?.coachPreference || (typeof onboardingState !== 'undefined' && onboardingState.coachPreference) || localOb.coachPreference || 'alex';
+            const ntrpLevel = profile?.ntrpLevel || (typeof onboardingState !== 'undefined' && onboardingState.ntrpLevel) || localOb.ntrpLevel || null;
+            const tier = profile?.subscriptionTier || 'free';
+            const goals = profile?.improvementGoals || (typeof onboardingState !== 'undefined' && onboardingState.goals) || localOb.goals || [];
 
+            // Coach avatar SVG by key
+            const coachAvatars = {
+                alex: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+                jordan: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/><line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/><line x1="12" y1="22" x2="12" y2="18"/></svg>',
+                sam: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+            };
+            const avatarSvg = coachAvatars[coachKey] || coachAvatars.alex;
+
+            // Tier badge
+            const tierLabel = tier === 'pro' ? 'Pro' : tier === 'trial' ? 'Trial' : 'Free';
+            const tierClass = tier === 'pro' ? 'pro' : tier === 'trial' ? 'trial' : 'free';
+
+            // 1. HEADER
+            html += `<div class="profile-header">
+                <div class="profile-avatar">${avatarSvg}</div>
+                <div class="profile-name">${displayName || 'Player'}</div>
+                <div class="profile-meta">
+                    ${ntrpLevel ? `<span>${ntrpLevel} NTRP</span>` : ''}
+                    <span class="profile-tier-badge ${tierClass}">${tierLabel}</span>
+                </div>
+            </div>`;
+
+            // 2. STATS ROW
+            let stats = null;
             if (typeof sessionStorage !== 'undefined' && sessionStorage.getAggregatedStats) {
-                const stats = sessionStorage.getAggregatedStats();
-                if (stats && stats.totalSessions > 0) {
-                    html += `
-                        <div class="home-stats-row" style="margin-bottom:16px;">
-                            <div class="home-stat"><div class="home-stat-value">${stats.totalSessions}</div><div class="home-stat-label">Sessions</div></div>
-                            <div class="home-stat"><div class="home-stat-value">${stats.totalStrokes}</div><div class="home-stat-label">Total Strokes</div></div>
-                            <div class="home-stat"><div class="home-stat-value">${Math.round(stats.averageQuality)}</div><div class="home-stat-label">Avg Quality</div></div>
-                        </div>
-                    `;
-                } else {
-                    html += '<div style="color:var(--text-muted);padding:12px 0;">No sessions recorded yet.</div>';
-                }
-            } else {
-                html += '<div style="color:var(--text-muted);padding:12px 0;">Session history not available.</div>';
+                stats = sessionStorage.getAggregatedStats();
             }
+            const totalSessions = stats?.totalSessions || profile?.totalSessions || 0;
+            const totalStrokes = stats?.totalStrokes || profile?.totalStrokes || 0;
+            const totalTime = profile?.totalPracticeTime || (stats?.totalDuration) || 0;
+            const timeHours = (totalTime / 3600000).toFixed(1);
+
+            html += '<div class="profile-section">';
+            html += `<div class="home-stats-row" style="margin-bottom:8px;">
+                <div class="home-stat"><div class="home-stat-value">${totalSessions}</div><div class="home-stat-label">Sessions</div></div>
+                <div class="home-stat"><div class="home-stat-value">${totalStrokes}</div><div class="home-stat-label">Strokes</div></div>
+                <div class="home-stat"><div class="home-stat-value">${timeHours}h</div><div class="home-stat-label">Time</div></div>
+            </div>`;
             html += '</div>';
 
-            // Settings
+            // 3. STROKE PROFICIENCY
+            const strokeProf = profile?.strokeProficiency;
+            if (strokeProf) {
+                const activeTypes = Object.entries(strokeProf).filter(([_, p]) => p.attempts > 0);
+                if (activeTypes.length > 0) {
+                    html += '<div class="profile-section">';
+                    html += '<div class="profile-section-title">Stroke Proficiency</div>';
+                    activeTypes.forEach(([type, prof]) => {
+                        const score = Math.round(prof.avgScore);
+                        const pct = Math.min(100, score);
+                        const barColor = score >= 75 ? '#4CAF50' : score >= 60 ? 'var(--accent-volt)' : '#F44336';
+                        let detail = `${prof.attempts} strokes`;
+                        if (prof.bestScore > 0) detail += ` &middot; Best ${Math.round(prof.bestScore)}`;
+                        // Trend arrow from improvementTracker if available
+                        if (typeof improvementTracker !== 'undefined') {
+                            const progress = improvementTracker.getProgressForStroke?.(type);
+                            if (progress && progress.trend === 'improving') detail += ' &middot; <span style="color:#4CAF50">↑</span>';
+                            else if (progress && progress.trend === 'declining') detail += ' &middot; <span style="color:#F44336">↓</span>';
+                        }
+                        html += `<div class="profile-proficiency-row">
+                            <div class="profile-proficiency-header">
+                                <div class="profile-proficiency-type">${type}</div>
+                                <div class="profile-proficiency-score" style="color:${barColor}">${score}</div>
+                            </div>
+                            <div class="profile-proficiency-bar"><div class="profile-proficiency-bar-fill" style="width:${pct}%;background:${barColor}"></div></div>
+                            <div class="profile-proficiency-detail">${detail}</div>
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+            }
+
+            // 4. MILESTONES
+            const milestones = profile?.milestones;
+            if (milestones && milestones.length > 0) {
+                html += '<div class="profile-section">';
+                html += '<div class="profile-section-title">Milestones</div>';
+                html += '<div class="profile-milestones">';
+                milestones.forEach(m => {
+                    html += `<span class="profile-milestone-pill">${m.label || m}</span>`;
+                });
+                html += '</div></div>';
+            }
+
+            // 5. GOALS
+            if (goals && goals.length > 0) {
+                html += '<div class="profile-section">';
+                html += '<div class="profile-section-title">Goals</div>';
+                html += '<div class="profile-goals">';
+                goals.forEach(g => {
+                    html += `<span class="profile-goal-chip">${g}</span>`;
+                });
+                html += '</div></div>';
+            }
+
+            // 6. SETTINGS
             html += '<div class="profile-section">';
             html += '<div class="profile-section-title">Settings</div>';
 
@@ -7236,25 +7886,104 @@ This is a demo — make them feel excited about the coaching experience.`;
 
         function populateHomeStats() {
             try {
+                // --- Personalized greeting ---
+                const greetingEl = document.getElementById('homeGreetingText');
+                const coachLineEl = document.getElementById('homeCoachLine');
+                const progressEl = document.getElementById('homeProgressTidbit');
+
+                // Get display name from playerProfile (returning user) or onboardingState (mid-onboarding)
+                const displayName = (typeof playerProfile !== 'undefined' && playerProfile.profile?.displayName)
+                    || (typeof onboardingState !== 'undefined' && onboardingState.displayName)
+                    || null;
+
+                // Get stats
+                let stats = null;
                 if (typeof sessionStorage !== 'undefined' && sessionStorage.getAggregatedStats) {
-                    const stats = sessionStorage.getAggregatedStats();
-                    if (stats && stats.totalSessions > 0) {
-                        document.getElementById('homeStatsCard').style.display = '';
-                        document.getElementById('homeStatAvg').textContent = Math.round(stats.averageQuality);
-                        document.getElementById('homeStatStrokes').textContent = stats.totalStrokes;
-                        document.getElementById('homeStatSessions').textContent = stats.totalSessions;
+                    stats = sessionStorage.getAggregatedStats();
+                }
+                const hasSessions = stats && stats.totalSessions > 0;
+
+                // Time-of-day greeting
+                if (greetingEl) {
+                    if (!hasSessions && !displayName) {
+                        greetingEl.innerHTML = 'ACE<span class="accent">.</span>';
+                    } else {
+                        const hour = new Date().getHours();
+                        let timeGreeting;
+                        if (hour < 12) timeGreeting = 'Good morning';
+                        else if (hour < 17) timeGreeting = 'Good afternoon';
+                        else timeGreeting = 'Good evening';
+
+                        if (hasSessions && displayName) {
+                            greetingEl.textContent = `${timeGreeting}, ${displayName}.`;
+                        } else if (displayName) {
+                            greetingEl.textContent = `Welcome, ${displayName}.`;
+                        } else {
+                            greetingEl.textContent = `${timeGreeting}.`;
+                        }
                     }
                 }
 
+                // Coach line
+                if (coachLineEl) {
+                    const coachKey = (typeof playerProfile !== 'undefined' && playerProfile.profile?.coachPreference)
+                        || (typeof onboardingState !== 'undefined' && onboardingState.coachPreference)
+                        || 'alex';
+                    try {
+                        const configs = GPTVoiceCoach.getCoachConfigs();
+                        const coach = configs[coachKey] || configs.alex;
+                        coachLineEl.textContent = coach.name;
+                    } catch (e) {
+                        coachLineEl.textContent = '';
+                    }
+                }
+
+                // Progress tidbit
+                if (progressEl) {
+                    let tidbit = null;
+                    if (typeof improvementTracker !== 'undefined' && hasSessions) {
+                        tidbit = improvementTracker.getTopProgress?.();
+                    }
+                    if (tidbit) {
+                        progressEl.textContent = tidbit;
+                        progressEl.classList.remove('muted');
+                    } else if (hasSessions && stats.trend && stats.trend !== 'stable') {
+                        progressEl.textContent = stats.trend === 'improving' ? 'Your game is trending up' : 'Time to refocus — your scores dipped recently';
+                        progressEl.classList.remove('muted');
+                    } else if (!hasSessions) {
+                        progressEl.textContent = 'Hit 5 strokes to unlock your first analysis.';
+                        progressEl.classList.add('muted');
+                    } else {
+                        progressEl.textContent = '';
+                    }
+                }
+
+                // --- Stats card ---
+                if (hasSessions) {
+                    document.getElementById('homeStatsCard').style.display = '';
+                    const avgEl = document.getElementById('homeStatAvg');
+                    const avgVal = Math.round(stats.overallAverage || 0);
+                    let trendArrow = '';
+                    if (stats.trend === 'improving') trendArrow = ' <span style="color:#4CAF50">↑</span>';
+                    else if (stats.trend === 'declining') trendArrow = ' <span style="color:#F44336">↓</span>';
+                    avgEl.innerHTML = avgVal + trendArrow;
+                    document.getElementById('homeStatStrokes').textContent = stats.totalStrokes;
+                    document.getElementById('homeStatSessions').textContent = stats.totalSessions;
+                }
+
+                // --- Plan card ---
                 if (typeof improvementTracker !== 'undefined') {
                     const plan = improvementTracker.getPlan?.() || improvementTracker.plan;
                     if (plan && plan.focusAreas && plan.focusAreas.length > 0) {
                         document.getElementById('homePlanCard').style.display = '';
                         const planContainer = document.getElementById('homePlanItems');
-                        planContainer.innerHTML = plan.focusAreas.map(fa => `
+                        planContainer.innerHTML = plan.focusAreas.slice(0, 3).map(fa => `
                             <div class="home-plan-item">
                                 <div class="home-plan-dot"></div>
-                                <div class="home-plan-text">${fa.metric || fa.description || fa.drill || ''}</div>
+                                <div>
+                                    <div class="home-plan-text">${fa.area || fa.metric || fa.drill || ''}</div>
+                                    ${fa.target ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">Target: ${fa.target}</div>` : ''}
+                                </div>
                             </div>
                         `).join('');
                     }
@@ -7582,22 +8311,20 @@ This is a demo — make them feel excited about the coaching experience.`;
                 </div>
             `;
 
-            // Use session summary modal for this
-            document.getElementById('sessionSummaryContent').innerHTML = `
+            // Use export modal for this
+            document.getElementById('exportModalContent').innerHTML = `
                 <div style="text-align: center; margin-bottom: 16px;">
                     <div style="font-size: 18px; font-weight: bold; color: var(--accent-volt);">${title}</div>
                 </div>
                 ${html}
             `;
-            document.querySelector('#sessionSummaryModal .modal-title').textContent = 'Export';
-            document.querySelector('#sessionSummaryModal .btn').style.display = 'none';
-            document.getElementById('sessionSummaryModal').classList.add('visible');
+            document.getElementById('exportModal').classList.add('visible');
         }
 
         function jumpToStroke(time) {
             const video = document.getElementById('analysisVideo');
             video.currentTime = time;
-            closeSessionSummary();
+            document.getElementById('exportModal').classList.remove('visible');
         }
 
         function copyStrokeSummary(strokes) {
