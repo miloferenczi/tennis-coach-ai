@@ -3819,7 +3819,7 @@
             <div class="ob-progress"><div class="ob-progress-fill" style="width:45%"></div></div>
         </div>
 
-        <!-- Onboarding 6: Meet Your Coach (voice) -->
+        <!-- Onboarding 7: Meet Your Coach (voice, authenticated) -->
         <div id="obMeetScreen" class="screen" style="display:none;">
             <div class="onboarding-content">
                 <div id="obMeetCoachName" style="font-size:12px;color:#555;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">COACH ALEX</div>
@@ -3836,10 +3836,10 @@
                     LET'S HIT! <span style="margin-left:4px;">&rarr;</span>
                 </button>
             </div>
-            <div class="ob-progress"><div class="ob-progress-fill" style="width:54%"></div></div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:63%"></div></div>
         </div>
 
-        <!-- Onboarding 7: Camera Permission -->
+        <!-- Onboarding 8: Camera Permission -->
         <div id="obCameraScreen" class="screen" style="display:none;">
             <div class="onboarding-content">
                 <div style="margin-bottom:24px;color:var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
@@ -3851,15 +3851,15 @@
                     ALLOW CAMERA <span style="margin-left:4px;">&rarr;</span>
                 </button>
             </div>
-            <div class="ob-progress"><div class="ob-progress-fill" style="width:63%"></div></div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:72%"></div></div>
         </div>
 
-        <!-- Onboarding 8: Trial overlay (shows on top of main app) -->
+        <!-- Onboarding 9: Trial overlay (shows on top of main app) -->
         <div id="obTrialOverlay" style="display:none;">
             <div class="ob-trial-counter" id="obTrialCounter">Stroke 0/5</div>
         </div>
 
-        <!-- Onboarding 9: Report Card -->
+        <!-- Onboarding 10: Report Card -->
         <div id="obReportScreen" class="screen" style="display:none;">
             <div class="onboarding-content">
                 <div style="font-size:12px;color:#555;text-transform:uppercase;letter-spacing:0.15em;margin-bottom:8px;">YOUR REPORT CARD</div>
@@ -3870,18 +3870,18 @@
                     <div style="font-size:11px;color:#CDFF00;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Your coach says...</div>
                     <div style="font-size:14px;color:#ccc;line-height:1.5;" id="obCoachNoteText"></div>
                 </div>
-                <button class="btn-primary" onclick="obGoToSignup()">
-                    SIGN UP TO KEEP IMPROVING <span style="margin-left:4px;">&rarr;</span>
+                <button class="btn-primary" onclick="obGoToPricing()">
+                    SEE PLANS <span style="margin-left:4px;">&rarr;</span>
                 </button>
             </div>
-            <div class="ob-progress"><div class="ob-progress-fill" style="width:81%"></div></div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:90%"></div></div>
         </div>
 
-        <!-- Onboarding 10: Sign Up (magic link) -->
+        <!-- Onboarding 6: Sign Up (magic link, mandatory before Meet Coach) -->
         <div id="obSignupScreen" class="screen" style="display:none;">
             <div class="onboarding-content">
                 <div class="hero-title" style="font-size:48px;">ACE<span class="accent">.</span></div>
-                <div class="ob-question" style="font-size:18px;">Create your account</div>
+                <div class="ob-question" style="font-size:18px;">Create your free account to meet your coach</div>
                 <div class="api-input-group" style="width:100%;">
                     <label class="api-label">EMAIL ADDRESS</label>
                     <div class="api-input-wrapper">
@@ -3892,9 +3892,8 @@
                     SEND MAGIC LINK <span style="margin-left:4px;">&rarr;</span>
                 </button>
                 <div id="obSignupStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
-                <button class="btn-skip" onclick="obSkipSignup()">Continue without account</button>
             </div>
-            <div class="ob-progress"><div class="ob-progress-fill" style="width:90%"></div></div>
+            <div class="ob-progress"><div class="ob-progress-fill" style="width:54%"></div></div>
         </div>
 
         <!-- Onboarding 11: Pricing -->
@@ -5613,9 +5612,20 @@
                         document.getElementById('aiStatusDot').className = 'status-dot ready';
 
                         if (isTrialSession) {
-                            // During onboarding trial — show camera directly (live mode)
+                            // During onboarding trial — enter live mode with controls
+                            appMode = 'live';
+                            currentMode = 'practice';
+                            document.getElementById('bottomTabBar').style.display = 'none';
+                            document.getElementById('tabContent').classList.remove('active');
                             cameraContainer.style.display = 'block';
                             cameraContainer.style.opacity = '1';
+                            document.getElementById('liveSessionControls').classList.add('active');
+                            document.querySelector('.status-bar').style.display = '';
+                            document.querySelector('.coaching-panel').style.display = '';
+                            // Start analysis — TennisAI is ready since we're inside completeInitialization
+                            if (this.isReady && !this.isAnalyzing) {
+                                this.startAnalysis();
+                            }
                         } else {
                             // Normal flow — enter browse mode, camera stays hidden
                             cameraContainer.style.display = 'none';
@@ -5918,9 +5928,25 @@
             onboardingState.coachPreference = key;
             document.querySelectorAll('#obCoachCards .ob-coach-card').forEach(c => c.classList.remove('selected'));
             document.querySelector(`[data-coach-key="${key}"]`).classList.add('selected');
+
+            // Create audio element and request mic in direct tap context (mobile autoplay policy)
+            if (!gptVoiceCoach.audioElement) {
+                gptVoiceCoach.audioElement = document.createElement('audio');
+                gptVoiceCoach.audioElement.autoplay = true;
+                gptVoiceCoach.audioElement.playsInline = true;
+                document.body.appendChild(gptVoiceCoach.audioElement);
+            }
+            // Warm up audio context with silent play (unlocks autoplay on iOS/Android)
+            gptVoiceCoach.audioElement.play().catch(() => {});
+
+            // Request mic permission in user gesture context
+            navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                onboardingState._micStream = stream;
+            }).catch(() => {});
+
+            // Go to sign-up (mandatory before Meet Coach)
             setTimeout(() => {
-                transitionScreens('obCoachScreen', 'obMeetScreen');
-                obInitMeetCoach();
+                transitionScreens('obCoachScreen', 'obSignupScreen');
             }, 500);
         }
 
@@ -5935,7 +5961,7 @@
             window.speechSynthesis.speak(utterance);
         }
 
-        // --- Screen 6: Meet Your Coach ---
+        // --- Screen 7: Meet Your Coach (authenticated) ---
         async function obInitMeetCoach() {
             const configs = GPTVoiceCoach.getCoachConfigs();
             const coach = configs[onboardingState.coachPreference] || configs.alex;
@@ -5944,7 +5970,7 @@
             document.getElementById('obMeetStatus').textContent = 'Connecting...';
 
             const skillLabel = onboardingState.ntrpLevel || '3.0-3.5';
-            const goalsStr = onboardingState.goals.join(', ') || 'general improvement';
+            const goalsStr = (onboardingState.goals || []).join(', ') || 'general improvement';
             const nameStr = onboardingState.displayName ? ` Their name is ${onboardingState.displayName}.` : '';
 
             const meetInstructions = `You are ${coach.name}, an AI tennis coach. ${coach.personality}
@@ -5954,7 +5980,8 @@ Introduce yourself conversationally (2-3 sentences). Be warm, reference their go
 Keep it under 15 seconds. Do NOT mention being AI.`;
 
             try {
-                const tokenData = await supabaseClient.getGuestToken(meetInstructions, coach.voice);
+                // User is authenticated — use authenticated token
+                const tokenData = await supabaseClient.getRealtimeToken(meetInstructions, coach.voice);
                 if (!tokenData?.ephemeralKey) {
                     document.getElementById('obMeetStatus').textContent = 'Ready to go!';
                     return;
@@ -5964,7 +5991,7 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
                 gptVoiceCoach.coachName = coach.name;
                 gptVoiceCoach.coachPersonality = coach.personality;
 
-                // Ensure audio element exists
+                // Ensure audio element exists (may have been created in obSelectCoach or lost on tab switch)
                 if (!gptVoiceCoach.audioElement) {
                     gptVoiceCoach.audioElement = document.createElement('audio');
                     gptVoiceCoach.audioElement.autoplay = true;
@@ -5972,7 +5999,18 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
                     document.body.appendChild(gptVoiceCoach.audioElement);
                 }
 
-                await gptVoiceCoach.connectWebRTC(tokenData.ephemeralKey);
+                // Acquire mic if not already (may have been lost on tab switch for magic link)
+                if (!onboardingState._micStream) {
+                    try {
+                        onboardingState._micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    } catch (e) {}
+                }
+
+                // Use pre-acquired mic stream + skip default greeting
+                await gptVoiceCoach.connectWebRTC(tokenData.ephemeralKey, {
+                    micStream: onboardingState._micStream || undefined,
+                    skipGreeting: true
+                });
                 gptVoiceCoach.isConnected = true;
                 document.getElementById('obMeetStatus').textContent = 'Listening...';
 
@@ -6002,16 +6040,12 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
                 clearTimeout(onboardingState.meetCoachTimer);
                 onboardingState.meetCoachTimer = null;
             }
-            // Disconnect meet-coach session (will reconnect for trial)
-            if (gptVoiceCoach.pc) {
-                gptVoiceCoach.pc.close();
-                gptVoiceCoach.pc = null;
-                gptVoiceCoach.isConnected = false;
-            }
+            // Keep WebRTC connection alive — reuse for trial session (saves a guest token)
+            onboardingState._meetCoachConnectionAlive = !!(gptVoiceCoach.pc && gptVoiceCoach.isConnected);
             transitionScreens('obMeetScreen', 'obCameraScreen');
         }
 
-        // --- Screen 7: Camera Permission ---
+        // --- Screen 8: Camera Permission ---
         async function obRequestTrialCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
@@ -6024,7 +6058,7 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
             }
         }
 
-        // --- Screen 8: Trial Session ---
+        // --- Screen 9: Trial Session ---
         async function obStartTrialSession() {
             onboardingState.trialSessionActive = true;
             onboardingState.trialStrokes = [];
@@ -6032,39 +6066,61 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
             const configs = GPTVoiceCoach.getCoachConfigs();
             const coach = configs[onboardingState.coachPreference] || configs.alex;
 
-            // Get a new guest token for the trial
             const trialInstructions = `You are ${coach.name}, an AI tennis coach. ${coach.personality}
 You are coaching a ${onboardingState.ntrpLevel || '3.0-3.5'} NTRP player in their first trial session.
 Give quick, encouraging feedback on each stroke. Keep it to 1-2 sentences.
 This is a demo — make them feel excited about the coaching experience.`;
 
-            const tokenData = await supabaseClient.getGuestToken(trialInstructions, coach.voice);
-
-            if (tokenData?.ephemeralKey) {
-                gptVoiceCoach.voice = coach.voice;
-                gptVoiceCoach.coachName = coach.name;
-                gptVoiceCoach.coachPersonality = coach.personality;
-
-                if (!gptVoiceCoach.audioElement) {
-                    gptVoiceCoach.audioElement = document.createElement('audio');
-                    gptVoiceCoach.audioElement.autoplay = true;
-                    gptVoiceCoach.audioElement.playsInline = true;
-                    document.body.appendChild(gptVoiceCoach.audioElement);
-                }
-
-                await gptVoiceCoach.connectWebRTC(tokenData.ephemeralKey);
-                gptVoiceCoach.isConnected = true;
+            // Reuse Meet Coach connection if still alive (saves a token request)
+            if (onboardingState._meetCoachConnectionAlive && gptVoiceCoach.isConnected && gptVoiceCoach.dataChannel?.readyState === 'open') {
+                // Just update instructions for trial mode
+                gptVoiceCoach.dataChannel.send(JSON.stringify({
+                    type: 'session.update',
+                    session: { instructions: trialInstructions, turn_detection: { type: 'server_vad' } }
+                }));
                 gptVoiceCoach.sessionStartTime = Date.now();
+            } else {
+                // Fallback: get a new authenticated token if meet-coach connection was lost
+                const tokenData = await supabaseClient.getRealtimeToken(trialInstructions, coach.voice);
+
+                if (tokenData?.ephemeralKey) {
+                    gptVoiceCoach.voice = coach.voice;
+                    gptVoiceCoach.coachName = coach.name;
+                    gptVoiceCoach.coachPersonality = coach.personality;
+
+                    if (!gptVoiceCoach.audioElement) {
+                        gptVoiceCoach.audioElement = document.createElement('audio');
+                        gptVoiceCoach.audioElement.autoplay = true;
+                        gptVoiceCoach.audioElement.playsInline = true;
+                        document.body.appendChild(gptVoiceCoach.audioElement);
+                    }
+
+                    await gptVoiceCoach.connectWebRTC(tokenData.ephemeralKey, {
+                        micStream: onboardingState._micStream || undefined,
+                        skipGreeting: true
+                    });
+                    gptVoiceCoach.isConnected = true;
+                    gptVoiceCoach.sessionStartTime = Date.now();
+
+                    // Send trial instructions since we skipped default greeting
+                    gptVoiceCoach.dataChannel.send(JSON.stringify({
+                        type: 'session.update',
+                        session: { instructions: trialInstructions, turn_detection: { type: 'server_vad' } }
+                    }));
+                }
             }
 
             // Initialize TennisAI (camera + pose detection)
             tennisAI = new TennisAI();
             window.tennisAI = tennisAI;
 
-            // Enable Gemini visual analysis for guests if key available
-            if (tokenData?.geminiKey && tennisAI.sceneAnalyzer) {
-                tennisAI.sceneAnalyzer.setApiKey(tokenData.geminiKey);
-            }
+            // Enable Gemini visual analysis if key available (authenticated)
+            try {
+                const geminiKey = await supabaseClient.getGeminiKey();
+                if (geminiKey && tennisAI.sceneAnalyzer) {
+                    tennisAI.sceneAnalyzer.setApiKey(geminiKey);
+                }
+            } catch (e) {}
 
             // Show trial counter overlay
             document.getElementById('obTrialOverlay').style.display = 'block';
@@ -6099,6 +6155,11 @@ This is a demo — make them feel excited about the coaching experience.`;
             onboardingState.trialSessionActive = false;
             document.getElementById('obTrialOverlay').style.display = 'none';
 
+            // Stop analysis
+            if (tennisAI?.isAnalyzing) {
+                tennisAI.stopAnalysis();
+            }
+
             // Stop camera
             if (tennisAI?.camera) {
                 tennisAI.camera.stop();
@@ -6111,9 +6172,18 @@ This is a demo — make them feel excited about the coaching experience.`;
                 gptVoiceCoach.isConnected = false;
             }
 
+            // Release mic stream
+            if (onboardingState._micStream) {
+                onboardingState._micStream.getTracks().forEach(t => t.stop());
+                onboardingState._micStream = null;
+            }
+
             obBuildReportCard();
 
-            // Hide camera, show report screen
+            // Hide live controls + camera, show report screen
+            document.getElementById('liveSessionControls').classList.remove('active');
+            document.querySelector('.status-bar').style.display = 'none';
+            document.querySelector('.coaching-panel').style.display = 'none';
             document.getElementById('cameraContainer').style.display = 'none';
             document.querySelector('.container').style.display = 'flex';
             document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
@@ -6125,7 +6195,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             setTimeout(() => reportScreen.classList.remove('entering', 'active'), 400);
         }
 
-        // --- Screen 9: Report Card ---
+        // --- Screen 10: Report Card ---
         function obBuildReportCard() {
             const strokes = onboardingState.trialStrokes;
             if (strokes.length === 0) {
@@ -6168,11 +6238,12 @@ This is a demo — make them feel excited about the coaching experience.`;
                 `Let's work on your ${topImprovement.toLowerCase()} together - I know we can take your game to the next level.`;
         }
 
-        // --- Screen 10: Sign Up ---
-        function obGoToSignup() {
-            transitionScreens('obReportScreen', 'obSignupScreen');
+        // --- Report Card → Pricing (user already signed up at step 6) ---
+        function obGoToPricing() {
+            transitionScreens('obReportScreen', 'obPricingScreen');
         }
 
+        // --- Screen 6: Sign Up (mandatory, before Meet Coach) ---
         async function obSendMagicLink() {
             const emailInput = document.getElementById('obSignupEmail');
             const statusEl = document.getElementById('obSignupStatus');
@@ -6198,12 +6269,9 @@ This is a demo — make them feel excited about the coaching experience.`;
                 statusEl.textContent = 'Check your email for the magic link!';
                 statusEl.style.color = '#CDFF00';
                 sendBtn.textContent = 'EMAIL SENT \u2713';
+                // Persist onboarding state so magic link opened in new tab can resume
+                localStorage.setItem('ace_onboarding_state', JSON.stringify(onboardingState));
             }
-        }
-
-        function obSkipSignup() {
-            // Continue without account
-            obFinishOnboarding(false);
         }
 
         // --- Screen 11: Pricing ---
@@ -6239,9 +6307,11 @@ This is a demo — make them feel excited about the coaching experience.`;
                     displayName: onboardingState.displayName,
                     age: onboardingState.age,
                     onboardingCompleted: true,
+                    trialUsed: true,
                 });
                 await loadUserData();
             } else {
+                // Safety net — shouldn't trigger since sign-up is mandatory
                 localStorage.setItem('ace_onboarding', JSON.stringify(onboardingState));
             }
 
@@ -8486,7 +8556,7 @@ This is a demo — make them feel excited about the coaching experience.`;
 
             supabaseClient.initialize(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-            // Listen for auth state changes (handles magic link callback from onboarding screen 10)
+            // Listen for auth state changes (handles magic link callback from onboarding sign-up)
             supabaseClient.onAuthChange(async (event, session, user) => {
                 if (event === 'SIGNED_IN' && user) {
                     // Migrate old localStorage data if exists
@@ -8498,10 +8568,25 @@ This is a demo — make them feel excited about the coaching experience.`;
 
                     await loadUserData();
 
-                    // Check if sign-in happened during onboarding flow (screen 10)
+                    // Check if sign-in happened during onboarding (sign-up screen visible in same tab)
                     const signupScreen = document.getElementById('obSignupScreen');
-                    if (signupScreen && signupScreen.style.display !== 'none') {
-                        // Save onboarding data to newly created profile
+                    const signupVisible = signupScreen && signupScreen.style.display !== 'none';
+
+                    // Also check for stored onboarding state (magic link opened in new tab)
+                    const storedState = localStorage.getItem('ace_onboarding_state');
+                    let resumingOnboarding = false;
+                    if (!signupVisible && storedState) {
+                        try {
+                            const parsed = JSON.parse(storedState);
+                            if (parsed.coachPreference && !parsed.trialSessionActive) {
+                                Object.assign(onboardingState, parsed);
+                                resumingOnboarding = true;
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (signupVisible || resumingOnboarding) {
+                        // Save onboarding data to profile (trial hasn't happened yet)
                         await supabaseClient.updateProfile({
                             sport: onboardingState.sport,
                             ntrpLevel: onboardingState.ntrpLevel,
@@ -8511,9 +8596,13 @@ This is a demo — make them feel excited about the coaching experience.`;
                             coachPreference: onboardingState.coachPreference,
                             displayName: onboardingState.displayName,
                             age: onboardingState.age,
-                            trialUsed: true,
                         });
-                        transitionScreens('obSignupScreen', 'obPricingScreen');
+                        localStorage.removeItem('ace_onboarding_state');
+
+                        // Transition to Meet Coach (authenticated)
+                        const fromScreen = signupVisible ? 'obSignupScreen' : 'checkingAuthScreen';
+                        transitionScreens(fromScreen, 'obMeetScreen');
+                        obInitMeetCoach();
                         return;
                     }
 
@@ -8538,11 +8627,24 @@ This is a demo — make them feel excited about the coaching experience.`;
                     // Returning authenticated user — show welcome
                     showWelcomeScreen();
                 } else {
-                    // Authenticated but never finished onboarding
+                    // Authenticated but never finished onboarding — check for stored state
+                    const storedState = localStorage.getItem('ace_onboarding_state');
+                    if (storedState) {
+                        try {
+                            const parsed = JSON.parse(storedState);
+                            if (parsed.coachPreference) {
+                                Object.assign(onboardingState, parsed);
+                                localStorage.removeItem('ace_onboarding_state');
+                                transitionScreens('checkingAuthScreen', 'obMeetScreen');
+                                obInitMeetCoach();
+                                return;
+                            }
+                        } catch (e) {}
+                    }
                     transitionScreens('checkingAuthScreen', 'obSportScreen');
                 }
             } else {
-                // Not signed in — start fresh onboarding (no auth needed for trial)
+                // Not signed in — start fresh onboarding
                 transitionScreens('checkingAuthScreen', 'obSportScreen');
             }
         }
