@@ -1027,107 +1027,7 @@
             border: 1px solid rgba(48, 209, 88, 0.3);
         }
 
-        /* ============================================
-           CONTROLS
-           ============================================ */
-        .controls {
-            position: absolute;
-            bottom: calc(160px + env(safe-area-inset-bottom));
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 24px;
-            z-index: 100;
-        }
-
-        .control-btn {
-            width: 56px;
-            height: 56px;
-            border: none;
-            border-radius: 50%;
-            font-size: 20px;
-            cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: var(--glass-bg);
-            border: 1px solid var(--border-subtle);
-            color: var(--text-primary);
-        }
-
-        .control-btn:active {
-            transform: scale(0.95);
-        }
-
-        .control-btn.active {
-            box-shadow: 0 0 0 2px var(--accent-volt);
-        }
-
-        .control-btn-label {
-            font-size: 9px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-top: 8px;
-            position: absolute;
-            bottom: -24px;
-            white-space: nowrap;
-        }
-
-        .play-btn.recording {
-            box-shadow: 0 0 0 2px var(--accent-volt), 0 0 20px rgba(205, 255, 0, 0.3);
-        }
-
-        /* Icon styling */
-        .control-icon {
-            font-size: 22px;
-            line-height: 1;
-        }
-
-        /* ============================================
-           MODE SWITCHER (Tab Bar)
-           ============================================ */
-        .mode-switcher {
-            position: absolute;
-            top: calc(90px + var(--space-md));
-            left: var(--space-md);
-            display: flex;
-            background: var(--glass-bg);
-            border-radius: var(--radius-full);
-            padding: 4px;
-            backdrop-filter: var(--glass-blur);
-            -webkit-backdrop-filter: var(--glass-blur);
-            border: 1px solid var(--border-subtle);
-            z-index: 100;
-        }
-
-        .mode-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            padding: 8px 16px;
-            border-radius: var(--radius-full);
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-family: var(--font-family);
-        }
-
-        .mode-btn.active {
-            background: var(--accent-volt);
-            color: var(--bg-primary);
-        }
-
-        .mode-btn:not(.active):hover {
-            color: var(--text-primary);
-        }
+        /* Old controls/mode-switcher removed — replaced by browse/live navigation */
 
         /* ============================================
            ERROR MESSAGE
@@ -1222,14 +1122,7 @@
             color: var(--accent-volt);
         }
 
-        #ghostBtn.active {
-            background: var(--accent-volt);
-            color: #0A0A0A;
-        }
-
-        #ghostBtn.active .control-icon {
-            filter: none;
-        }
+        /* #ghostBtn styles removed — ghost toggle moved to settings */
 
         /* ============================================
            PRO COMPARISON STYLES
@@ -1337,7 +1230,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            z-index: 100;
+            z-index: 200;
         }
 
         .challenge-info {
@@ -1435,7 +1328,7 @@
             top: 60px;
             left: 50%;
             transform: translateX(-50%);
-            z-index: 90;
+            z-index: 200;
             pointer-events: none;
             display: flex;
             flex-direction: column;
@@ -2057,39 +1950,7 @@
             color: rgba(255, 255, 255, 0.7);
         }
 
-        /* Mode Switcher */
-        .mode-switcher {
-            position: absolute;
-            top: 80px;
-            left: 20px;
-            display: flex;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 25px;
-            padding: 4px;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-        }
-
-        .mode-btn {
-            padding: 8px 16px;
-            border: none;
-            background: transparent;
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 13px;
-            font-weight: 500;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .mode-btn.active {
-            background: var(--accent-volt, #CDFF00);
-            color: #0A0A0A;
-        }
-
-        .mode-btn:hover:not(.active) {
-            color: var(--text-primary, #F5F5F5);
-        }
+        /* Duplicate mode-switcher removed — replaced by browse/live navigation */
 
         /* Analysis Mode Container */
         .analysis-mode-container {
@@ -2422,16 +2283,7 @@
                 padding: 2px 6px;
             }
 
-            .controls {
-                bottom: 140px;
-                gap: 15px;
-            }
-
-            .control-btn {
-                width: 50px;
-                height: 50px;
-                font-size: 20px;
-            }
+            /* Responsive controls removed — replaced by live session controls */
         }
 
         /* ============================================
@@ -2705,6 +2557,633 @@
             height: 2px; background: rgba(255,255,255,0.06); border-radius: 1px;
         }
         .ob-progress-fill { height: 100%; background: #CDFF00; border-radius: 1px; transition: width 400ms ease-out; }
+
+        /* ============================================
+           BOTTOM TAB BAR
+           ============================================ */
+        #bottomTabBar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 500;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: calc(56px + env(safe-area-inset-bottom));
+            padding-bottom: env(safe-area-inset-bottom);
+            background: rgba(10, 10, 10, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .tab-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            background: none;
+            border: none;
+            color: var(--text-subtle);
+            cursor: pointer;
+            padding: 6px 12px;
+            -webkit-tap-highlight-color: transparent;
+            transition: color 0.2s;
+            position: relative;
+        }
+
+        .tab-btn svg {
+            width: 22px;
+            height: 22px;
+            stroke-width: 1.8;
+        }
+
+        .tab-btn span {
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            font-family: var(--font-family);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-volt);
+        }
+
+        .tab-btn:active {
+            transform: scale(0.92);
+        }
+
+        /* ============================================
+           TAB CONTENT PANELS
+           ============================================ */
+        #tabContent {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 50;
+            background: var(--bg-primary);
+            display: none;
+        }
+
+        #tabContent.active {
+            display: block;
+        }
+
+        .tab-panel {
+            display: none;
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: calc(env(safe-area-inset-top) + 20px) 20px calc(76px + env(safe-area-inset-bottom));
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Home Tab */
+        .home-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 28px;
+        }
+
+        .home-greeting {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .home-greeting .accent {
+            color: var(--accent-volt);
+        }
+
+        .home-settings-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-surface);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+
+        .home-settings-btn:active {
+            transform: scale(0.92);
+        }
+
+        .home-cta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            width: 100%;
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            border: none;
+            cursor: pointer;
+            text-align: left;
+            font-family: var(--font-family);
+            -webkit-tap-highlight-color: transparent;
+            margin-bottom: 12px;
+        }
+
+        .home-cta:active {
+            transform: scale(0.98);
+        }
+
+        .home-cta-primary {
+            background: var(--accent-volt);
+            color: #0A0A0A;
+        }
+
+        .home-cta-primary .cta-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .home-cta-primary .cta-icon svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        .home-cta-title {
+            font-size: 16px;
+            font-weight: 700;
+        }
+
+        .home-cta-subtitle {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .home-cta-secondary {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border-subtle);
+        }
+
+        .home-cta-secondary .cta-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .home-cta-secondary .cta-icon svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent-volt);
+        }
+
+        .home-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .home-card-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .home-stats-row {
+            display: flex;
+            gap: 12px;
+        }
+
+        .home-stat {
+            flex: 1;
+            text-align: center;
+        }
+
+        .home-stat-value {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .home-stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .home-plan-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+        }
+
+        .home-plan-item + .home-plan-item {
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .home-plan-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-volt);
+            flex-shrink: 0;
+        }
+
+        .home-plan-text {
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        /* Drills / Challenges Tab cards */
+        .tab-section-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        .drill-card, .challenge-card-tab {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s;
+        }
+
+        .drill-card:active, .challenge-card-tab:active {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .drill-card-icon, .challenge-card-tab-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 18px;
+        }
+
+        .drill-card-icon {
+            background: rgba(205, 255, 0, 0.1);
+            color: var(--accent-volt);
+        }
+
+        .challenge-card-tab-icon {
+            background: rgba(255, 149, 0, 0.1);
+            color: var(--warning);
+        }
+
+        .drill-card-info, .challenge-card-tab-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .drill-card-name, .challenge-card-tab-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .drill-card-desc, .challenge-card-tab-desc {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .drill-card-chevron, .challenge-card-tab-chevron {
+            color: var(--text-subtle);
+            flex-shrink: 0;
+        }
+
+        .challenge-card-tab.completed {
+            opacity: 0.5;
+        }
+
+        .challenge-card-tab-badge {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            padding: 2px 8px;
+            border-radius: var(--radius-full);
+            background: rgba(50, 215, 75, 0.15);
+            color: var(--success);
+            flex-shrink: 0;
+        }
+
+        /* Profile Tab */
+        .profile-section {
+            margin-bottom: 24px;
+        }
+
+        .profile-section-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .profile-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-subtle);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .profile-row:last-child {
+            border-bottom: none;
+        }
+
+        .profile-row:active {
+            opacity: 0.7;
+        }
+
+        .profile-row-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--bg-surface);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        .profile-row-icon svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .profile-row-text {
+            flex: 1;
+            font-size: 15px;
+            color: var(--text-primary);
+        }
+
+        .profile-row-value {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .profile-row-chevron {
+            color: var(--text-subtle);
+            flex-shrink: 0;
+        }
+
+        .profile-row-chevron svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        .profile-row.danger .profile-row-text {
+            color: var(--danger);
+        }
+
+        .profile-row.danger .profile-row-icon {
+            color: var(--danger);
+        }
+
+        /* ============================================
+           LIVE SESSION CONTROLS
+           ============================================ */
+        #liveSessionControls {
+            position: fixed;
+            bottom: calc(24px + env(safe-area-inset-bottom));
+            left: 0;
+            right: 0;
+            z-index: 150;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            gap: 28px;
+            pointer-events: none;
+        }
+
+        #liveSessionControls.active {
+            display: flex;
+        }
+
+        .live-ctrl {
+            pointer-events: auto;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            transition: transform 0.12s;
+        }
+
+        .live-ctrl:active {
+            transform: scale(0.9);
+        }
+
+        .live-ctrl-sm {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+        }
+
+        .live-ctrl-sm svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        #liveRecBtn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: rgba(10, 10, 10, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+        }
+
+        .rec-inner {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--danger);
+            transition: all 0.2s ease;
+        }
+
+        #liveRecBtn.recording .rec-inner {
+            width: 22px;
+            height: 22px;
+            border-radius: 4px;
+        }
+
+        #liveRecBtn.recording {
+            border-color: var(--accent-volt);
+            box-shadow: 0 0 20px rgba(205, 255, 0, 0.25);
+        }
+
+        #liveRecLabel {
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            color: var(--text-muted);
+            white-space: nowrap;
+            font-family: var(--font-family);
+        }
+
+        /* ============================================
+           SETTINGS BOTTOM SHEET
+           ============================================ */
+        #settingsSheet {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 600;
+            display: none;
+        }
+
+        #settingsSheet.active {
+            display: block;
+        }
+
+        .settings-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #settingsSheet.active .settings-backdrop {
+            opacity: 1;
+        }
+
+        .settings-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border-radius: 16px 16px 0 0;
+            padding: 12px 20px calc(20px + env(safe-area-inset-bottom));
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+        }
+
+        #settingsSheet.active .settings-panel {
+            transform: translateY(0);
+        }
+
+        .settings-drag-handle {
+            width: 36px;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.15);
+            margin: 0 auto 20px;
+        }
+
+        .settings-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 16px;
+        }
+
+        /* Upload tab adjustments */
+        .tab-panel .analysis-mode-container {
+            position: relative;
+            display: flex;
+            flex: 1;
+            height: calc(100vh - 160px);
+        }
+
+        .tab-panel .analysis-mode-container.active {
+            display: flex;
+        }
+
+        /* ============================================
+           RESPONSIVE — SMALL PHONES
+           ============================================ */
+        @media (max-width: 380px) {
+            .tab-btn span {
+                font-size: 9px;
+            }
+            .tab-btn svg {
+                width: 20px;
+                height: 20px;
+            }
+            #liveRecBtn {
+                width: 64px;
+                height: 64px;
+            }
+            .rec-inner {
+                width: 24px;
+                height: 24px;
+            }
+            .live-ctrl-sm {
+                width: 40px;
+                height: 40px;
+            }
+            .home-greeting {
+                font-size: 24px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2727,7 +3206,7 @@
                 <div class="ob-question">What sport do you play?</div>
                 <div class="ob-card-grid">
                     <div class="ob-card selected" onclick="obSelectSport('tennis')">
-                        <div class="ob-card-icon">&#127934;</div>
+                        <div class="ob-card-icon"><svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M18.09 6.51c-2.07 2.82-3.18 6.13-3.18 9.49M5.91 17.49c2.07-2.82 3.18-6.13 3.18-9.49"/></svg></div>
                         <div class="ob-card-text">
                             <div class="ob-card-title">Tennis</div>
                             <div class="ob-card-desc">Singles &amp; doubles coaching</div>
@@ -2835,7 +3314,7 @@
         <!-- Onboarding 7: Camera Permission -->
         <div id="obCameraScreen" class="screen" style="display:none;">
             <div class="onboarding-content">
-                <div style="font-size:48px;margin-bottom:24px;">&#128247;</div>
+                <div style="margin-bottom:24px;color:var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
                 <div class="ob-question">I need to see your strokes</div>
                 <div style="font-size:13px;color:#555;text-align:center;margin-bottom:32px;line-height:1.6;">
                     ACE uses your camera to analyze your technique in real time.<br>No video is stored or sent to servers.
@@ -3052,27 +3531,7 @@
                 <div class="ghost-similarity-value" id="ghostSimilarityValue">--</div>
             </div>
 
-            <!-- Controls -->
-            <div class="controls">
-                <button class="control-btn text-btn" onclick="showAnalytics()" title="View History">
-                    STATS
-                </button>
-                <button id="ghostBtn" class="control-btn text-btn" onclick="toggleGhost()" title="Ghost Overlay">
-                    <span id="ghostBtnLabel">GHOST</span>
-                </button>
-                <button id="playBtn" class="control-btn play-btn" onclick="toggleAnalysis()">
-                    REC
-                </button>
-                <button class="control-btn text-btn" onclick="flipCamera()" title="Flip Camera">
-                    FLIP
-                </button>
-                <button class="control-btn text-btn" onclick="resetSession()">
-                    RESET
-                </button>
-                <button class="control-btn text-btn" id="signOutBtn" onclick="handleSignOut()" style="display:none;" title="Sign Out">
-                    OUT
-                </button>
-            </div>
+            <!-- Old controls removed — replaced by live session controls -->
 
             <!-- Coaching Panel -->
             <div class="coaching-panel">
@@ -3094,15 +3553,7 @@
                 </div>
             </div>
 
-            <!-- Mode Switcher -->
-            <div class="mode-switcher">
-                <button class="mode-btn active" id="practiceModeBtn" onclick="switchMode('practice')">Practice</button>
-                <button class="mode-btn" id="analysisModeBtn" onclick="switchMode('analysis')">Analysis</button>
-                <button class="mode-btn" onclick="showChallenges()" title="Challenges">CHAL</button>
-                <button class="mode-btn" id="drillModeBtn" onclick="showDrillSelection()" title="Drill Mode">DRILL</button>
-                <button class="mode-btn" onclick="showProComparison()" title="Compare to pro players">Pro</button>
-                <button class="mode-btn" id="calibrateModeBtn" onclick="openCalibrationModal()" title="Calibrate with pro videos">Cal</button>
-            </div>
+            <!-- Old mode-switcher removed — replaced by bottom tab bar -->
 
             <!-- Analysis Mode Container -->
             <div class="analysis-mode-container" id="analysisModeContainer">
@@ -3196,6 +3647,186 @@
             </div>
         </div>
 
+        <!-- ============================================
+             BOTTOM TAB BAR
+             ============================================ -->
+        <nav id="bottomTabBar" style="display:none;">
+            <button class="tab-btn active" data-tab="home" onclick="switchTab('home')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+                <span>Home</span>
+            </button>
+            <button class="tab-btn" data-tab="upload" onclick="switchTab('upload')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                <span>Upload</span>
+            </button>
+            <button class="tab-btn" data-tab="drills" onclick="switchTab('drills')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                <span>Drills</span>
+            </button>
+            <button class="tab-btn" data-tab="challenges" onclick="switchTab('challenges')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 6 9 6 9z"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 18 9 18 9z"/><path d="M4 22h16"/><path d="M10 22V8h4v14"/><path d="M6 9h12v4H6z"/></svg>
+                <span>Challenges</span>
+            </button>
+            <button class="tab-btn" data-tab="profile" onclick="switchTab('profile')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                <span>Profile</span>
+            </button>
+        </nav>
+
+        <!-- ============================================
+             TAB CONTENT PANELS
+             ============================================ -->
+        <div id="tabContent">
+            <!-- Home Tab -->
+            <div class="tab-panel active" id="tabHome">
+                <div class="home-header">
+                    <div class="home-greeting">ACE<span class="accent">.</span></div>
+                    <button class="home-settings-btn" onclick="openSettings()">
+                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1.08 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1.08 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1.08z"/></svg>
+                    </button>
+                </div>
+
+                <!-- Start Live Session CTA -->
+                <button class="home-cta home-cta-primary" onclick="startLiveSession()">
+                    <div class="cta-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg>
+                    </div>
+                    <div>
+                        <div class="home-cta-title">Start Live Session</div>
+                        <div class="home-cta-subtitle">Camera coaching on court</div>
+                    </div>
+                </button>
+
+                <!-- Upload Video CTA -->
+                <button class="home-cta home-cta-secondary" onclick="switchTab('upload')">
+                    <div class="cta-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
+                    <div>
+                        <div class="home-cta-title">Upload Video</div>
+                        <div class="home-cta-subtitle">Analyze recorded footage</div>
+                    </div>
+                </button>
+
+                <!-- Quick Stats -->
+                <div class="home-card" id="homeStatsCard" style="display:none;">
+                    <div class="home-card-title">Last Session</div>
+                    <div class="home-stats-row" id="homeStatsRow">
+                        <div class="home-stat">
+                            <div class="home-stat-value" id="homeStatAvg">--</div>
+                            <div class="home-stat-label">Avg Quality</div>
+                        </div>
+                        <div class="home-stat">
+                            <div class="home-stat-value" id="homeStatStrokes">--</div>
+                            <div class="home-stat-label">Strokes</div>
+                        </div>
+                        <div class="home-stat">
+                            <div class="home-stat-value" id="homeStatSessions">--</div>
+                            <div class="home-stat-label">Sessions</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Improvement Plan Preview -->
+                <div class="home-card" id="homePlanCard" style="display:none;">
+                    <div class="home-card-title">Improvement Plan</div>
+                    <div id="homePlanItems"></div>
+                </div>
+
+                <!-- Pro Comparison CTA -->
+                <button class="home-cta home-cta-secondary" onclick="showProComparison()">
+                    <div class="cta-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div>
+                        <div class="home-cta-title">Pro Comparison</div>
+                        <div class="home-cta-subtitle">Compare to Federer, Nadal & more</div>
+                    </div>
+                </button>
+            </div>
+
+            <!-- Upload Tab -->
+            <div class="tab-panel" id="tabUpload">
+                <div class="tab-section-title">Upload Video</div>
+                <div id="uploadTabContent">
+                    <!-- Analysis mode container relocated here dynamically by JS -->
+                </div>
+            </div>
+
+            <!-- Drills Tab -->
+            <div class="tab-panel" id="tabDrills">
+                <div class="tab-section-title">Drills</div>
+                <div id="drillTabCards"></div>
+            </div>
+
+            <!-- Challenges Tab -->
+            <div class="tab-panel" id="tabChallenges">
+                <div class="tab-section-title">Challenges</div>
+                <div id="challengeTabCards"></div>
+            </div>
+
+            <!-- Profile Tab -->
+            <div class="tab-panel" id="tabProfile">
+                <div class="tab-section-title">Profile</div>
+                <div id="profileTabContent"></div>
+            </div>
+        </div>
+
+        <!-- ============================================
+             LIVE SESSION CONTROLS
+             ============================================ -->
+        <div id="liveSessionControls">
+            <button class="live-ctrl live-ctrl-sm" onclick="endLiveSession()" title="End Session">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="live-ctrl" id="liveRecBtn" onclick="toggleAnalysis()">
+                <span id="liveRecLabel">REC</span>
+                <div class="rec-inner"></div>
+            </button>
+            <button class="live-ctrl live-ctrl-sm" onclick="flipCamera()" title="Flip Camera">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><polyline points="16 3 19 1 22 3"/><polyline points="8 21 5 23 2 21"/></svg>
+            </button>
+        </div>
+
+        <!-- ============================================
+             SETTINGS BOTTOM SHEET
+             ============================================ -->
+        <div id="settingsSheet">
+            <div class="settings-backdrop" onclick="closeSettings()"></div>
+            <div class="settings-panel">
+                <div class="settings-drag-handle"></div>
+                <div class="settings-title">Settings</div>
+
+                <!-- Ghost Overlay toggle -->
+                <div class="profile-row" onclick="toggleGhost(); closeSettings();">
+                    <div class="profile-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+                    </div>
+                    <div class="profile-row-text">Ghost Overlay</div>
+                    <div class="profile-row-value" id="settingsGhostStatus">Off</div>
+                </div>
+
+                <!-- Calibration -->
+                <div class="profile-row" onclick="openCalibrationModal(); closeSettings();">
+                    <div class="profile-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </div>
+                    <div class="profile-row-text">Calibration</div>
+                    <div class="profile-row-chevron">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </div>
+
+                <!-- Sign Out (only visible when authenticated) -->
+                <div class="profile-row danger" id="settingsSignOut" style="display:none;" onclick="handleSignOut()">
+                    <div class="profile-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </div>
+                    <div class="profile-row-text">Sign Out</div>
+                </div>
+            </div>
+        </div>
+
         <!-- Error Container -->
         <div id="errorContainer"></div>
 
@@ -3213,7 +3844,7 @@
                     <!-- Dynamic content inserted here -->
                 </div>
                 <button class="btn" onclick="closeSessionSummary()" style="width: 100%; margin-top: 16px;">
-                    Start New Session
+                    Done
                 </button>
             </div>
         </div>
@@ -4058,21 +4689,27 @@
 
             startAnalysis() {
                 if (!this.isReady) return;
-                
+
                 this.isAnalyzing = true;
-                
+
                 document.getElementById('aiStatusDot').className = 'status-dot active';
-                document.getElementById('playBtn').textContent = 'STOP';
-                document.getElementById('coachingText').textContent = 
+                const recBtn = document.getElementById('liveRecBtn');
+                const recLabel = document.getElementById('liveRecLabel');
+                if (recBtn) recBtn.classList.add('recording');
+                if (recLabel) recLabel.textContent = 'STOP';
+                document.getElementById('coachingText').textContent =
                     'AI analyzing your strokes. Make tennis swings to get feedback!';
             }
 
             stopAnalysis() {
                 this.isAnalyzing = false;
-                
+
                 document.getElementById('aiStatusDot').className = 'status-dot ready';
-                document.getElementById('playBtn').textContent = 'REC';
-                document.getElementById('coachingText').textContent = 
+                const recBtn = document.getElementById('liveRecBtn');
+                const recLabel = document.getElementById('liveRecLabel');
+                if (recBtn) recBtn.classList.remove('recording');
+                if (recLabel) recLabel.textContent = 'REC';
+                document.getElementById('coachingText').textContent =
                     'Analysis paused. Tap play to resume.';
             }
 
@@ -4429,42 +5066,28 @@
             completeInitialization() {
                 const loadingScreen = document.getElementById('loadingScreen');
                 const cameraContainer = document.getElementById('cameraContainer');
+                const isTrialSession = typeof onboardingState !== 'undefined' && onboardingState.trialSessionActive;
 
-                // Cinematic exit: Hold at READY for 1s, then exit
-                // Haptic trigger point: navigator.vibrate && navigator.vibrate(10);
-
+                // Cinematic exit: Hold at READY for 1s, then enter appropriate mode
                 setTimeout(() => {
-                    // Exit: fade out + move up (more dramatic -30px)
                     loadingScreen.style.transition = 'opacity 300ms ease-out, transform 300ms ease-out';
                     loadingScreen.style.opacity = '0';
                     loadingScreen.style.transform = 'translateY(-30px)';
 
-                    // Prepare camera view underneath
-                    cameraContainer.style.display = 'block';
-                    cameraContainer.style.opacity = '0';
-
                     setTimeout(() => {
                         loadingScreen.style.display = 'none';
-
-                        // Fade in camera view
-                        cameraContainer.style.transition = 'opacity 400ms ease-out';
-                        cameraContainer.offsetHeight; // Trigger reflow
-                        cameraContainer.style.opacity = '1';
-
                         document.getElementById('aiStatusDot').className = 'status-dot ready';
 
-                        // Show sign-out button if authenticated via Supabase
-                        if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
-                            const signOutBtn = document.getElementById('signOutBtn');
-                            if (signOutBtn) signOutBtn.style.display = '';
-                        }
-
-                        // Create or restore session
-                        if (typeof sessionStorage !== 'undefined' && sessionStorage.createSession) {
-                            const existingSession = sessionStorage.getCurrentSession();
-                            if (!existingSession) {
-                                sessionStorage.createSession();
-                            }
+                        if (isTrialSession) {
+                            // During onboarding trial — show camera directly (live mode)
+                            cameraContainer.style.display = 'block';
+                            cameraContainer.style.opacity = '1';
+                        } else {
+                            // Normal flow — enter browse mode, camera stays hidden
+                            cameraContainer.style.display = 'none';
+                            document.getElementById('bottomTabBar').style.display = 'flex';
+                            document.getElementById('tabContent').classList.add('active');
+                            populateHomeStats();
                         }
 
                         // Start scene analysis if Gemini key is configured
@@ -4472,7 +5095,7 @@
                             this.sceneAnalyzer.start(this.video);
                         }
 
-                        // Welcome coaching message with GPT connection status
+                        // Welcome coaching message ready for live mode
                         const gptStatus = (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected)
                             ? 'Voice coach connected.'
                             : (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.useFallback)
@@ -4481,7 +5104,7 @@
                         document.getElementById('coachingText').textContent =
                             gptStatus + ' Tap REC to start.';
                     }, 300);
-                }, 1000); // Hold at READY for 1 second
+                }, 1000);
             }
 
             updateRallyIndicator() {
@@ -4732,7 +5355,11 @@
             if (container.children.length > 0) return;
             const configs = GPTVoiceCoach.getCoachConfigs();
             const colors = { alex: '#4CAF50', jordan: '#2196F3', sam: '#FF9800' };
-            const emojis = { alex: '\u{1F31F}', jordan: '\u{1F3AF}', sam: '\u{26A1}' };
+            const coachIcons = {
+                alex: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+                jordan: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+                sam: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>'
+            };
 
             for (const [key, config] of Object.entries(configs)) {
                 const card = document.createElement('div');
@@ -4741,13 +5368,13 @@
                 card.onclick = () => obSelectCoach(key);
                 card.innerHTML = `
                     <div class="ob-coach-header">
-                        <div class="ob-coach-avatar" style="background:${colors[key]}20;color:${colors[key]}">${emojis[key]}</div>
+                        <div class="ob-coach-avatar" style="background:${colors[key]}20;color:${colors[key]}">${coachIcons[key]}</div>
                         <div>
                             <div class="ob-coach-name">${config.name}</div>
                             <div class="ob-coach-tagline">${config.tagline} &mdash; ${config.description}</div>
                         </div>
                     </div>
-                    <button class="ob-preview-btn" onclick="event.stopPropagation(); obPreviewVoice('${key}')">&#9654; Preview voice</button>
+                    <button class="ob-preview-btn" onclick="event.stopPropagation(); obPreviewVoice('${key}')"><svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" stroke="none"><polygon points="5 3 19 12 5 21 5 3"/></svg> Preview voice</button>
                 `;
                 container.appendChild(card);
             }
@@ -5188,49 +5815,47 @@ This is a demo — make them feel excited about the coaching experience.`;
             if (typeof ghostOverlay === 'undefined') return;
 
             const enabled = ghostOverlay.toggle();
-            const btn = document.getElementById('ghostBtn');
-            const label = document.getElementById('ghostBtnLabel');
             const display = document.getElementById('ghostSimilarityDisplay');
 
             if (enabled) {
                 // Check if we have a ghost to show
                 if (!ghostOverlay.ghostStroke) {
-                    // Try to use best stroke from this session
                     if (!ghostOverlay.useBestStroke()) {
-                        // No ghost available
-                        alert('No ghost available yet. Complete some strokes first, and your best one will become the ghost.');
+                        showToast('No ghost available yet. Complete some strokes first.');
                         ghostOverlay.toggle(); // Turn back off
                         return;
                     }
                 }
 
-                btn.classList.add('active');
-                label.textContent = 'GHOST ON';
-                display.style.display = 'block';
+                if (display) display.style.display = 'block';
                 ghostOverlay.play();
+                showToast('Ghost overlay ON');
 
-                // Show ghost info
                 const info = ghostOverlay.getGhostInfo();
                 if (info) {
                     console.log(`Ghost active: ${info.name} (${info.frameCount} frames)`);
                 }
             } else {
-                btn.classList.remove('active');
-                label.textContent = 'GHOST';
-                display.style.display = 'none';
+                if (display) display.style.display = 'none';
                 ghostOverlay.pause();
+                showToast('Ghost overlay OFF');
             }
+            // Update settings sheet status
+            const gs = document.getElementById('settingsGhostStatus');
+            if (gs) gs.textContent = enabled ? 'On' : 'Off';
+            const ps = document.getElementById('profileGhostStatus');
+            if (ps) ps.textContent = enabled ? 'On' : 'Off';
         }
 
         // Lock current best stroke as ghost reference
         function lockCurrentGhost() {
             if (typeof ghostOverlay === 'undefined' || !ghostOverlay.bestStrokeThisSession) {
-                alert('No stroke to lock. Complete some strokes first.');
+                showToast('No stroke to lock. Complete some strokes first.');
                 return;
             }
 
             const stroke = ghostOverlay.lockStroke(ghostOverlay.bestStrokeThisSession);
-            alert(`Locked "${stroke.name}" as a saved ghost reference!`);
+            showToast(`Locked "${stroke.name}" as ghost reference`);
         }
 
         // Session Summary Modal
@@ -5616,6 +6241,15 @@ This is a demo — make them feel excited about the coaching experience.`;
 
         function closeSessionSummary() {
             document.getElementById('sessionSummaryModal').classList.remove('visible');
+            // Return to browse mode if we're in live mode
+            if (appMode === 'live') {
+                appMode = 'browse';
+                document.getElementById('liveSessionControls').classList.remove('active');
+                document.getElementById('cameraContainer').style.display = 'none';
+                document.getElementById('bottomTabBar').style.display = 'flex';
+                document.getElementById('tabContent').classList.add('active');
+                switchTab('home');
+            }
         }
 
         function shareSessionCard() {
@@ -5636,7 +6270,7 @@ This is a demo — make them feel excited about the coaching experience.`;
         // Analytics Modal
         function showAnalytics() {
             if (typeof sessionStorage === 'undefined' || !sessionStorage.getAggregatedStats) {
-                alert('Session history not available');
+                showToast('Session history not available');
                 return;
             }
 
@@ -5864,6 +6498,10 @@ This is a demo — make them feel excited about the coaching experience.`;
             const challenge = challengeMode.startChallenge(challengeId);
             if (challenge) {
                 closeChallenges();
+                // Enter live mode if not already
+                if (appMode !== 'live') {
+                    startLiveSession();
+                }
                 updateActiveChallengeBar();
             }
         }
@@ -5987,9 +6625,9 @@ This is a demo — make them feel excited about the coaching experience.`;
             lastDrillId = drillId;
             closeDrillModal();
 
-            // Ensure practice mode
-            if (currentMode !== 'practice') {
-                switchMode('practice');
+            // Enter live mode if not already
+            if (appMode !== 'live') {
+                startLiveSession();
             }
 
             // Auto-start analysis if not running
@@ -6326,44 +6964,330 @@ This is a demo — make them feel excited about the coaching experience.`;
         // Analysis Mode Functions
         // ========================================
 
-        let currentMode = 'practice';
+        let appMode = 'browse'; // 'browse' | 'live'
+        let currentTab = 'home';
         let analysisVideoElement = null;
         let selectedStroke = null;
+        let _drillTabPopulated = false;
+        let _challengeTabPopulated = false;
+        let _profileTabPopulated = false;
 
-        function switchMode(mode) {
-            currentMode = mode;
+        // Keep legacy alias so any stray reference doesn't crash
+        let currentMode = 'practice';
 
-            // Update button states
-            document.getElementById('practiceModeBtn').classList.toggle('active', mode === 'practice');
-            document.getElementById('analysisModeBtn').classList.toggle('active', mode === 'analysis');
+        function switchTab(tabName) {
+            currentTab = tabName;
+            // Update tab bar active state
+            document.querySelectorAll('#bottomTabBar .tab-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabName);
+            });
+            // Show/hide panels
+            document.querySelectorAll('#tabContent .tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.id === 'tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1));
+            });
 
-            // Toggle containers
-            const practiceElements = ['videoElement', 'canvasElement'];
-            const analysisContainer = document.getElementById('analysisModeContainer');
+            // Lazy-populate content
+            if (tabName === 'upload' && !document.getElementById('uploadTabContent').hasChildNodes()) {
+                // Move analysis mode container into upload tab
+                const amc = document.getElementById('analysisModeContainer');
+                if (amc) {
+                    amc.classList.add('active');
+                    document.getElementById('uploadTabContent').appendChild(amc);
+                }
+            }
+            if (tabName === 'drills' && !_drillTabPopulated) {
+                populateDrillTab();
+            }
+            if (tabName === 'challenges' && !_challengeTabPopulated) {
+                populateChallengeTab();
+            }
+            if (tabName === 'profile' && !_profileTabPopulated) {
+                populateProfileTab();
+            }
+            if (tabName === 'home') {
+                populateHomeStats();
+            }
+        }
 
-            if (mode === 'practice') {
-                analysisContainer.classList.remove('active');
-                document.getElementById('videoElement').style.display = 'block';
-                document.getElementById('canvasElement').style.display = 'block';
-                document.querySelector('.coaching-panel').style.display = 'block';
-                document.querySelector('.controls').style.display = 'flex';
+        function startLiveSession() {
+            appMode = 'live';
+            currentMode = 'practice';
+
+            // Hide browse UI
+            document.getElementById('bottomTabBar').style.display = 'none';
+            document.getElementById('tabContent').classList.remove('active');
+
+            // Show camera + live controls
+            const cam = document.getElementById('cameraContainer');
+            cam.style.display = 'block';
+            cam.style.opacity = '1';
+            document.getElementById('liveSessionControls').classList.add('active');
+
+            // Show live-mode overlays
+            document.querySelector('.status-bar').style.display = '';
+            document.querySelector('.coaching-panel').style.display = '';
+
+            // Auto-start analysis
+            if (tennisAI && tennisAI.isReady && !tennisAI.isAnalyzing) {
+                tennisAI.startAnalysis();
+            }
+
+            // Create session if needed
+            if (typeof sessionStorage !== 'undefined' && sessionStorage.createSession) {
+                const existingSession = sessionStorage.getCurrentSession();
+                if (!existingSession) {
+                    sessionStorage.createSession();
+                }
+            }
+        }
+
+        function endLiveSession() {
+            appMode = 'browse';
+
+            // Stop analysis
+            if (tennisAI && tennisAI.isAnalyzing) {
+                tennisAI.stopAnalysis();
+            }
+
+            // Stop active drill
+            if (typeof drillMode !== 'undefined' && drillMode.isActive) {
+                drillMode.stopDrill();
+                document.getElementById('drillHUD').style.display = 'none';
+            }
+
+            // Hide live controls
+            document.getElementById('liveSessionControls').classList.remove('active');
+
+            // Trigger session reset (shows summary if strokes were hit)
+            resetSession();
+
+            // Return to browse mode
+            document.getElementById('cameraContainer').style.display = 'none';
+            document.getElementById('bottomTabBar').style.display = 'flex';
+            document.getElementById('tabContent').classList.add('active');
+            switchTab('home');
+        }
+
+        function startDrillFromTab(drillId) {
+            startLiveSession();
+            // Small delay to let camera show before starting drill
+            setTimeout(() => {
+                if (typeof drillMode !== 'undefined') {
+                    const skillLevel = tennisAI?.playerProfile?.skillLevel || 'intermediate';
+                    const drill = drillMode.startDrill(drillId, skillLevel);
+                    if (drill) {
+                        lastDrillId = drillId;
+                        showDrillHUD(drill);
+                    }
+                }
+            }, 300);
+        }
+
+        function startChallengeFromTab(challengeId) {
+            if (typeof challengeMode === 'undefined') return;
+            if (challengeMode.isCompleted(challengeId)) return;
+
+            const challenge = challengeMode.startChallenge(challengeId);
+            if (challenge) {
+                startLiveSession();
+                updateActiveChallengeBar();
+            }
+        }
+
+        function populateDrillTab() {
+            _drillTabPopulated = true;
+            const container = document.getElementById('drillTabCards');
+            if (typeof drillMode === 'undefined' || !drillMode.drills) {
+                container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px 0;">No drills available yet.</div>';
+                return;
+            }
+
+            let html = '';
+            const drills = drillMode.drills || drillMode.getDrills?.() || [];
+            const drillList = Array.isArray(drills) ? drills : Object.values(drills);
+
+            drillList.forEach(drill => {
+                html += `
+                    <div class="drill-card" onclick="startDrillFromTab('${drill.id}')">
+                        <div class="drill-card-icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+                        </div>
+                        <div class="drill-card-info">
+                            <div class="drill-card-name">${drill.name}</div>
+                            <div class="drill-card-desc">${drill.description || drill.metricLabel || ''}</div>
+                        </div>
+                        <div class="drill-card-chevron">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html || '<div style="color:var(--text-muted);text-align:center;padding:40px 0;">No drills available.</div>';
+        }
+
+        function populateChallengeTab() {
+            _challengeTabPopulated = true;
+            const container = document.getElementById('challengeTabCards');
+            if (typeof challengeMode === 'undefined') {
+                container.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:40px 0;">Challenges not available yet.</div>';
+                return;
+            }
+
+            const challenges = challengeMode.getAvailableChallenges();
+            const stats = challengeMode.getStats();
+
+            let html = `
+                <div style="text-align:center;margin-bottom:20px;">
+                    <div style="font-size:28px;font-weight:800;color:var(--accent-volt);">${stats.completed}/${stats.total}</div>
+                    <div style="font-size:12px;color:var(--text-muted);">Completed</div>
+                </div>
+            `;
+
+            challenges.forEach(ch => {
+                const completed = ch.isCompleted;
+                html += `
+                    <div class="challenge-card-tab ${completed ? 'completed' : ''}" onclick="startChallengeFromTab('${ch.id}')">
+                        <div class="challenge-card-tab-icon">${ch.icon || ''}</div>
+                        <div class="challenge-card-tab-info">
+                            <div class="challenge-card-tab-name">${ch.name}</div>
+                            <div class="challenge-card-tab-desc">${ch.description}</div>
+                        </div>
+                        ${completed ? '<span class="challenge-card-tab-badge">DONE</span>' : `
+                        <div class="challenge-card-tab-chevron">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>`}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
+        function populateProfileTab() {
+            _profileTabPopulated = true;
+            const container = document.getElementById('profileTabContent');
+            let html = '';
+
+            // Session history
+            html += '<div class="profile-section">';
+            html += '<div class="profile-section-title">Session History</div>';
+
+            if (typeof sessionStorage !== 'undefined' && sessionStorage.getAggregatedStats) {
+                const stats = sessionStorage.getAggregatedStats();
+                if (stats && stats.totalSessions > 0) {
+                    html += `
+                        <div class="home-stats-row" style="margin-bottom:16px;">
+                            <div class="home-stat"><div class="home-stat-value">${stats.totalSessions}</div><div class="home-stat-label">Sessions</div></div>
+                            <div class="home-stat"><div class="home-stat-value">${stats.totalStrokes}</div><div class="home-stat-label">Total Strokes</div></div>
+                            <div class="home-stat"><div class="home-stat-value">${Math.round(stats.averageQuality)}</div><div class="home-stat-label">Avg Quality</div></div>
+                        </div>
+                    `;
+                } else {
+                    html += '<div style="color:var(--text-muted);padding:12px 0;">No sessions recorded yet.</div>';
+                }
             } else {
-                analysisContainer.classList.add('active');
-                document.getElementById('videoElement').style.display = 'none';
-                document.getElementById('canvasElement').style.display = 'none';
-                document.querySelector('.coaching-panel').style.display = 'none';
-                document.querySelector('.controls').style.display = 'none';
+                html += '<div style="color:var(--text-muted);padding:12px 0;">Session history not available.</div>';
+            }
+            html += '</div>';
 
-                // Stop practice mode analysis if running
-                if (tennisAI && tennisAI.isAnalyzing) {
-                    tennisAI.stopAnalysis();
+            // Settings
+            html += '<div class="profile-section">';
+            html += '<div class="profile-section-title">Settings</div>';
+
+            // Ghost overlay
+            html += `
+                <div class="profile-row" onclick="toggleGhost()">
+                    <div class="profile-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/></svg>
+                    </div>
+                    <div class="profile-row-text">Ghost Overlay</div>
+                    <div class="profile-row-value" id="profileGhostStatus">${typeof ghostOverlay !== 'undefined' && ghostOverlay.enabled ? 'On' : 'Off'}</div>
+                </div>
+            `;
+
+            // Calibration
+            html += `
+                <div class="profile-row" onclick="openCalibrationModal()">
+                    <div class="profile-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </div>
+                    <div class="profile-row-text">Calibration</div>
+                    <div class="profile-row-chevron">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </div>
+            `;
+
+            // Sign out (if authenticated)
+            if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                html += `
+                    <div class="profile-row danger" onclick="handleSignOut()">
+                        <div class="profile-row-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                        </div>
+                        <div class="profile-row-text">Sign Out</div>
+                    </div>
+                `;
+            }
+            html += '</div>';
+
+            container.innerHTML = html;
+        }
+
+        function populateHomeStats() {
+            try {
+                if (typeof sessionStorage !== 'undefined' && sessionStorage.getAggregatedStats) {
+                    const stats = sessionStorage.getAggregatedStats();
+                    if (stats && stats.totalSessions > 0) {
+                        document.getElementById('homeStatsCard').style.display = '';
+                        document.getElementById('homeStatAvg').textContent = Math.round(stats.averageQuality);
+                        document.getElementById('homeStatStrokes').textContent = stats.totalStrokes;
+                        document.getElementById('homeStatSessions').textContent = stats.totalSessions;
+                    }
                 }
 
-                // Stop active drill when leaving practice mode
-                if (typeof drillMode !== 'undefined' && drillMode.isActive) {
-                    drillMode.stopDrill();
-                    document.getElementById('drillHUD').style.display = 'none';
+                if (typeof improvementTracker !== 'undefined') {
+                    const plan = improvementTracker.getPlan?.() || improvementTracker.plan;
+                    if (plan && plan.focusAreas && plan.focusAreas.length > 0) {
+                        document.getElementById('homePlanCard').style.display = '';
+                        const planContainer = document.getElementById('homePlanItems');
+                        planContainer.innerHTML = plan.focusAreas.map(fa => `
+                            <div class="home-plan-item">
+                                <div class="home-plan-dot"></div>
+                                <div class="home-plan-text">${fa.metric || fa.description || fa.drill || ''}</div>
+                            </div>
+                        `).join('');
+                    }
                 }
+            } catch (e) {
+                console.log('populateHomeStats:', e);
+            }
+        }
+
+        function openSettings() {
+            const sheet = document.getElementById('settingsSheet');
+            sheet.classList.add('active');
+            // Update ghost status
+            const ghostStatus = typeof ghostOverlay !== 'undefined' && ghostOverlay.enabled ? 'On' : 'Off';
+            const el = document.getElementById('settingsGhostStatus');
+            if (el) el.textContent = ghostStatus;
+            // Show sign out if authenticated
+            if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                const so = document.getElementById('settingsSignOut');
+                if (so) so.style.display = '';
+            }
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsSheet').classList.remove('active');
+        }
+
+        // Legacy switchMode stub for any external references
+        function switchMode(mode) {
+            if (mode === 'analysis') {
+                switchTab('upload');
+            } else {
+                switchTab('home');
             }
         }
 
@@ -6443,7 +7367,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 } catch (error) {
                     console.error('Analysis failed:', error);
                     progressOverlay.classList.remove('active');
-                    alert('Failed to analyze video: ' + error.message);
+                    showToast('Failed to analyze video: ' + error.message);
                 }
             };
 
@@ -6605,7 +7529,7 @@ This is a demo — make them feel excited about the coaching experience.`;
         function exportHighlightReel() {
             const strokes = videoAnalyzer.detectedStrokes;
             if (!strokes || strokes.length === 0) {
-                alert('No strokes detected to export');
+                showToast('No strokes detected to export');
                 return;
             }
 
@@ -6620,7 +7544,7 @@ This is a demo — make them feel excited about the coaching experience.`;
         function exportBlooperReel() {
             const strokes = videoAnalyzer.detectedStrokes;
             if (!strokes || strokes.length === 0) {
-                alert('No strokes detected to export');
+                showToast('No strokes detected to export');
                 return;
             }
 
@@ -6682,7 +7606,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             ).join('\n');
 
             navigator.clipboard.writeText(summary).then(() => {
-                alert('Summary copied to clipboard!');
+                showToast('Summary copied to clipboard!');
             });
         }
 
@@ -7136,11 +8060,12 @@ This is a demo — make them feel excited about the coaching experience.`;
             calibrationTool.printThresholdComparison();
 
             if (stats.error) {
-                alert(stats.error);
+                showToast(stats.error);
                 return;
             }
 
-            alert(`Calibration Stats:\n\nTotal Runs: ${stats.totalRuns}\nTotal Strokes: ${stats.totalStrokes}\nLabels: ${stats.labels.join(', ')}\nPlayers: ${stats.players.join(', ')}\n\nSee console for detailed metrics.`);
+            showToast(`Calibration: ${stats.totalRuns} runs, ${stats.totalStrokes} strokes. See console for details.`);
+            console.log('Calibration Stats:', stats);
         }
 
         function exportCalibrationData() {
@@ -7172,7 +8097,7 @@ This is a demo — make them feel excited about the coaching experience.`;
 
         function exportThresholdUpdates() {
             if (typeof thresholdUpdater === 'undefined') {
-                alert('ThresholdUpdater not loaded');
+                showToast('ThresholdUpdater not loaded');
                 return;
             }
 
