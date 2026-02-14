@@ -1,0 +1,10 @@
+calibration_videos/
+model_weights/
+server/
+*.pt
+*.mp4
+*.avi
+*.mov
+__pycache__/
+venv/
+.git/
