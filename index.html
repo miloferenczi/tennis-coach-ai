@@ -5985,9 +5985,25 @@
                 onboardingState._micStream = stream;
             }).catch(() => {});
 
-            // Go to sign-up (mandatory before Meet Coach)
+            // If already authenticated (e.g. returning user re-doing onboarding), skip sign-up
             setTimeout(() => {
-                transitionScreens('obCoachScreen', 'obSignupScreen');
+                if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                    // Save onboarding data to profile (same as what the sign-up callback does)
+                    supabaseClient.updateProfile({
+                        sport: onboardingState.sport,
+                        ntrpLevel: onboardingState.ntrpLevel,
+                        skillLevel: NTRP_TO_SKILL[onboardingState.ntrpLevel] || 'intermediate',
+                        improvementGoals: onboardingState.goals,
+                        customGoalText: onboardingState.customGoal || null,
+                        coachPreference: onboardingState.coachPreference,
+                        displayName: onboardingState.displayName,
+                        age: onboardingState.age,
+                    });
+                    transitionScreens('obCoachScreen', 'obMeetScreen');
+                    obInitMeetCoach();
+                } else {
+                    transitionScreens('obCoachScreen', 'obSignupScreen');
+                }
             }, 500);
         }
 
