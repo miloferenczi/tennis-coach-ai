@@ -8858,7 +8858,34 @@ This is a demo — make them feel excited about the coaching experience.`;
                     transitionScreens('checkingAuthScreen', 'obSportScreen');
                 }
             } else {
-                // Not signed in — check if we know this user
+                // Not signed in — but check if URL contains auth tokens from magic link.
+                // Supabase JS v2 processes URL hash asynchronously via onAuthStateChange,
+                // NOT during getSession(). So we must wait for onAuthChange to fire.
+                const hash = window.location.hash;
+                const search = window.location.search;
+                const hasAuthTokens = hash.includes('access_token') || hash.includes('type=magiclink')
+                    || hash.includes('type=recovery') || search.includes('code=');
+
+                if (hasAuthTokens) {
+                    // Stay on checkingAuthScreen — onAuthChange will handle navigation.
+                    // Safety timeout: if onAuthChange doesn't fire within 5s, fall through.
+                    console.log('initializeAuth: auth tokens in URL, waiting for onAuthChange');
+                    setTimeout(() => {
+                        if (appFullyInitialized) return;
+                        console.warn('initializeAuth: auth token timeout, falling back');
+                        const storedEmail = localStorage.getItem('ace_user_email');
+                        const storedName = localStorage.getItem('ace_user_display_name');
+                        if (storedEmail) {
+                            populateWelcomeBackScreen(storedName, storedEmail);
+                            transitionScreens('checkingAuthScreen', 'welcomeBackScreen');
+                        } else {
+                            transitionScreens('checkingAuthScreen', 'obSportScreen');
+                        }
+                    }, 5000);
+                    return;
+                }
+
+                // No auth tokens — check if we know this user
                 const pendingLogin = localStorage.getItem('ace_login_pending');
                 const storedEmail = localStorage.getItem('ace_user_email');
                 const storedName = localStorage.getItem('ace_user_display_name');
