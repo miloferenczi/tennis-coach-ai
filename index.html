@@ -8814,6 +8814,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                             showWelcomeScreenFrom(fromScreen);
                         } else {
                             // Logged in but never completed onboarding
+                            appFullyInitialized = true;
                             transitionScreens(fromScreen, 'obSportScreen');
                         }
                         return;
@@ -8830,6 +8831,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                         showWelcomeScreen();
                     } else {
                         // Signed in but never completed onboarding
+                        appFullyInitialized = true;
                         transitionScreens('checkingAuthScreen', 'obSportScreen');
                     }
                 }
@@ -8858,6 +8860,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                     showWelcomeScreen();
                 } else {
                     // Authenticated but never finished onboarding — check for stored state
+                    appFullyInitialized = true;
                     const storedState = localStorage.getItem('ace_onboarding_state');
                     if (storedState) {
                         try {
