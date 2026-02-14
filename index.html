@@ -6312,7 +6312,6 @@ This is a demo — make them feel excited about the coaching experience.`;
                 sendBtn.textContent = 'EMAIL SENT \u2713';
                 // Persist onboarding state so magic link opened in new tab can resume
                 localStorage.setItem('ace_onboarding_state', JSON.stringify(onboardingState));
-                localStorage.setItem('ace_login_pending', email);
             }
         }
 
@@ -8738,35 +8737,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                     const loginPending = localStorage.getItem('ace_login_pending');
                     localStorage.removeItem('ace_login_pending');
 
-                    // Check if sign-in came from login or welcome-back screen
-                    const loginScreenEl = document.getElementById('loginScreen');
-                    const loginVisible = loginScreenEl && loginScreenEl.style.display !== 'none';
-                    const welcomeBackScreenEl = document.getElementById('welcomeBackScreen');
-                    const welcomeBackVisible = welcomeBackScreenEl && welcomeBackScreenEl.style.display !== 'none';
-
-                    if (loginVisible || welcomeBackVisible || loginPending) {
-                        const profile = await supabaseClient.loadProfile();
-                        // Store display name for future welcome-back
-                        if (profile?.displayName) {
-                            localStorage.setItem('ace_user_display_name', profile.displayName);
-                        }
-
-                        // Determine which screen we're transitioning from
-                        let fromScreen = 'checkingAuthScreen';
-                        if (loginVisible) fromScreen = 'loginScreen';
-                        else if (welcomeBackVisible) fromScreen = 'welcomeBackScreen';
-
-                        if (profile?.onboardingCompleted) {
-                            appFullyInitialized = true;
-                            showWelcomeScreenFrom(fromScreen);
-                        } else {
-                            // Logged in but never completed onboarding
-                            transitionScreens(fromScreen, 'obSportScreen');
-                        }
-                        return;
-                    }
-
-                    // Check if sign-in happened during onboarding (sign-up screen visible in same tab)
+                    // --- Priority 1: Onboarding sign-up (must check BEFORE login flow) ---
                     const signupScreen = document.getElementById('obSignupScreen');
                     const signupVisible = signupScreen && signupScreen.style.display !== 'none';
 
@@ -8804,7 +8775,35 @@ This is a demo — make them feel excited about the coaching experience.`;
                         return;
                     }
 
-                    // Normal sign-in (not from onboarding)
+                    // --- Priority 2: Login / welcome-back screen ---
+                    const loginScreenEl = document.getElementById('loginScreen');
+                    const loginVisible = loginScreenEl && loginScreenEl.style.display !== 'none';
+                    const welcomeBackScreenEl = document.getElementById('welcomeBackScreen');
+                    const welcomeBackVisible = welcomeBackScreenEl && welcomeBackScreenEl.style.display !== 'none';
+
+                    if (loginVisible || welcomeBackVisible || loginPending) {
+                        const profile = await supabaseClient.loadProfile();
+                        // Store display name for future welcome-back
+                        if (profile?.displayName) {
+                            localStorage.setItem('ace_user_display_name', profile.displayName);
+                        }
+
+                        // Determine which screen we're transitioning from
+                        let fromScreen = 'checkingAuthScreen';
+                        if (loginVisible) fromScreen = 'loginScreen';
+                        else if (welcomeBackVisible) fromScreen = 'welcomeBackScreen';
+
+                        if (profile?.onboardingCompleted) {
+                            appFullyInitialized = true;
+                            showWelcomeScreenFrom(fromScreen);
+                        } else {
+                            // Logged in but never completed onboarding
+                            transitionScreens(fromScreen, 'obSportScreen');
+                        }
+                        return;
+                    }
+
+                    // --- Priority 3: Normal sign-in (not from onboarding or login) ---
                     const profile = await supabaseClient.loadProfile();
                     // Store display name for future welcome-back
                     if (profile?.displayName) {
@@ -8823,7 +8822,14 @@ This is a demo — make them feel excited about the coaching experience.`;
             // Check for existing session
             const user = await supabaseClient.getExistingSession();
             if (user) {
+                // If onAuthChange already handled navigation (race), bail out
+                if (appFullyInitialized) return;
+
                 await loadUserData();
+
+                // Re-check after async — onAuthChange may have run during loadUserData
+                if (appFullyInitialized) return;
+
                 const profile = await supabaseClient.loadProfile();
 
                 // Store email + name for returning user detection
