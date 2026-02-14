@@ -325,7 +325,7 @@ class StrokeReplayManager {
     ctx.fillStyle = '#F5F5F5';
     ctx.textAlign = 'left';
     const qualityColor = replay.strokeData.quality >= 80 ? '#32D74B'
-      : replay.strokeData.quality >= 60 ? '#CDFF00' : '#FF3B30';
+      : replay.strokeData.quality >= 60 ? '#A0F0FF' : '#FF3B30';
     ctx.fillText(`${replay.strokeData.type}`, 16, 30);
     ctx.fillStyle = qualityColor;
     ctx.fillText(`${replay.strokeData.quality}/100`, 16, 52);
@@ -818,7 +818,7 @@ class StrokeReplayManager {
       // Labels
       ctx.font = 'bold 14px Inter, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(205,255,0,0.8)';
+      ctx.fillStyle = 'rgba(160,240,255,0.8)';
       ctx.fillText(`${r1.strokeData.type} — ${r1.strokeData.quality}`, halfW / 2, 20);
       ctx.fillText(`${r2.strokeData.type} — ${r2.strokeData.quality}`, halfW + halfW / 2, 20);
 
@@ -834,7 +834,7 @@ class StrokeReplayManager {
       const progress = maxFrames > 1 ? frameIdx / (maxFrames - 1) : 0;
       ctx.fillStyle = 'rgba(255,255,255,0.15)';
       ctx.fillRect(0, h - 4, w, 4);
-      ctx.fillStyle = '#CDFF00';
+      ctx.fillStyle = '#A0F0FF';
       ctx.fillRect(0, h - 4, w * progress, 4);
 
       frameIdx++;

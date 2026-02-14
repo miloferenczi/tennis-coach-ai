@@ -37,15 +37,15 @@ class ShareCardGenerator {
 
     // Accent line at top
     const accentGrad = ctx.createLinearGradient(0, 0, this.width, 0);
-    accentGrad.addColorStop(0, '#CDFF00');
-    accentGrad.addColorStop(1, '#4FC3F7');
+    accentGrad.addColorStop(0, '#A0F0FF');
+    accentGrad.addColorStop(1, '#6B8AFF');
     ctx.fillStyle = accentGrad;
     ctx.fillRect(0, 0, this.width, 6);
 
     let y = 100;
 
     // ACE logo/title
-    ctx.fillStyle = '#CDFF00';
+    ctx.fillStyle = '#A0F0FF';
     ctx.font = 'bold 72px -apple-system, system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('ACE', this.width / 2, y);
@@ -63,7 +63,7 @@ class ShareCardGenerator {
     y += 80;
 
     // Big score
-    ctx.fillStyle = '#CDFF00';
+    ctx.fillStyle = '#A0F0FF';
     ctx.font = 'bold 160px -apple-system, system-ui, sans-serif';
     ctx.fillText(`${summary.averageScore}`, this.width / 2, y + 100);
     y += 120;
@@ -115,7 +115,7 @@ class ShareCardGenerator {
           if (i === 0) ctx.moveTo(px, py);
           else ctx.lineTo(px, py);
         }
-        ctx.strokeStyle = '#CDFF00';
+        ctx.strokeStyle = '#A0F0FF';
         ctx.lineWidth = 4;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
@@ -131,14 +131,14 @@ class ShareCardGenerator {
       const insight = insights[0];
 
       // Background card
-      ctx.fillStyle = 'rgba(79,195,247,0.1)';
+      ctx.fillStyle = 'rgba(107,138,255,0.1)';
       const cardX = 60;
       const cardW = this.width - 120;
       const cardH = 200;
       this.roundRect(ctx, cardX, y, cardW, cardH, 16);
       ctx.fill();
 
-      ctx.fillStyle = '#4FC3F7';
+      ctx.fillStyle = '#6B8AFF';
       ctx.font = '18px -apple-system, system-ui, sans-serif';
       ctx.textAlign = 'left';
       ctx.fillText('SESSION INSIGHT', cardX + 24, y + 36);

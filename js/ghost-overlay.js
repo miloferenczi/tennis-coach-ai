@@ -10,7 +10,7 @@ class GhostOverlay {
     this.isPlaying = false;
     this.playbackSpeed = 1.0;
     this.opacity = 0.4;
-    this.color = 'rgba(205, 255, 0, 0.5)'; // Volt green, semi-transparent
+    this.color = 'rgba(160, 240, 255, 0.5)'; // Ozone, semi-transparent
 
     // Best stroke tracking
     this.bestStrokeThisSession = null;
@@ -219,7 +219,7 @@ class GhostOverlay {
     ctx.lineWidth = 3;
 
     // Add glow effect
-    ctx.shadowColor = 'rgba(205, 255, 0, 0.6)';
+    ctx.shadowColor = 'rgba(160, 240, 255, 0.6)';
     ctx.shadowBlur = 15;
 
     // Draw ghost skeleton

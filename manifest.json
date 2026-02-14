@@ -16,7 +16,7 @@
       "purpose": "any"
     },
     {
-      "src": "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='200' height='200' fill='%230A0A0A'/%3E%3Ccircle cx='80' cy='100' r='30' fill='%23CDFF00'/%3E%3Cpath d='M132 42L172 100L132 158L140 158L180 100L140 42Z' fill='%23CDFF00'/%3E%3C/svg%3E",
+      "src": "data:image/svg+xml,%3Csvg viewBox='0 0 200 200' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Crect width='200' height='200' fill='%230A0A0A'/%3E%3Ccircle cx='80' cy='100' r='30' fill='%23A0F0FF'/%3E%3Cpath d='M132 42L172 100L132 158L140 158L180 100L140 42Z' fill='%23A0F0FF'/%3E%3C/svg%3E",
       "sizes": "192x192",
       "type": "image/svg+xml",
       "purpose": "maskable"

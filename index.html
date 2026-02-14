@@ -83,7 +83,7 @@
 
     <style>
         /* ============================================
-           PREMIUM DESIGN SYSTEM - Nike/Athletic Aesthetic
+           PREMIUM DESIGN SYSTEM - Ozone/Bioluminescent Aesthetic
            ============================================ */
 
         :root {
@@ -91,7 +91,7 @@
             --bg-primary: #0A0A0A;
             --bg-secondary: #141414;
             --bg-surface: rgba(255, 255, 255, 0.06);
-            --accent-volt: #CDFF00;
+            --accent-ozone: #A0F0FF;
             --text-primary: #F5F5F5;
             --text-muted: #8A8A8A;
             --text-subtle: #666666;
@@ -259,8 +259,8 @@
         }
 
         .step-dot.active {
-            background: #CDFF00;
-            border-color: #CDFF00;
+            background: #A0F0FF;
+            border-color: #A0F0FF;
         }
 
         /* Step 1: Welcome Screen */
@@ -274,7 +274,7 @@
         }
 
         .hero-title .accent {
-            color: #CDFF00;
+            color: #A0F0FF;
         }
 
         .hero-subtitle {
@@ -336,7 +336,7 @@
         .feature-icon svg {
             width: 24px;
             height: 24px;
-            stroke: #CDFF00;
+            stroke: #A0F0FF;
             fill: none;
             stroke-width: 1.5;
             stroke-linecap: round;
@@ -365,7 +365,7 @@
         .btn-primary {
             width: 100%;
             height: 56px;
-            background: #CDFF00;
+            background: #A0F0FF;
             color: #0A0A0A;
             border: none;
             border-radius: 28px;
@@ -385,7 +385,7 @@
 
         .btn-primary:active {
             transform: scale(0.97);
-            background: #B8E600;
+            background: #80D8E8;
         }
 
         .btn-primary:disabled {
@@ -466,7 +466,7 @@
 
         .api-input:focus {
             outline: none;
-            border-color: rgba(205, 255, 0, 0.4);
+            border-color: rgba(160, 240, 255, 0.4);
             background: rgba(255, 255, 255, 0.08);
         }
 
@@ -483,8 +483,8 @@
         }
 
         @keyframes inputFlash {
-            0%, 100% { border-color: rgba(205, 255, 0, 0.4); }
-            50% { border-color: #CDFF00; }
+            0%, 100% { border-color: rgba(160, 240, 255, 0.4); }
+            50% { border-color: #A0F0FF; }
         }
 
         .api-checkmark {
@@ -504,7 +504,7 @@
         .api-checkmark svg {
             width: 16px;
             height: 16px;
-            stroke: #CDFF00;
+            stroke: #A0F0FF;
             fill: none;
             stroke-width: 2;
         }
@@ -520,7 +520,7 @@
         }
 
         .api-link:hover {
-            color: #CDFF00;
+            color: #A0F0FF;
         }
 
         /* Skip Button */
@@ -607,7 +607,7 @@
 
         .loading-fill {
             height: 100%;
-            background: #CDFF00;
+            background: #A0F0FF;
             width: 0%;
             transition: width 400ms ease-out;
             border-radius: 2px;
@@ -645,7 +645,7 @@
            BUTTONS
            ============================================ */
         .btn {
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             color: var(--bg-primary);
             border: none;
             padding: 16px 40px;
@@ -709,7 +709,7 @@
         input[type="password"]:focus,
         input[type="text"]:focus {
             outline: none;
-            border-color: var(--accent-volt);
+            border-color: var(--accent-ozone);
         }
 
         input[type="password"]::placeholder,
@@ -743,7 +743,7 @@
 
         .loading-bar {
             height: 100%;
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             border-radius: var(--radius-full);
             width: 0%;
             transition: width 0.3s ease;
@@ -813,9 +813,9 @@
         }
 
         .status-dot.active {
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             animation: pulse 1.5s infinite;
-            box-shadow: 0 0 12px rgba(205, 255, 0, 0.5);
+            box-shadow: 0 0 15px rgba(160, 240, 255, 0.25), 0 0 40px rgba(160, 240, 255, 0.1), 0 0 80px rgba(160, 240, 255, 0.05);
         }
 
         @keyframes pulse {
@@ -855,7 +855,7 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             margin-bottom: 8px;
             text-align: center;
         }
@@ -946,14 +946,14 @@
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.1em;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
         }
 
         .coaching-dot {
             width: 6px;
             height: 6px;
             border-radius: 50%;
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             animation: pulse 1.5s infinite;
         }
 
@@ -984,14 +984,14 @@
         }
 
         .phase-step.active {
-            background: rgba(205, 255, 0, 0.2);
-            color: var(--accent-volt);
-            box-shadow: 0 0 8px rgba(205, 255, 0, 0.15);
+            background: rgba(160, 240, 255, 0.2);
+            color: var(--accent-ozone);
+            box-shadow: 0 0 8px rgba(160, 240, 255, 0.15);
         }
 
         .phase-step.completed {
-            background: rgba(205, 255, 0, 0.08);
-            color: rgba(205, 255, 0, 0.5);
+            background: rgba(160, 240, 255, 0.08);
+            color: rgba(160, 240, 255, 0.5);
         }
 
         .fault-chips {
@@ -1062,7 +1062,7 @@
         }
 
         .stroke-flash-overlay.great {
-            box-shadow: inset 0 0 120px 40px rgba(205, 255, 0, 0.6);
+            box-shadow: inset 0 0 120px 40px rgba(160, 240, 255, 0.5), inset 0 0 200px 80px rgba(160, 240, 255, 0.15);
         }
 
         .stroke-flash-overlay.good {
@@ -1107,7 +1107,7 @@
         .ghost-similarity-value {
             font-size: 28px;
             font-weight: 800;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
         }
 
         .ghost-similarity-value.low {
@@ -1119,7 +1119,7 @@
         }
 
         .ghost-similarity-value.high {
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
         }
 
         /* #ghostBtn styles removed — ghost toggle moved to settings */
@@ -1138,13 +1138,13 @@
         }
 
         .pro-card:hover {
-            background: rgba(205, 255, 0, 0.1);
-            border-color: var(--accent-volt);
+            background: rgba(160, 240, 255, 0.1);
+            border-color: var(--accent-ozone);
         }
 
         .pro-card.selected {
-            background: rgba(205, 255, 0, 0.15);
-            border-color: var(--accent-volt);
+            background: rgba(160, 240, 255, 0.15);
+            border-color: var(--accent-ozone);
         }
 
         .pro-name {
@@ -1193,7 +1193,7 @@
         }
 
         .comparison-pro {
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             font-weight: 600;
         }
 
@@ -1204,8 +1204,8 @@
         }
 
         .comparison-diff.positive {
-            background: rgba(205, 255, 0, 0.2);
-            color: var(--accent-volt);
+            background: rgba(160, 240, 255, 0.2);
+            color: var(--accent-ozone);
         }
 
         .comparison-diff.negative {
@@ -1259,7 +1259,7 @@
 
         .challenge-progress-fill {
             height: 100%;
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             border-radius: 3px;
             transition: width 0.3s ease;
         }
@@ -1298,7 +1298,7 @@
         .challenge-complete-title {
             font-size: 28px;
             font-weight: 800;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             margin-bottom: 12px;
         }
 
@@ -1385,7 +1385,7 @@
 
         .drill-hud-progress-fill {
             height: 100%;
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             border-radius: 3px;
             transition: width 0.3s ease;
         }
@@ -1539,7 +1539,7 @@
         .drill-summary-name {
             font-size: 24px;
             font-weight: 800;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             margin-bottom: 24px;
         }
 
@@ -1601,7 +1601,7 @@
             left: -8px;
             right: -8px;
             height: 2px;
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             opacity: 0.5;
         }
 
@@ -1628,13 +1628,13 @@
         }
 
         .drill-card:hover {
-            border-color: var(--accent-volt);
-            background: rgba(205, 255, 0, 0.05);
+            border-color: var(--accent-ozone);
+            background: rgba(160, 240, 255, 0.05);
         }
 
         .drill-card.recommended {
-            border-color: rgba(205, 255, 0, 0.3);
-            background: rgba(205, 255, 0, 0.05);
+            border-color: rgba(160, 240, 255, 0.3);
+            background: rgba(160, 240, 255, 0.05);
         }
 
         .drill-card-header {
@@ -1668,7 +1668,7 @@
         }
 
         .drill-card-stroke {
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             font-weight: 600;
         }
 
@@ -1680,8 +1680,8 @@
             font-size: 9px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            color: var(--accent-volt);
-            background: rgba(205, 255, 0, 0.1);
+            color: var(--accent-ozone);
+            background: rgba(160, 240, 255, 0.1);
             padding: 2px 8px;
             border-radius: 4px;
             margin-bottom: 8px;
@@ -1699,18 +1699,18 @@
         }
 
         .challenge-card:hover {
-            border-color: var(--accent-volt);
-            background: rgba(205, 255, 0, 0.05);
+            border-color: var(--accent-ozone);
+            background: rgba(160, 240, 255, 0.05);
         }
 
         .challenge-card.completed {
             opacity: 0.6;
-            border-color: var(--accent-volt);
+            border-color: var(--accent-ozone);
         }
 
         .challenge-card.active {
-            border-color: var(--accent-volt);
-            background: rgba(205, 255, 0, 0.1);
+            border-color: var(--accent-ozone);
+            background: rgba(160, 240, 255, 0.1);
         }
 
         .challenge-card-header {
@@ -1761,7 +1761,7 @@
 
         .challenge-card-badge {
             font-size: 11px;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             margin-left: auto;
         }
 
@@ -1884,7 +1884,7 @@
         .summary-section-title {
             font-size: 14px;
             font-weight: bold;
-            color: var(--accent-volt, #CDFF00);
+            color: var(--accent-ozone, #A0F0FF);
             margin-bottom: 12px;
             text-transform: uppercase;
         }
@@ -1903,7 +1903,7 @@
             background: rgba(0, 0, 0, 0.3);
             padding: 16px;
             border-radius: 12px;
-            border-left: 4px solid var(--accent-volt, #CDFF00);
+            border-left: 4px solid var(--accent-ozone, #A0F0FF);
         }
 
         .drill-name {
@@ -1922,7 +1922,7 @@
 
         .drill-duration {
             font-size: 12px;
-            color: var(--accent-volt, #CDFF00);
+            color: var(--accent-ozone, #A0F0FF);
         }
 
         .improvement-badge {
@@ -1937,7 +1937,7 @@
 
         .improvement-badge.positive {
             background: rgba(76, 175, 80, 0.3);
-            color: var(--accent-volt, #CDFF00);
+            color: var(--accent-ozone, #A0F0FF);
         }
 
         .improvement-badge.negative {
@@ -1983,8 +1983,8 @@
         }
 
         .video-upload-zone.dragover {
-            border-color: var(--accent-volt, #CDFF00);
-            background: rgba(205, 255, 0, 0.05);
+            border-color: var(--accent-ozone, #A0F0FF);
+            background: rgba(160, 240, 255, 0.05);
         }
 
         .video-upload-zone.has-video {
@@ -2069,7 +2069,7 @@
             height: 40px;
             border-radius: 50%;
             border: none;
-            background: var(--accent-volt, #CDFF00);
+            background: var(--accent-ozone, #A0F0FF);
             color: white;
             font-size: 16px;
             cursor: pointer;
@@ -2098,7 +2098,7 @@
             top: 0;
             width: 3px;
             height: 100%;
-            background: var(--accent-volt, #CDFF00);
+            background: var(--accent-ozone, #A0F0FF);
             border-radius: 2px;
             pointer-events: none;
         }
@@ -2118,11 +2118,11 @@
         }
 
         .stroke-marker.forehand {
-            background: var(--accent-volt, #CDFF00);
+            background: var(--accent-ozone, #A0F0FF);
         }
 
         .stroke-marker.backhand {
-            background: var(--accent-volt, #CDFF00);
+            background: var(--accent-ozone, #A0F0FF);
         }
 
         .stroke-marker.serve {
@@ -2245,7 +2245,7 @@
 
         .analysis-progress-fill {
             height: 100%;
-            background: var(--accent-volt, #CDFF00);
+            background: var(--accent-ozone, #A0F0FF);
             width: 0%;
             transition: width 0.2s;
         }
@@ -2350,9 +2350,9 @@
         }
 
         .replay-ctrl-btn.active {
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             color: #0A0A0A;
-            border-color: var(--accent-volt);
+            border-color: var(--accent-ozone);
         }
 
         .replay-ctrl-btn.close-btn {
@@ -2380,7 +2380,7 @@
             bottom: calc(220px + env(safe-area-inset-bottom));
             right: 16px;
             z-index: 200;
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             color: #0A0A0A;
             border: none;
             font-family: 'Inter', sans-serif;
@@ -2390,7 +2390,7 @@
             border-radius: 24px;
             cursor: pointer;
             display: none;
-            box-shadow: 0 4px 12px rgba(205, 255, 0, 0.3);
+            box-shadow: 0 4px 12px rgba(160, 240, 255, 0.25), 0 0 30px rgba(160, 240, 255, 0.1);
             animation: replayPulse 1.5s ease-in-out infinite;
         }
 
@@ -2445,8 +2445,8 @@
             opacity: 0; transform: translateY(12px);
             animation: featureCardIn 400ms ease-out forwards;
         }
-        .ob-card:hover { background: rgba(205,255,0,0.04); border-color: rgba(205,255,0,0.15); }
-        .ob-card.selected { background: rgba(205,255,0,0.08); border-color: rgba(205,255,0,0.4); }
+        .ob-card:hover { background: rgba(160,240,255,0.04); border-color: rgba(160,240,255,0.15); }
+        .ob-card.selected { background: rgba(160,240,255,0.08); border-color: rgba(160,240,255,0.4); }
         .ob-card-icon { font-size: 28px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
         .ob-card-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
         .ob-card-title { font-size: 15px; font-weight: 600; color: #F5F5F5; }
@@ -2457,7 +2457,7 @@
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0; transition: all 200ms ease-out;
         }
-        .ob-card.selected .ob-card-check { background: #CDFF00; border-color: #CDFF00; }
+        .ob-card.selected .ob-card-check { background: #A0F0FF; border-color: #A0F0FF; }
 
         /* Multi-select chip grid */
         .ob-chip-grid { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; margin-bottom: 24px; }
@@ -2467,7 +2467,7 @@
             font-size: 13px; color: #999; cursor: pointer; transition: all 200ms ease-out;
             font-family: inherit;
         }
-        .ob-chip.selected { background: rgba(205,255,0,0.12); border-color: rgba(205,255,0,0.4); color: #CDFF00; }
+        .ob-chip.selected { background: rgba(160,240,255,0.12); border-color: rgba(160,240,255,0.4); color: #A0F0FF; }
 
         /* Coach personality cards */
         .ob-coach-card {
@@ -2475,7 +2475,7 @@
             background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
             border-radius: 16px; cursor: pointer; transition: all 200ms ease-out; gap: 8px;
         }
-        .ob-coach-card.selected { background: rgba(205,255,0,0.08); border-color: rgba(205,255,0,0.4); }
+        .ob-coach-card.selected { background: rgba(160,240,255,0.08); border-color: rgba(160,240,255,0.4); }
         .ob-coach-header { display: flex; align-items: center; gap: 12px; }
         .ob-coach-avatar {
             width: 48px; height: 48px; border-radius: 50%;
@@ -2489,11 +2489,11 @@
             cursor: pointer; align-self: flex-start; margin-top: 4px;
             transition: all 200ms; font-family: inherit;
         }
-        .ob-preview-btn:hover { color: #CDFF00; border-color: rgba(205,255,0,0.3); }
+        .ob-preview-btn:hover { color: #A0F0FF; border-color: rgba(160,240,255,0.3); }
 
         /* Meet coach audio wave */
         .ob-coach-wave { width: 100%; height: 40px; display: flex; align-items: center; justify-content: center; gap: 3px; margin: 24px 0; }
-        .ob-coach-wave .bar { width: 3px; background: #CDFF00; border-radius: 2px; animation: waveBar 1.2s ease-in-out infinite; }
+        .ob-coach-wave .bar { width: 3px; background: #A0F0FF; border-radius: 2px; animation: waveBar 1.2s ease-in-out infinite; }
         @keyframes waveBar {
             0%, 100% { height: 8px; opacity: 0.3; }
             50% { height: 28px; opacity: 1; }
@@ -2504,7 +2504,7 @@
             position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
             background: rgba(0,0,0,0.8); backdrop-filter: blur(8px);
             padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 600;
-            color: #CDFF00; z-index: 1100; border: 1px solid rgba(205,255,0,0.2);
+            color: #A0F0FF; z-index: 1100; border: 1px solid rgba(160,240,255,0.2);
         }
 
         /* Report card */
@@ -2523,19 +2523,19 @@
             padding: 20px; background: rgba(255,255,255,0.04);
             border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; transition: all 200ms;
         }
-        .ob-pricing-card.highlight { border-color: rgba(205,255,0,0.4); background: rgba(205,255,0,0.04); }
+        .ob-pricing-card.highlight { border-color: rgba(160,240,255,0.4); background: rgba(160,240,255,0.04); }
         .ob-pricing-badge {
-            display: inline-block; background: #CDFF00; color: #0A0A0A;
+            display: inline-block; background: #A0F0FF; color: #0A0A0A;
             font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 10px;
             text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px;
         }
         .ob-pricing-name { font-size: 18px; font-weight: 700; color: #F5F5F5; margin-bottom: 4px; }
-        .ob-pricing-price { font-size: 14px; color: #CDFF00; margin-bottom: 12px; }
+        .ob-pricing-price { font-size: 14px; color: #A0F0FF; margin-bottom: 12px; }
         .ob-pricing-features { list-style: none; padding: 0; margin: 0; }
         .ob-pricing-features li {
             font-size: 12px; color: #777; padding: 4px 0 4px 16px; position: relative;
         }
-        .ob-pricing-features li::before { content: '\2713'; position: absolute; left: 0; color: #CDFF00; font-size: 11px; }
+        .ob-pricing-features li::before { content: '\2713'; position: absolute; left: 0; color: #A0F0FF; font-size: 11px; }
 
         /* Onboarding text elements */
         .ob-question { font-size: 24px; font-weight: 700; color: #F5F5F5; text-align: center; margin-bottom: 32px; line-height: 1.3; }
@@ -2548,7 +2548,7 @@
             color: #F5F5F5; font-size: 15px; font-family: inherit; outline: none;
             transition: border-color 200ms; box-sizing: border-box;
         }
-        .ob-input:focus { border-color: rgba(205,255,0,0.4); }
+        .ob-input:focus { border-color: rgba(160,240,255,0.4); }
         .ob-input::placeholder { color: #444; }
 
         /* Progress bar at bottom of onboarding screens */
@@ -2556,7 +2556,7 @@
             position: absolute; bottom: 40px; left: 24px; right: 24px;
             height: 2px; background: rgba(255,255,255,0.06); border-radius: 1px;
         }
-        .ob-progress-fill { height: 100%; background: #CDFF00; border-radius: 1px; transition: width 400ms ease-out; }
+        .ob-progress-fill { height: 100%; background: #A0F0FF; border-radius: 1px; transition: width 400ms ease-out; }
 
         /* ============================================
            BOTTOM TAB BAR
@@ -2608,7 +2608,7 @@
         }
 
         .tab-btn.active {
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
         }
 
         .tab-btn:active {
@@ -2665,7 +2665,7 @@
         }
 
         .home-greeting .accent {
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
         }
 
         .home-greeting-coach {
@@ -2676,7 +2676,7 @@
 
         .home-greeting-progress {
             font-size: 13px;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             margin-top: 8px;
             font-weight: 500;
             line-height: 1.4;
@@ -2724,7 +2724,7 @@
         }
 
         .home-cta-primary {
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             color: #0A0A0A;
         }
 
@@ -2775,7 +2775,7 @@
         .home-cta-secondary .cta-icon svg {
             width: 20px;
             height: 20px;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
         }
 
         .home-card {
@@ -2832,7 +2832,7 @@
             width: 8px;
             height: 8px;
             border-radius: 50%;
-            background: var(--accent-volt);
+            background: var(--accent-ozone);
             flex-shrink: 0;
         }
 
@@ -2880,8 +2880,8 @@
         }
 
         .drill-card-icon {
-            background: rgba(205, 255, 0, 0.1);
-            color: var(--accent-volt);
+            background: rgba(160, 240, 255, 0.1);
+            color: var(--accent-ozone);
         }
 
         .challenge-card-tab-icon {
@@ -3016,8 +3016,8 @@
 
         /* Tier badge */
         .profile-tier-badge { padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
-        .profile-tier-badge.pro { background: var(--accent-volt); color: #0A0A0A; }
-        .profile-tier-badge.trial { background: rgba(79,195,247,0.2); color: #4FC3F7; }
+        .profile-tier-badge.pro { background: var(--accent-ozone); color: #0A0A0A; }
+        .profile-tier-badge.trial { background: rgba(107,138,255,0.2); color: #6B8AFF; }
         .profile-tier-badge.free { background: rgba(255,255,255,0.08); color: var(--text-muted); }
 
         /* Stroke proficiency */
@@ -3033,7 +3033,7 @@
         /* Milestones & Goals pills */
         .profile-milestones, .profile-goals { display: flex; flex-wrap: wrap; gap: 8px; }
         .profile-milestone-pill { padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: var(--text-primary); font-weight: 500; }
-        .profile-goal-chip { padding: 6px 12px; border-radius: 8px; background: rgba(205,255,0,0.08); border: 1px solid rgba(205,255,0,0.15); font-size: 12px; color: var(--accent-volt); font-weight: 500; }
+        .profile-goal-chip { padding: 6px 12px; border-radius: 8px; background: rgba(160,240,255,0.08); border: 1px solid rgba(160,240,255,0.15); font-size: 12px; color: var(--accent-ozone); font-weight: 500; }
 
         /* ============================================
            LIVE SESSION CONTROLS
@@ -3112,8 +3112,8 @@
         }
 
         #liveRecBtn.recording {
-            border-color: var(--accent-volt);
-            box-shadow: 0 0 20px rgba(205, 255, 0, 0.25);
+            border-color: var(--accent-ozone);
+            box-shadow: 0 0 15px rgba(160, 240, 255, 0.25), 0 0 40px rgba(160, 240, 255, 0.1), 0 0 80px rgba(160, 240, 255, 0.05);
         }
 
         #liveRecLabel {
@@ -3279,7 +3279,7 @@
         }
         .recap-score-ring .ring-fill {
             fill: none;
-            stroke: var(--accent-volt);
+            stroke: var(--accent-ozone);
             stroke-width: 6;
             stroke-linecap: round;
             stroke-dasharray: 339.292;
@@ -3341,7 +3341,7 @@
             justify-content: center;
         }
         .recap-milestone {
-            background: linear-gradient(135deg, var(--accent-volt), #a0cc00);
+            background: linear-gradient(135deg, var(--accent-ozone), #70C8E0);
             color: #0A0A0A;
             padding: 6px 14px;
             border-radius: 20px;
@@ -3362,8 +3362,8 @@
 
         /* Insight */
         .recap-insight {
-            background: linear-gradient(135deg, rgba(79,195,247,0.12), rgba(205,255,0,0.08));
-            border: 1px solid rgba(79,195,247,0.25);
+            background: linear-gradient(135deg, rgba(107,138,255,0.12), rgba(160,240,255,0.08));
+            border: 1px solid rgba(107,138,255,0.25);
             border-radius: 14px;
             padding: 20px;
             margin-bottom: 16px;
@@ -3385,7 +3385,7 @@
         }
         .recap-insight-action {
             font-size: 13px;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             font-weight: 600;
         }
 
@@ -3531,7 +3531,7 @@
             transition: border-color 0.2s;
         }
         .recap-moment:active {
-            border-color: var(--accent-volt);
+            border-color: var(--accent-ozone);
         }
         .recap-moment canvas {
             width: 90px;
@@ -3598,7 +3598,7 @@
         }
         .recap-plan-area {
             font-weight: 600;
-            color: #4FC3F7;
+            color: #6B8AFF;
             font-size: 14px;
             margin-bottom: 4px;
         }
@@ -3612,17 +3612,17 @@
             align-items: center;
             gap: 6px;
             padding: 8px 14px;
-            border: 1px solid var(--accent-volt);
+            border: 1px solid var(--accent-ozone);
             border-radius: 8px;
-            color: var(--accent-volt);
+            color: var(--accent-ozone);
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            background: rgba(205,255,0,0.06);
+            background: rgba(160,240,255,0.06);
             transition: background 0.2s;
         }
         .recap-plan-drill:active {
-            background: rgba(205,255,0,0.15);
+            background: rgba(160,240,255,0.15);
         }
         .recap-plan-goal {
             margin-top: 10px;
@@ -3642,7 +3642,7 @@
             padding: 16px;
             border: none;
             border-radius: 12px;
-            background: linear-gradient(135deg, var(--accent-volt), #a0cc00);
+            background: linear-gradient(135deg, var(--accent-ozone), #70C8E0);
             color: #0A0A0A;
             font-size: 16px;
             font-weight: 700;
@@ -3722,7 +3722,7 @@
                 <div class="hero-title">ACE<span class="accent">.</span></div>
                 <div class="hero-subtitle">AI TENNIS COACH</div>
                 <div style="margin-top: 40px;">
-                    <div class="loading-spinner" style="width:40px;height:40px;border:3px solid rgba(205,255,0,0.2);border-top-color:#CDFF00;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
+                    <div class="loading-spinner" style="width:40px;height:40px;border:3px solid rgba(160,240,255,0.2);border-top-color:#A0F0FF;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto;"></div>
                     <div style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:16px;">Checking session...</div>
                 </div>
             </div>
@@ -3742,7 +3742,7 @@
                         <div class="ob-card-check"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#0A0A0A" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
                     </div>
                 </div>
-                <button class="btn-skip" onclick="showLoginScreen()" style="margin-top:24px;">Already have an account? <span style="color:#CDFF00;">Log in</span></button>
+                <button class="btn-skip" onclick="showLoginScreen()" style="margin-top:24px;">Already have an account? <span style="color:#A0F0FF;">Log in</span></button>
             </div>
             <div class="ob-progress"><div class="ob-progress-fill" style="width:9%"></div></div>
         </div>
@@ -3782,7 +3782,7 @@
                     SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>
                 </button>
                 <div id="welcomeBackStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
-                <button class="btn-skip" id="welcomeBackNotYouBtn" onclick="welcomeBackStartFresh()">Not you? <span style="color:#CDFF00;">Start fresh</span></button>
+                <button class="btn-skip" id="welcomeBackNotYouBtn" onclick="welcomeBackStartFresh()">Not you? <span style="color:#A0F0FF;">Start fresh</span></button>
             </div>
         </div>
 
@@ -3906,8 +3906,8 @@
                 <div class="ob-question" style="font-size:48px;margin-bottom:8px;" id="obReportScore">--</div>
                 <div style="font-size:13px;color:#666;margin-bottom:24px;">Average Quality Score</div>
                 <div class="ob-report-card" id="obReportDetails"></div>
-                <div style="background:rgba(205,255,0,0.05);border:1px solid rgba(205,255,0,0.15);border-radius:12px;padding:16px;margin:24px 0;">
-                    <div style="font-size:11px;color:#CDFF00;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Your coach says...</div>
+                <div style="background:rgba(160,240,255,0.05);border:1px solid rgba(160,240,255,0.15);border-radius:12px;padding:16px;margin:24px 0;">
+                    <div style="font-size:11px;color:#A0F0FF;text-transform:uppercase;letter-spacing:0.1em;margin-bottom:8px;">Your coach says...</div>
                     <div style="font-size:14px;color:#ccc;line-height:1.5;" id="obCoachNoteText"></div>
                 </div>
                 <button class="btn-primary" onclick="obGoToPricing()">
@@ -4008,8 +4008,8 @@
                     <div class="loading-logo">
                         <!-- ACE Logo Mark: Ball + Chevron -->
                         <svg viewBox="0 0 64 64" fill="none">
-                            <circle cx="20" cy="32" r="10" fill="#CDFF00"/>
-                            <path d="M38 16L54 32L38 48L42 48L58 32L42 16Z" fill="#CDFF00"/>
+                            <circle cx="20" cy="32" r="10" fill="#A0F0FF"/>
+                            <path d="M38 16L54 32L38 48L42 48L58 32L42 16Z" fill="#A0F0FF"/>
                         </svg>
                     </div>
                     <div class="loading-phase" id="loadingPhase">LOADING</div>
@@ -4087,7 +4087,7 @@
 
                     <div class="metric-item" style="grid-column: span 2;">
                         <div class="metric-label">LEVEL</div>
-                        <div class="metric-value" id="skillLevelMetric" style="color: var(--accent-volt);">--</div>
+                        <div class="metric-value" id="skillLevelMetric" style="color: var(--accent-ozone);">--</div>
                     </div>
                 </div>
             </div>
@@ -4167,7 +4167,7 @@
                     <div class="stroke-details-panel" id="strokeDetailsPanel">
                         <div class="stroke-details-header">
                             <span class="stroke-details-type" id="strokeDetailType">Forehand</span>
-                            <span class="stroke-details-score" id="strokeDetailScore" style="color: var(--accent-volt, #CDFF00);">85</span>
+                            <span class="stroke-details-score" id="strokeDetailScore" style="color: var(--accent-ozone, #A0F0FF);">85</span>
                         </div>
                         <div class="stroke-details-metrics">
                             <div class="stroke-metric">
@@ -4191,7 +4191,7 @@
 
                     <!-- Comparison Panel -->
                     <div class="stroke-details-panel" id="comparisonPanel" style="left: 20px; right: auto; transform: translateX(-320px);">
-                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 12px; color: var(--accent-volt);">
+                        <div style="font-size: 12px; font-weight: bold; text-transform: uppercase; margin-bottom: 12px; color: var(--accent-ozone);">
                             Comparing 2 Strokes
                         </div>
                         <div id="comparisonContent">
@@ -4560,7 +4560,7 @@
                             <!-- Dynamic comparison details -->
                         </div>
 
-                        <div id="proCoachingTip" style="margin-top: 16px; padding: 12px; background: rgba(205, 255, 0, 0.1); border-radius: 8px; border-left: 3px solid var(--accent-volt);">
+                        <div id="proCoachingTip" style="margin-top: 16px; padding: 12px; background: rgba(160, 240, 255, 0.1); border-radius: 8px; border-left: 3px solid var(--accent-ozone);">
                             <!-- GPT coaching insight -->
                         </div>
                     </div>
@@ -4614,7 +4614,7 @@
                             <span id="calibrationStrokeCount">0 strokes</span>
                         </div>
                         <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
-                            <div id="calibrationProgressBar" style="height: 100%; background: var(--accent-volt, #CDFF00); width: 0%; transition: width 0.3s;"></div>
+                            <div id="calibrationProgressBar" style="height: 100%; background: var(--accent-ozone, #A0F0FF); width: 0%; transition: width 0.3s;"></div>
                         </div>
                     </div>
 
@@ -4638,7 +4638,7 @@
                             Apply calibrated thresholds to improve stroke detection accuracy.
                         </p>
                         <div style="display: flex; gap: 12px;">
-                            <button class="btn" onclick="applyThresholdsToApp()" style="flex: 1; background: var(--accent-volt, #CDFF00);">
+                            <button class="btn" onclick="applyThresholdsToApp()" style="flex: 1; background: var(--accent-ozone, #A0F0FF);">
                                 Apply Now
                             </button>
                             <button class="btn btn-secondary" onclick="exportThresholdUpdates()" style="flex: 1;">
@@ -4927,17 +4927,17 @@
                 if (results.poseLandmarks) {
 
                 // Draw pose overlay
-                // Volt accent skeleton with glow effect
-                this.ctx.shadowColor = 'rgba(205, 255, 0, 0.4)';
+                // Ozone accent skeleton with glow effect
+                this.ctx.shadowColor = 'rgba(160, 240, 255, 0.4)';
                 this.ctx.shadowBlur = 8;
                 drawConnectors(this.ctx, results.poseLandmarks, POSE_CONNECTIONS, {
-                    color: 'rgba(205, 255, 0, 0.7)',
+                    color: 'rgba(160, 240, 255, 0.7)',
                     lineWidth: 2
                 });
                 this.ctx.shadowBlur = 0;
                 drawLandmarks(this.ctx, results.poseLandmarks, {
                     color: '#FFFFFF',
-                    fillColor: 'rgba(205, 255, 0, 0.9)',
+                    fillColor: 'rgba(160, 240, 255, 0.9)',
                     lineWidth: 1,
                     radius: 3
                 });
@@ -5708,7 +5708,7 @@
                 switch (state) {
                     case 'serving':
                         value.textContent = 'SERVING';
-                        value.style.color = '#CDFF00';
+                        value.style.color = '#A0F0FF';
                         break;
                     case 'rallying':
                         value.textContent = `RALLY (${rallyStrokes})`;
@@ -5720,7 +5720,7 @@
                         break;
                     case 'warmup':
                         value.textContent = 'WARMUP';
-                        value.style.color = '#4FC3F7';
+                        value.style.color = '#6B8AFF';
                         break;
                     case 'idle':
                         value.textContent = 'IDLE';
@@ -6285,7 +6285,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 <div class="ob-report-stat"><div class="ob-report-stat-label">Strokes Analyzed</div><div class="ob-report-stat-value">${strokes.length}</div></div>
                 <div class="ob-report-stat"><div class="ob-report-stat-label">Best Stroke</div><div class="ob-report-stat-value">${bestScore}/100</div></div>
                 <div class="ob-report-stat"><div class="ob-report-stat-label">Most Hit</div><div class="ob-report-stat-value">${dominantType}</div></div>
-                <div class="ob-report-stat"><div class="ob-report-stat-label">Top Strength</div><div class="ob-report-stat-value" style="color:#CDFF00">${topStrength}</div></div>
+                <div class="ob-report-stat"><div class="ob-report-stat-label">Top Strength</div><div class="ob-report-stat-value" style="color:#A0F0FF">${topStrength}</div></div>
                 <div class="ob-report-stat"><div class="ob-report-stat-label">Focus Area</div><div class="ob-report-stat-value" style="color:#FF9800">${topImprovement}</div></div>
             `;
 
@@ -6324,7 +6324,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 sendBtn.innerHTML = 'SEND MAGIC LINK <span style="margin-left:4px;">&rarr;</span>';
             } else {
                 statusEl.textContent = 'Check your email for the magic link!';
-                statusEl.style.color = '#CDFF00';
+                statusEl.style.color = '#A0F0FF';
                 sendBtn.textContent = 'EMAIL SENT \u2713';
                 // Persist onboarding state so magic link opened in new tab can resume
                 localStorage.setItem('ace_onboarding_state', JSON.stringify(onboardingState));
@@ -6367,7 +6367,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 sendBtn.innerHTML = 'SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>';
             } else {
                 statusEl.textContent = 'Check your email for the login link!';
-                statusEl.style.color = '#CDFF00';
+                statusEl.style.color = '#A0F0FF';
                 sendBtn.textContent = 'EMAIL SENT \u2713';
                 localStorage.setItem('ace_login_pending', email);
             }
@@ -6397,7 +6397,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 sendBtn.innerHTML = 'SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>';
             } else {
                 statusEl.textContent = 'Check your email for the login link!';
-                statusEl.style.color = '#CDFF00';
+                statusEl.style.color = '#A0F0FF';
                 sendBtn.textContent = 'EMAIL SENT \u2713';
                 // Update stored email in case they edited it
                 localStorage.setItem('ace_user_email', email);
@@ -6427,9 +6427,9 @@ This is a demo — make them feel excited about the coaching experience.`;
             // Customize "Not you?" button text
             const notYouBtn = document.getElementById('welcomeBackNotYouBtn');
             if (displayName) {
-                notYouBtn.innerHTML = `Not ${displayName}? <span style="color:#CDFF00;">Start fresh</span>`;
+                notYouBtn.innerHTML = `Not ${displayName}? <span style="color:#A0F0FF;">Start fresh</span>`;
             } else {
-                notYouBtn.innerHTML = `Not you? <span style="color:#CDFF00;">Start fresh</span>`;
+                notYouBtn.innerHTML = `Not you? <span style="color:#A0F0FF;">Start fresh</span>`;
             }
         }
 
@@ -6707,16 +6707,16 @@ This is a demo — make them feel excited about the coaching experience.`;
                             <svg viewBox="0 0 ${svgW} ${svgH + 14}" preserveAspectRatio="none">
                                 <defs>
                                     <linearGradient id="sparkFill" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="0%" stop-color="var(--accent-volt)" stop-opacity="0.2"/>
-                                        <stop offset="100%" stop-color="var(--accent-volt)" stop-opacity="0"/>
+                                        <stop offset="0%" stop-color="var(--accent-ozone)" stop-opacity="0.2"/>
+                                        <stop offset="100%" stop-color="var(--accent-ozone)" stop-opacity="0"/>
                                     </linearGradient>
                                 </defs>
                                 <polygon points="${fillPoints}" fill="url(#sparkFill)"/>
-                                <polyline points="${polyPoints}" fill="none" stroke="var(--accent-volt)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="${polyPoints}" fill="none" stroke="var(--accent-ozone)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                 <line x1="0" y1="${avgY.toFixed(1)}" x2="${svgW}" y2="${avgY.toFixed(1)}" stroke="rgba(255,255,255,0.15)" stroke-width="1" stroke-dasharray="4,4"/>
                                 <text x="${svgW}" y="${avgY - 3}" text-anchor="end" fill="rgba(255,255,255,0.35)" font-size="9">avg ${avgScore}</text>
-                                <circle cx="${pts[bestIdx].x.toFixed(1)}" cy="${pts[bestIdx].y.toFixed(1)}" r="3.5" fill="var(--accent-volt)"/>
-                                <text x="${pts[bestIdx].x.toFixed(1)}" y="${pts[bestIdx].y - 6}" text-anchor="middle" fill="var(--accent-volt)" font-size="9" font-weight="700">${scores[bestIdx]}</text>
+                                <circle cx="${pts[bestIdx].x.toFixed(1)}" cy="${pts[bestIdx].y.toFixed(1)}" r="3.5" fill="var(--accent-ozone)"/>
+                                <text x="${pts[bestIdx].x.toFixed(1)}" y="${pts[bestIdx].y - 6}" text-anchor="middle" fill="var(--accent-ozone)" font-size="9" font-weight="700">${scores[bestIdx]}</text>
                                 ${worstIdx !== bestIdx ? `
                                 <circle cx="${pts[worstIdx].x.toFixed(1)}" cy="${pts[worstIdx].y.toFixed(1)}" r="3" fill="#FF3B30"/>
                                 <text x="${pts[worstIdx].x.toFixed(1)}" y="${pts[worstIdx].y + 12}" text-anchor="middle" fill="#FF3B30" font-size="9">${scores[worstIdx]}</text>` : ''}
@@ -6739,7 +6739,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             }
             if (insightSource) {
                 cards.push({ html: `
-                    <div class="recap-label" style="color: #4FC3F7;">SESSION INSIGHT</div>
+                    <div class="recap-label" style="color: #6B8AFF;">SESSION INSIGHT</div>
                     <div class="recap-insight-headline">${insightSource.headline}</div>
                     ${insightSource.detail ? `<div class="recap-insight-detail">${insightSource.detail}</div>` : ''}
                     ${insightSource.actionable ? `<div class="recap-insight-action">${insightSource.actionable}</div>` : ''}
@@ -6759,7 +6759,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 let breakdownHtml = `<div class="recap-label">YOUR STROKES</div>`;
                 for (const [type, bd] of Object.entries(breakdowns)) {
                     const score = bd.avgQuality || 0;
-                    const barColor = score >= 75 ? '#32D74B' : score >= 60 ? 'var(--accent-volt)' : '#FF3B30';
+                    const barColor = score >= 75 ? '#32D74B' : score >= 60 ? 'var(--accent-ozone)' : '#FF3B30';
                     const barWidth = maxCount > 0 ? Math.round((bd.count / maxCount) * 100) : 0;
                     const wp = withinProgress[type];
                     const topFault = bd.topFault || null;
@@ -6798,8 +6798,8 @@ This is a demo — make them feel excited about the coaching experience.`;
             const coachConfigs = { alex: { name: 'Coach Alex', icon: 'star' }, jordan: { name: 'Coach Jordan', icon: 'target' }, sam: { name: 'Coach Sam', icon: 'lightning' } };
             const coach = coachConfigs[coachPref] || coachConfigs.alex;
             const coachIcons = {
-                star: `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-volt)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
-                target: `<svg viewBox="0 0 24 24" fill="none" stroke="#4FC3F7" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
+                star: `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-ozone)" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`,
+                target: `<svg viewBox="0 0 24 24" fill="none" stroke="#6B8AFF" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`,
                 lightning: `<svg viewBox="0 0 24 24" fill="none" stroke="#FFD60A" stroke-width="2"><polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`
             };
             if (summary.coachNotes || summary.visualProgress) {
@@ -6845,7 +6845,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 if (momentCards.length > 0) {
                     let momentsHtml = `<div class="recap-label">BEST MOMENTS</div><div class="recap-moments-scroll">`;
                     for (const m of momentCards) {
-                        const qColor = m.quality >= 80 ? '#32D74B' : m.quality >= 60 ? 'var(--accent-volt)' : '#FF3B30';
+                        const qColor = m.quality >= 80 ? '#32D74B' : m.quality >= 60 ? 'var(--accent-ozone)' : '#FF3B30';
                         momentsHtml += `
                             <div class="recap-moment" onclick="playNotableReplay(${m.replayIndex})">
                                 <canvas width="180" height="200" data-replay-index="${m.replayIndex}"></canvas>
@@ -7022,7 +7022,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 acceleration: '#FF9500', contact: '#FF3B30',
                 followThrough: '#32D74B'
             };
-            const color = phaseColors[frame.phase] || 'rgba(205,255,0,0.8)';
+            const color = phaseColors[frame.phase] || 'rgba(160,240,255,0.8)';
 
             ctx.strokeStyle = color;
             ctx.lineWidth = 2;
@@ -7154,7 +7154,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                             <div class="summary-section-title">Milestones</div>
                             <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                                 ${profileStats.milestones.slice(0, 6).map(m => `
-                                    <span style="background: rgba(205, 255, 0, 0.2); color: var(--accent-volt); padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;">
+                                    <span style="background: rgba(160, 240, 255, 0.2); color: var(--accent-ozone); padding: 6px 12px; border-radius: 16px; font-size: 12px; font-weight: 600;">
                                         ${m.label}
                                     </span>
                                 `).join('')}
@@ -7171,7 +7171,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                             ${profileStats.weaknesses.slice(0, 3).map(w => `
                                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0,0,0,0.3); border-radius: 8px; margin-bottom: 6px;">
                                     <span style="color: white;">${w.name}</span>
-                                    <span style="font-size: 12px; color: ${w.improving ? 'var(--accent-volt)' : 'rgba(255,255,255,0.5)'};">
+                                    <span style="font-size: 12px; color: ${w.improving ? 'var(--accent-ozone)' : 'rgba(255,255,255,0.5)'};">
                                         ${w.improving ? '↑ Improving' : `${w.count} sessions`}
                                     </span>
                                 </div>
@@ -7193,7 +7193,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                                     ${strokes.map(([type, data]) => `
                                         <div style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; text-align: center;">
-                                            <div style="font-size: 20px; font-weight: bold; color: var(--accent-volt);">${Math.round(data.avgScore)}</div>
+                                            <div style="font-size: 20px; font-weight: bold; color: var(--accent-ozone);">${Math.round(data.avgScore)}</div>
                                             <div style="font-size: 12px; color: white;">${type}</div>
                                             <div style="font-size: 10px; color: rgba(255,255,255,0.5);">${data.attempts} strokes</div>
                                         </div>
@@ -7228,7 +7228,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                                             </div>
                                         </div>
                                         <div style="text-align: right;">
-                                            <div style="font-size: 24px; font-weight: bold; color: var(--accent-volt, #CDFF00);">${s.averageScore}</div>
+                                            <div style="font-size: 24px; font-weight: bold; color: var(--accent-ozone, #A0F0FF);">${s.averageScore}</div>
                                             <div style="font-size: 10px; color: rgba(255,255,255,0.6);">${s.consistency}</div>
                                         </div>
                                     </div>
@@ -7270,7 +7270,7 @@ This is a demo — make them feel excited about the coaching experience.`;
 
             let html = `
                 <div style="margin-bottom: 16px; text-align: center;">
-                    <div style="font-size: 24px; font-weight: 800; color: var(--accent-volt);">${stats.completed}/${stats.total}</div>
+                    <div style="font-size: 24px; font-weight: 800; color: var(--accent-ozone);">${stats.completed}/${stats.total}</div>
                     <div style="font-size: 12px; color: var(--text-muted);">Challenges Completed</div>
                 </div>
             `;
@@ -7724,7 +7724,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             if (comparison) {
                 if (comparison.strengths.length > 0) {
                     html += `<div style="margin-top: 16px;">
-                        <div style="font-size: 11px; text-transform: uppercase; color: var(--accent-volt); margin-bottom: 8px;">Your Strengths</div>
+                        <div style="font-size: 11px; text-transform: uppercase; color: var(--accent-ozone); margin-bottom: 8px;">Your Strengths</div>
                         <div style="font-size: 13px; color: white;">${comparison.strengths.join(' • ')}</div>
                     </div>`;
                 }
@@ -7946,7 +7946,7 @@ This is a demo — make them feel excited about the coaching experience.`;
 
             let html = `
                 <div style="text-align:center;margin-bottom:20px;">
-                    <div style="font-size:28px;font-weight:800;color:var(--accent-volt);">${stats.completed}/${stats.total}</div>
+                    <div style="font-size:28px;font-weight:800;color:var(--accent-ozone);">${stats.completed}/${stats.total}</div>
                     <div style="font-size:12px;color:var(--text-muted);">Completed</div>
                 </div>
             `;
@@ -8035,7 +8035,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                     activeTypes.forEach(([type, prof]) => {
                         const score = Math.round(prof.avgScore);
                         const pct = Math.min(100, score);
-                        const barColor = score >= 75 ? '#4CAF50' : score >= 60 ? 'var(--accent-volt)' : '#F44336';
+                        const barColor = score >= 75 ? '#4CAF50' : score >= 60 ? 'var(--accent-ozone)' : '#F44336';
                         let detail = `${prof.attempts} strokes`;
                         if (prof.bestScore > 0) detail += ` &middot; Best ${Math.round(prof.bestScore)}`;
                         // Trend arrow from improvementTracker if available
@@ -8406,7 +8406,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             document.getElementById('strokeDetailType').textContent = stroke.type;
             document.getElementById('strokeDetailScore').textContent = Math.round(stroke.quality);
             document.getElementById('strokeDetailScore').style.color =
-                stroke.quality >= 80 ? 'var(--accent-volt, #CDFF00)' :
+                stroke.quality >= 80 ? 'var(--accent-ozone, #A0F0FF)' :
                 stroke.quality >= 60 ? '#FF9800' : '#f44336';
             document.getElementById('strokeDetailTime').textContent = formatVideoTime(stroke.time);
             document.getElementById('strokeDetailVelocity').textContent =
@@ -8458,7 +8458,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                     <!-- Stroke 1 -->
                     <div style="text-align: center; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
                         <div style="font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Stroke 1</div>
-                        <div style="font-size: 24px; font-weight: bold; color: var(--accent-volt);">${Math.round(s1.quality)}</div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--accent-ozone);">${Math.round(s1.quality)}</div>
                         <div style="font-size: 11px; color: white; text-transform: capitalize;">${s1.type}</div>
                         <div style="font-size: 10px; color: rgba(255,255,255,0.5);">${formatVideoTime(s1.time)}</div>
                     </div>
@@ -8466,7 +8466,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                     <!-- VS / Diff -->
                     <div style="text-align: center; padding: 8px;">
                         <div style="font-size: 10px; color: rgba(255,255,255,0.5);">DIFF</div>
-                        <div style="font-size: 16px; font-weight: bold; color: ${scoreDiff >= 0 ? 'var(--accent-volt)' : '#f44336'};">
+                        <div style="font-size: 16px; font-weight: bold; color: ${scoreDiff >= 0 ? 'var(--accent-ozone)' : '#f44336'};">
                             ${scoreDiff >= 0 ? '+' : ''}${Math.round(scoreDiff)}
                         </div>
                     </div>
@@ -8474,7 +8474,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                     <!-- Stroke 2 -->
                     <div style="text-align: center; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">
                         <div style="font-size: 10px; color: rgba(255,255,255,0.5); text-transform: uppercase;">Stroke 2</div>
-                        <div style="font-size: 24px; font-weight: bold; color: var(--accent-volt);">${Math.round(s2.quality)}</div>
+                        <div style="font-size: 24px; font-weight: bold; color: var(--accent-ozone);">${Math.round(s2.quality)}</div>
                         <div style="font-size: 11px; color: white; text-transform: capitalize;">${s2.type}</div>
                         <div style="font-size: 10px; color: rgba(255,255,255,0.5);">${formatVideoTime(s2.time)}</div>
                     </div>
@@ -8539,7 +8539,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                                 <div style="font-size: 12px; color: rgba(255,255,255,0.6);">${formatVideoTime(stroke.time)}</div>
                             </div>
                             <div style="text-align: right;">
-                                <div style="font-size: 24px; font-weight: bold; color: ${stroke.quality >= 70 ? 'var(--accent-volt)' : stroke.quality >= 50 ? '#FF9800' : '#f44336'};">${Math.round(stroke.quality)}</div>
+                                <div style="font-size: 24px; font-weight: bold; color: ${stroke.quality >= 70 ? 'var(--accent-ozone)' : stroke.quality >= 50 ? '#FF9800' : '#f44336'};">${Math.round(stroke.quality)}</div>
                             </div>
                         </div>
                     `).join('')}
@@ -8554,7 +8554,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             // Use export modal for this
             document.getElementById('exportModalContent').innerHTML = `
                 <div style="text-align: center; margin-bottom: 16px;">
-                    <div style="font-size: 18px; font-weight: bold; color: var(--accent-volt);">${title}</div>
+                    <div style="font-size: 18px; font-weight: bold; color: var(--accent-ozone);">${title}</div>
                 </div>
                 ${html}
             `;
@@ -8998,7 +8998,7 @@ This is a demo — make them feel excited about the coaching experience.`;
 
             uploadZone.addEventListener('dragover', (e) => {
                 e.preventDefault();
-                uploadZone.style.borderColor = 'var(--accent-volt, #CDFF00)';
+                uploadZone.style.borderColor = 'var(--accent-ozone, #A0F0FF)';
             });
 
             uploadZone.addEventListener('dragleave', () => {
@@ -9119,7 +9119,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                         html += `<div style="margin-bottom: 8px;">
                             <strong>${metric}:</strong><br>
                             <span style="color: rgba(255,255,255,0.6);">Current:</span> ${JSON.stringify(data.current)}<br>
-                            <span style="color: var(--accent-volt, #CDFF00);">Recommended:</span> ${JSON.stringify(data.recommended)}
+                            <span style="color: var(--accent-ozone, #A0F0FF);">Recommended:</span> ${JSON.stringify(data.recommended)}
                         </div>`;
                     }
                 }
@@ -9197,7 +9197,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             if (result.success) {
                 statusEl.innerHTML = `Applied ${result.updatedModules.length} module updates!<br>` +
                     result.updatedModules.map(m => `• ${m}`).join('<br>');
-                statusEl.style.color = 'var(--accent-volt, #CDFF00)';
+                statusEl.style.color = 'var(--accent-ozone, #A0F0FF)';
             } else {
                 statusEl.textContent = `FAILED: ${result.error}`;
                 statusEl.style.color = '#f44336';
@@ -9425,9 +9425,9 @@ This is a demo — make them feel excited about the coaching experience.`;
             replays.forEach((replay, idx) => {
                 const q = replay.strokeData.quality;
                 const bg = q >= 80 ? 'rgba(50, 215, 75, 0.2)'
-                    : q >= 60 ? 'rgba(205, 255, 0, 0.2)'
+                    : q >= 60 ? 'rgba(160, 240, 255, 0.2)'
                     : 'rgba(255, 59, 48, 0.2)';
-                const color = q >= 80 ? '#32D74B' : q >= 60 ? '#CDFF00' : '#FF3B30';
+                const color = q >= 80 ? '#32D74B' : q >= 60 ? '#A0F0FF' : '#FF3B30';
 
                 const item = document.createElement('div');
                 item.className = 'replay-grid-item';
