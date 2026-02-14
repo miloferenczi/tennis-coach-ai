@@ -417,7 +417,7 @@ DRILL MODE ACTIVE:
         const offer = await this.pc.createOffer();
         await this.pc.setLocalDescription(offer);
 
-        const sdpResponse = await fetch("https://api.openai.com/v1/realtime/calls", {
+        const sdpResponse = await fetch("https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview", {
           method: "POST",
           body: offer.sdp,
           headers: {
