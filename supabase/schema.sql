@@ -20,6 +20,18 @@ create table public.profiles (
   coaching_preferences jsonb not null default '{}'::jsonb,
   fatigue_patterns jsonb not null default '{}'::jsonb,
   milestones jsonb not null default '[]'::jsonb,
+  -- Onboarding & subscription fields
+  sport text not null default 'tennis',
+  ntrp_level text,
+  improvement_goals jsonb not null default '[]'::jsonb,
+  custom_goal_text text,
+  coach_preference text not null default 'alex',
+  display_name text,
+  age integer,
+  subscription_tier text not null default 'free',
+  trial_start_date timestamptz,
+  trial_used boolean not null default false,
+  onboarding_completed boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -227,20 +239,20 @@ create trigger set_updated_at
 -- ============================================================
 -- 7. Onboarding & subscription columns on profiles
 -- ============================================================
--- Run this as a migration if the profiles table already exists:
---
--- ALTER TABLE public.profiles
---   ADD COLUMN IF NOT EXISTS sport text NOT NULL DEFAULT 'tennis',
---   ADD COLUMN IF NOT EXISTS ntrp_level text,
---   ADD COLUMN IF NOT EXISTS improvement_goals jsonb NOT NULL DEFAULT '[]'::jsonb,
---   ADD COLUMN IF NOT EXISTS custom_goal_text text,
---   ADD COLUMN IF NOT EXISTS coach_preference text NOT NULL DEFAULT 'alex',
---   ADD COLUMN IF NOT EXISTS display_name text,
---   ADD COLUMN IF NOT EXISTS age integer,
---   ADD COLUMN IF NOT EXISTS subscription_tier text NOT NULL DEFAULT 'free',
---   ADD COLUMN IF NOT EXISTS trial_start_date timestamptz,
---   ADD COLUMN IF NOT EXISTS trial_used boolean NOT NULL DEFAULT false,
---   ADD COLUMN IF NOT EXISTS onboarding_completed boolean NOT NULL DEFAULT false;
+-- Migration: run this if the profiles table was created before these columns existed.
+-- Safe to run multiple times (IF NOT EXISTS).
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS sport text NOT NULL DEFAULT 'tennis',
+  ADD COLUMN IF NOT EXISTS ntrp_level text,
+  ADD COLUMN IF NOT EXISTS improvement_goals jsonb NOT NULL DEFAULT '[]'::jsonb,
+  ADD COLUMN IF NOT EXISTS custom_goal_text text,
+  ADD COLUMN IF NOT EXISTS coach_preference text NOT NULL DEFAULT 'alex',
+  ADD COLUMN IF NOT EXISTS display_name text,
+  ADD COLUMN IF NOT EXISTS age integer,
+  ADD COLUMN IF NOT EXISTS subscription_tier text NOT NULL DEFAULT 'free',
+  ADD COLUMN IF NOT EXISTS trial_start_date timestamptz,
+  ADD COLUMN IF NOT EXISTS trial_used boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS onboarding_completed boolean NOT NULL DEFAULT false;
 
 -- ============================================================
 -- 8. guest_trials — IP-based rate limiting for trial sessions

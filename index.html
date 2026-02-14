@@ -6040,7 +6040,8 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
                 // User is authenticated — use authenticated token
                 const tokenData = await supabaseClient.getRealtimeToken(meetInstructions, coach.voice);
                 if (!tokenData?.ephemeralKey) {
-                    document.getElementById('obMeetStatus').textContent = 'Ready to go!';
+                    console.warn('obInitMeetCoach: no ephemeral key — falling back to speech synthesis');
+                    obMeetCoachFallbackGreeting(coach);
                     return;
                 }
 
@@ -6060,7 +6061,9 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
                 if (!onboardingState._micStream) {
                     try {
                         onboardingState._micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    } catch (e) {}
+                    } catch (e) {
+                        console.warn('obInitMeetCoach: mic access denied');
+                    }
                 }
 
                 // Use pre-acquired mic stream + skip default greeting
@@ -6088,8 +6091,25 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
                 onboardingState.meetCoachTimer = setTimeout(() => obFinishMeetCoach(), 30000);
             } catch (e) {
                 console.error('Meet coach connection failed:', e);
-                document.getElementById('obMeetStatus').textContent = 'Ready to go!';
+                obMeetCoachFallbackGreeting(coach);
             }
+        }
+
+        function obMeetCoachFallbackGreeting(coach) {
+            // Use browser SpeechSynthesis as fallback when OpenAI Realtime fails
+            document.getElementById('obMeetStatus').textContent = 'Speaking...';
+            const greeting = coach.previewText || `Hi, I'm ${coach.name}. Let's work on your game together!`;
+            const utterance = new SpeechSynthesisUtterance(greeting);
+            utterance.rate = 1.05;
+            utterance.pitch = 1.0;
+            utterance.voice = speechSynthesis.getVoices()
+                .find(v => v.name.includes('Samantha') || v.lang === 'en-US') || null;
+            utterance.onend = () => {
+                document.getElementById('obMeetStatus').textContent = 'Ready to go!';
+            };
+            speechSynthesis.speak(utterance);
+            // Auto-advance after 15s even if speech takes longer
+            onboardingState.meetCoachTimer = setTimeout(() => obFinishMeetCoach(), 15000);
         }
 
         function obFinishMeetCoach() {
@@ -8771,6 +8791,9 @@ This is a demo — make them feel excited about the coaching experience.`;
                     }
 
                     if (signupVisible || resumingOnboarding) {
+                        // Prevent getExistingSession branch from racing with this handler
+                        appFullyInitialized = true;
+
                         // Save onboarding data to profile (trial hasn't happened yet)
                         await supabaseClient.updateProfile({
                             sport: onboardingState.sport,

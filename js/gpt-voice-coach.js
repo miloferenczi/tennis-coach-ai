@@ -73,9 +73,11 @@ class GPTVoiceCoach {
 
       // Try Supabase Edge Function first, fall back to direct API key
       if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+        console.log('GPT Voice Coach: requesting token via Edge Function...');
         const tokenData = await supabaseClient.getRealtimeToken(coachInstructions, this.voice);
         if (!tokenData?.ephemeralKey) {
-          throw new Error('Failed to get token via Edge Function');
+          console.error('GPT Voice Coach: Edge Function returned no ephemeral key. Check that OPENAI_API_KEY is set in Supabase secrets.');
+          throw new Error('Failed to get token via Edge Function — is OPENAI_API_KEY set?');
         }
         ephemeralKey = tokenData.ephemeralKey;
       } else if (this.apiKey) {
@@ -127,8 +129,13 @@ class GPTVoiceCoach {
       // to avoid race condition where channel isn't ready yet
 
     } catch (error) {
-      console.error('Connection failed:', error);
+      console.error('GPT Voice Coach connection failed:', error.message || error);
+      console.warn('Falling back to browser speech synthesis. Voice coaching will use text-to-speech.');
       this.fallbackToSpeechSynthesis();
+      // Speak a brief fallback greeting so the user knows coaching is active
+      setTimeout(() => {
+        this.fallbackSpeak(`${this.coachName} here. Let's get started. I'll give you feedback as you hit.`);
+      }, 1000);
     }
   }
   
@@ -338,7 +345,13 @@ DRILL MODE ACTIVE:
     this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
   }
 
-  async connectWebRTC(ephemeralKey) {
+  /**
+   * @param {string} ephemeralKey
+   * @param {Object} [options]
+   * @param {MediaStream} [options.micStream] - Pre-acquired mic stream (avoids re-calling getUserMedia)
+   * @param {boolean} [options.skipGreeting] - Skip auto-sending default instructions + greeting
+   */
+  async connectWebRTC(ephemeralKey, options = {}) {
     return new Promise(async (resolve, reject) => {
       try {
         this.pc = new RTCPeerConnection();
@@ -347,26 +360,28 @@ DRILL MODE ACTIVE:
           this.audioElement.srcObject = e.streams[0];
         };
 
-        const ms = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const ms = options.micStream || await navigator.mediaDevices.getUserMedia({ audio: true });
         this.pc.addTrack(ms.getTracks()[0]);
 
         this.dataChannel = this.pc.createDataChannel("oai-events");
-        
+
         this.dataChannel.onmessage = (e) => {
           this.handleMessage(JSON.parse(e.data));
         };
-        
+
         this.dataChannel.onopen = () => {
           console.log('WebRTC Data Channel ready');
-          this.dataChannel.send(JSON.stringify({
-            type: 'session.update',
-            session: {
-              instructions: this.getCoachingInstructions(),
-              turn_detection: { type: 'server_vad' }
-            }
-          }));
-          // Send greeting from inside onopen to guarantee channel is ready
-          setTimeout(() => this.sendCoachGreeting(), 500);
+          if (!options.skipGreeting) {
+            this.dataChannel.send(JSON.stringify({
+              type: 'session.update',
+              session: {
+                instructions: this.getCoachingInstructions(),
+                turn_detection: { type: 'server_vad' }
+              }
+            }));
+            // Send greeting from inside onopen to guarantee channel is ready
+            setTimeout(() => this.sendCoachGreeting(), 500);
+          }
           resolve();
         };
         
