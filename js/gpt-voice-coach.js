@@ -85,7 +85,7 @@ class GPTVoiceCoach {
         const sessionConfig = {
           session: {
             type: "realtime",
-            model: "gpt-4o-realtime-preview",
+            model: "gpt-realtime",
             instructions: coachInstructions,
             modalities: ["text", "audio"],
             voice: this.voice,
@@ -417,7 +417,7 @@ DRILL MODE ACTIVE:
         const offer = await this.pc.createOffer();
         await this.pc.setLocalDescription(offer);
 
-        const sdpResponse = await fetch("https://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview", {
+        const sdpResponse = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime", {
           method: "POST",
           body: offer.sdp,
           headers: {
