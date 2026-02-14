@@ -497,7 +497,8 @@ class ACESupabaseClient {
     const result = {
       strokeMetrics: data.stroke_metrics || {},
       faultHistory: data.fault_history || {},
-      coachingPlan: data.coaching_plan || null
+      coachingPlan: data.coaching_plan || null,
+      adaptiveThresholds: data.adaptive_thresholds || {}
     };
 
     this._cache.tracker = { data: result, ts: Date.now() };
@@ -515,6 +516,7 @@ class ACESupabaseClient {
     if ('strokeMetrics' in updates) dbUpdates.stroke_metrics = updates.strokeMetrics;
     if ('faultHistory' in updates) dbUpdates.fault_history = updates.faultHistory;
     if ('coachingPlan' in updates) dbUpdates.coaching_plan = updates.coachingPlan;
+    if ('adaptiveThresholds' in updates) dbUpdates.adaptive_thresholds = updates.adaptiveThresholds;
 
     const { error } = await this.client
       .from('improvement_tracker')
@@ -857,6 +859,220 @@ class ACESupabaseClient {
 
     // Free tier limits
     return { tier: 'free', isActive: true, strokeLimit: 10, observationLimit: 2, sessionLimitPerMonth: 1 };
+  }
+
+  // ================================================================
+  // Structured Session Memory
+  // ================================================================
+
+  /**
+   * Save a structured session memory entry.
+   * @param {Object} entry - { sessionId, sessionDate, sessionNumber, strokeSummaries, coachingMoments, observations, visualSummary, coachNotesFreetext }
+   */
+  async saveStructuredSessionMemory(entry) {
+    if (!this.user) return;
+
+    const { error } = await this.client
+      .from('structured_session_memory')
+      .insert({
+        user_id: this.user.id,
+        session_id: entry.sessionId || null,
+        session_date: entry.sessionDate || new Date().toISOString(),
+        session_number: entry.sessionNumber || 1,
+        stroke_summaries: entry.strokeSummaries || {},
+        coaching_moments: entry.coachingMoments || [],
+        observations: entry.observations || {},
+        visual_summary: entry.visualSummary || null,
+        coach_notes_freetext: entry.coachNotesFreetext || null
+      });
+
+    if (error) {
+      console.error('SupabaseClient: saveStructuredSessionMemory error', error);
+    }
+  }
+
+  /**
+   * Get recent structured session memory entries.
+   * @param {number} limit - max entries to return (default 5)
+   * @returns {Array} entries sorted oldest-first
+   */
+  async getRecentStructuredMemory(limit = 5) {
+    if (!this.user) return [];
+
+    const { data, error } = await this.client
+      .from('structured_session_memory')
+      .select('*')
+      .eq('user_id', this.user.id)
+      .order('session_date', { ascending: false })
+      .limit(limit);
+
+    if (error) {
+      console.error('SupabaseClient: getRecentStructuredMemory error', error);
+      return [];
+    }
+
+    return (data || []).reverse().map(row => ({
+      sessionId: row.session_id,
+      sessionDate: row.session_date,
+      sessionNumber: row.session_number,
+      strokeSummaries: row.stroke_summaries || {},
+      coachingMoments: row.coaching_moments || [],
+      observations: row.observations || {},
+      visualSummary: row.visual_summary || null,
+      coachNotesFreetext: row.coach_notes_freetext || null
+    }));
+  }
+
+  // ================================================================
+  // Coaching Effectiveness
+  // ================================================================
+
+  /**
+   * Save a coaching effectiveness record.
+   * @param {Object} entry
+   */
+  async saveCoachingEffectiveness(entry) {
+    if (!this.user) return;
+
+    const { error } = await this.client
+      .from('coaching_effectiveness')
+      .insert({
+        user_id: this.user.id,
+        session_id: entry.sessionId || null,
+        coaching_cue: entry.coachingCue,
+        issue_id: entry.issueId,
+        stroke_type: entry.strokeType,
+        pre_metrics: entry.preMetrics || {},
+        post_metrics: entry.postMetrics || {},
+        quality_delta: entry.qualityDelta,
+        target_metric_delta: entry.targetMetricDelta,
+        effective: entry.effective,
+        strokes_between: entry.strokesBetween || 0
+      });
+
+    if (error) {
+      console.error('SupabaseClient: saveCoachingEffectiveness error', error);
+    }
+  }
+
+  /**
+   * Get aggregated coaching effectiveness data.
+   * Returns { issueId: { bestCue, lastCue, effective, successRate, totalAttempts, successCount, bestCueDelta } }
+   */
+  async getCoachingEffectivenessAggregates() {
+    if (!this.user) return {};
+
+    const { data, error } = await this.client
+      .from('coaching_effectiveness')
+      .select('issue_id, coaching_cue, quality_delta, target_metric_delta, effective')
+      .eq('user_id', this.user.id)
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (error) {
+      console.error('SupabaseClient: getCoachingEffectivenessAggregates error', error);
+      return {};
+    }
+
+    // Aggregate in JS
+    const aggregates = {};
+    for (const row of (data || [])) {
+      const id = row.issue_id;
+      if (!aggregates[id]) {
+        aggregates[id] = {
+          totalAttempts: 0,
+          successCount: 0,
+          bestCue: null,
+          bestCueDelta: -Infinity,
+          lastCue: null,
+          effective: false,
+          successRate: 0
+        };
+      }
+      const agg = aggregates[id];
+      agg.totalAttempts++;
+      if (row.effective) agg.successCount++;
+      if (!agg.lastCue) agg.lastCue = row.coaching_cue; // first row is most recent
+      if ((row.quality_delta || 0) > (agg.bestCueDelta || -Infinity)) {
+        agg.bestCueDelta = row.quality_delta;
+        agg.bestCue = row.coaching_cue;
+      }
+    }
+
+    // Compute derived fields
+    for (const agg of Object.values(aggregates)) {
+      agg.successRate = agg.totalAttempts > 0
+        ? Math.round((agg.successCount / agg.totalAttempts) * 100)
+        : 0;
+      agg.effective = agg.successRate >= 50;
+    }
+
+    return aggregates;
+  }
+
+  // ================================================================
+  // Micro-Confirmations
+  // ================================================================
+
+  /**
+   * Save a micro-confirmation (coaching feedback or stroke classification).
+   * @param {Object} confirmation
+   */
+  async saveMicroConfirmation(confirmation) {
+    if (!this.user) return;
+
+    const { error } = await this.client
+      .from('micro_confirmations')
+      .insert({
+        user_id: this.user.id,
+        session_id: confirmation.sessionId || null,
+        confirmation_type: confirmation.confirmationType,
+        coaching_issue_id: confirmation.coachingIssueId || null,
+        player_rating: confirmation.playerRating || null,
+        detected_stroke_type: confirmation.detectedStrokeType || null,
+        confirmed_stroke_type: confirmation.confirmedStrokeType || null,
+        fault_id: confirmation.faultId || null,
+        was_real: confirmation.wasReal ?? null
+      });
+
+    if (error) {
+      console.error('SupabaseClient: saveMicroConfirmation error', error);
+    }
+  }
+
+  // ================================================================
+  // Anonymous Telemetry
+  // ================================================================
+
+  /**
+   * Submit anonymized telemetry via Edge Function (fire-and-forget).
+   * Requires auth to prevent spam, but the Edge Function strips identity.
+   * @param {Object} payload - { entries: [...] } from SessionStorage.buildTelemetryPayload()
+   */
+  async submitTelemetry(payload) {
+    if (!this.user || !this._functionsUrl || !payload) return;
+
+    const { data: { session } } = await this.client.auth.getSession();
+    if (!session) return;
+
+    try {
+      const response = await fetch(`${this._functionsUrl}/submit-telemetry`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': this.client.supabaseKey
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('SupabaseClient: submitTelemetry error', response.status, errData);
+      }
+    } catch (e) {
+      console.error('SupabaseClient: submitTelemetry fetch error', e);
+    }
   }
 
   // ================================================================

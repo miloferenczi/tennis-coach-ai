@@ -75,6 +75,9 @@
     <script src="js/challenge-mode.js"></script>
     <script src="js/drill-mode.js"></script>
     <script src="js/coach-notebook.js"></script>
+    <script src="js/coaching-memory.js"></script>
+    <script src="js/micro-confirmations.js"></script>
+    <script src="js/adaptive-thresholds.js"></script>
     <script src="js/footwork-analyzer.js"></script>
     <script src="js/serve-analyzer.js"></script>
     <script src="js/enhanced-tennis-analyzer.js"></script>
@@ -911,6 +914,62 @@
             max-height: 30vh;
             overflow-y: auto;
             z-index: 100;
+        }
+
+        /* Micro-confirmation floating bubble */
+        .micro-confirmation-bubble {
+            position: fixed;
+            bottom: calc(140px + env(safe-area-inset-bottom));
+            right: 20px;
+            z-index: 200;
+            background: rgba(20, 20, 30, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-radius: 14px;
+            padding: 8px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            animation: mcSlideIn 0.3s ease-out;
+            border: 1px solid rgba(160, 240, 255, 0.25);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+        }
+        .mc-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.7);
+            white-space: nowrap;
+        }
+        .mc-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .mc-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            background: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 0;
+        }
+        .mc-btn:active {
+            background: rgba(160, 240, 255, 0.2);
+            border-color: rgba(160, 240, 255, 0.5);
+        }
+        .mc-up:hover { border-color: rgba(0, 255, 120, 0.5); }
+        .mc-down:hover { border-color: rgba(255, 80, 80, 0.5); }
+        .mc-confirm:hover { border-color: rgba(0, 255, 120, 0.5); }
+        .mc-alt:hover { border-color: rgba(160, 240, 255, 0.5); }
+        @keyframes mcSlideIn {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
 
         .coaching-drag-handle {
@@ -2545,6 +2604,26 @@
         }
         .ob-progress-fill { height: 100%; background: #A0F0FF; border-radius: 1px; transition: width 400ms ease-out; }
 
+        /* Onboarding back button */
+        .ob-back-btn {
+            position: absolute;
+            top: calc(12px + env(safe-area-inset-top, 0px));
+            left: 12px;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 10;
+        }
+        .ob-back-btn:active { opacity: 0.5; }
+        .ob-back-btn svg { width: 24px; height: 24px; }
+
         /* ============================================
            BOTTOM TAB BAR
            ============================================ */
@@ -3021,6 +3100,60 @@
         .profile-milestones, .profile-goals { display: flex; flex-wrap: wrap; gap: 8px; }
         .profile-milestone-pill { padding: 6px 12px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); font-size: 12px; color: var(--text-primary); font-weight: 500; }
         .profile-goal-chip { padding: 6px 12px; border-radius: 8px; background: rgba(160,240,255,0.08); border: 1px solid rgba(160,240,255,0.15); font-size: 12px; color: var(--accent-ozone); font-weight: 500; }
+
+        /* Performance overview */
+        .profile-perf-hero { text-align: center; padding: 20px 0 12px; }
+        .profile-perf-score { font-size: 48px; font-weight: 800; color: var(--text-primary); font-variant-numeric: tabular-nums; line-height: 1; }
+        .profile-perf-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .profile-perf-trend { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; margin-top: 6px; padding: 3px 10px; border-radius: 12px; }
+        .profile-perf-trend.improving { color: #4CAF50; background: rgba(76,175,80,0.12); }
+        .profile-perf-trend.declining { color: #F44336; background: rgba(244,67,54,0.12); }
+        .profile-perf-trend.stable { color: var(--text-muted); background: rgba(255,255,255,0.06); }
+        .profile-sparkline { display: flex; align-items: flex-end; gap: 3px; justify-content: center; margin-top: 12px; height: 32px; }
+        .profile-sparkline-bar { width: 8px; border-radius: 2px; min-height: 3px; background: rgba(160,240,255,0.4); transition: height 300ms ease; }
+
+        /* Session history cards */
+        .profile-session-card { display: flex; align-items: center; gap: 12px; padding: 12px; background: rgba(255,255,255,0.04); border-radius: 10px; margin-bottom: 8px; }
+        .profile-session-card:last-child { margin-bottom: 0; }
+        .profile-session-score { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .profile-session-info { flex: 1; min-width: 0; }
+        .profile-session-date { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+        .profile-session-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        /* Strengths & weaknesses */
+        .profile-sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .profile-sw-item { padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.04); border-left: 3px solid; }
+        .profile-sw-item.strength { border-left-color: #4CAF50; }
+        .profile-sw-item.weakness { border-left-color: #FF9800; }
+        .profile-sw-item.critical { border-left-color: #F44336; }
+        .profile-sw-name { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+        .profile-sw-detail { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+
+        /* Coaching plan */
+        .profile-plan-item { padding: 12px; background: rgba(255,255,255,0.04); border-radius: 10px; margin-bottom: 8px; }
+        .profile-plan-item:last-child { margin-bottom: 0; }
+        .profile-plan-focus { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+        .profile-plan-drill { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+        .profile-plan-bar { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+        .profile-plan-bar-fill { height: 100%; background: var(--accent-ozone); border-radius: 2px; transition: width 300ms ease; }
+        .profile-plan-target { font-size: 10px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+        .profile-plan-goal { padding: 10px 12px; background: rgba(160,240,255,0.06); border: 1px solid rgba(160,240,255,0.12); border-radius: 8px; margin-top: 12px; font-size: 12px; color: var(--accent-ozone); }
+
+        /* Skill level track */
+        .profile-skill-track { display: flex; gap: 4px; margin-top: 8px; }
+        .profile-skill-seg { flex: 1; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.08); }
+        .profile-skill-seg.filled { background: var(--accent-ozone); }
+        .profile-skill-labels { display: flex; justify-content: space-between; margin-top: 6px; }
+        .profile-skill-labels span { font-size: 9px; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.03em; }
+        .profile-skill-labels span.active { color: var(--accent-ozone); font-weight: 700; }
+
+        /* Fault tracker */
+        .profile-fault-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border-subtle); }
+        .profile-fault-row:last-child { border-bottom: none; }
+        .profile-fault-name { flex: 1; font-size: 13px; color: var(--text-primary); }
+        .profile-fault-name.resolved { text-decoration: line-through; color: var(--text-muted); }
+        .profile-fault-count { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+        .profile-fault-check { color: #4CAF50; font-size: 14px; }
 
         /* ============================================
            LIVE SESSION CONTROLS
@@ -3775,6 +3908,7 @@
 
         <!-- Onboarding 2: Skill Level (NTRP) -->
         <div id="obSkillScreen" class="screen" style="display:none;">
+            <button class="ob-back-btn" onclick="obGoBack('obSkillScreen','obSportScreen')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
             <div class="onboarding-content">
                 <div class="ob-question">What's your level?</div>
                 <div class="ob-card-grid" id="obSkillCards">
@@ -3801,6 +3935,7 @@
 
         <!-- Onboarding 3: Improvement Goals -->
         <div id="obGoalsScreen" class="screen" style="display:none;">
+            <button class="ob-back-btn" onclick="obGoBack('obGoalsScreen','obSkillScreen')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
             <div class="onboarding-content">
                 <div class="ob-question">What do you want to improve?</div>
                 <div class="ob-subtitle">Select all that apply</div>
@@ -3824,6 +3959,7 @@
 
         <!-- Onboarding 4: About You (skippable) -->
         <div id="obAboutScreen" class="screen" style="display:none;">
+            <button class="ob-back-btn" onclick="obGoBack('obAboutScreen','obGoalsScreen')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
             <div class="onboarding-content">
                 <div class="ob-question">Tell us about yourself</div>
                 <div class="ob-subtitle">Optional &mdash; helps personalize coaching</div>
@@ -3839,6 +3975,7 @@
 
         <!-- Onboarding 5: Choose Your Coach -->
         <div id="obCoachScreen" class="screen" style="display:none;">
+            <button class="ob-back-btn" onclick="obGoBack('obCoachScreen','obAboutScreen')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
             <div class="onboarding-content">
                 <div class="ob-question">Choose your coach</div>
                 <div class="ob-card-grid" id="obCoachCards"></div>
@@ -3868,6 +4005,7 @@
 
         <!-- Onboarding 8: Camera Permission -->
         <div id="obCameraScreen" class="screen" style="display:none;">
+            <button class="ob-back-btn" onclick="obGoBack('obCameraScreen','obMeetScreen')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
             <div class="onboarding-content">
                 <div style="margin-bottom:24px;color:var(--text-muted);"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
                 <div class="ob-question">I need to see your strokes</div>
@@ -3906,6 +4044,7 @@
 
         <!-- Onboarding 6: Sign Up (magic link, mandatory before Meet Coach) -->
         <div id="obSignupScreen" class="screen" style="display:none;">
+            <button class="ob-back-btn" onclick="obGoBack('obSignupScreen','obCoachScreen')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
             <div class="onboarding-content">
                 <div class="hero-title" style="font-size:48px;">ACE<span class="accent">.</span></div>
                 <div class="ob-question" style="font-size:18px;">Create your free account to meet your coach</div>
@@ -4334,7 +4473,7 @@
              ============================================ -->
         <div id="liveSessionControls">
             <button class="live-ctrl live-ctrl-sm" onclick="endLiveSession()" title="End Session">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
             <button class="live-ctrl" id="liveRecBtn" onclick="toggleAnalysis()">
                 <span id="liveRecLabel">REC</span>
@@ -4699,6 +4838,23 @@
                         (strokeData.type === 'serve' || strokeData.strokeType === 'serve')) {
                         this.sceneAnalyzer.onServeDetected();
                     }
+                    // Track post-coaching effectiveness
+                    if (typeof coachingMemory !== 'undefined') {
+                        const st = strokeData.type || strokeData.strokeType || '';
+                        const tech = strokeData.technique || {};
+                        coachingMemory.onStrokeAfterCoaching(st, {
+                            quality: strokeData.quality?.overall ?? strokeData.quality ?? 0,
+                            rotation: tech.shoulderRotation ? Math.abs(tech.shoulderRotation) : null,
+                            hipSep: tech.hipShoulderSeparation ?? null,
+                            elbowAngle: tech.elbowAngleAtContact ?? null,
+                            smoothness: strokeData.physics?.smoothness ?? null,
+                            velocity: strokeData.physics?.velocity ?? null
+                        });
+                    }
+                    // Micro-confirmation: ~5% chance to ask stroke classification
+                    if (typeof microConfirmations !== 'undefined') {
+                        microConfirmations.onStrokeDetected(strokeData);
+                    }
                 };
 
                 // Stroke Replay Manager
@@ -4753,6 +4909,27 @@
                     const prompt = this.buildBatchPrompt(summaries, triggers, rallyAnalyses);
                     if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
                         gptVoiceCoach.analyzeBatch(prompt);
+                    }
+                    // Show micro-confirmation (thumbs up/down) after coaching
+                    if (typeof microConfirmations !== 'undefined') {
+                        microConfirmations.onCoachingDelivered(summaries);
+                    }
+                    // Track coaching effectiveness: capture pre-coaching metrics for top issue
+                    if (typeof coachingMemory !== 'undefined') {
+                        for (const s of summaries) {
+                            if (s.topIssue) {
+                                const preMetrics = coachingMemory.getPreCoachingMetrics(
+                                    s.strokeType, this.batchAccumulator
+                                );
+                                coachingMemory.onCoachingDelivered(
+                                    s.topIssue.id || s.topIssue.name,
+                                    s.topIssue.cue || s.topIssue.name,
+                                    s.strokeType,
+                                    preMetrics,
+                                    s.topIssue.id || s.topIssue.name
+                                );
+                            }
+                        }
                     }
                     ready.forEach(t => this.batchAccumulator.markDelivered(t));
                 };
@@ -5292,6 +5469,11 @@
                             await improvementTracker.recordSession(endedSession.strokes, endedSession.summary);
                         }
 
+                        // Recompute adaptive thresholds after session data recorded
+                        if (typeof adaptiveThresholds !== 'undefined') {
+                            adaptiveThresholds.recompute();
+                        }
+
                         // Force-flush all batch coaching at session end
                         if (this.batchAccumulator && typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
                             const endSummaries = this.batchAccumulator.getAllBatchSummaries();
@@ -5328,6 +5510,30 @@
                                 endedSession.summary.coachNotes = coachNotes;
                             } catch (e) {
                                 console.error('Notebook synthesis failed:', e);
+                            }
+                        }
+
+                        // Build and save structured coaching memory
+                        if (typeof coachingMemory !== 'undefined') {
+                            try {
+                                // Get structured observations from GPT
+                                let structuredObs = null;
+                                if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.synthesizeStructuredObservations) {
+                                    structuredObs = await gptVoiceCoach.synthesizeStructuredObservations(endedSession.summary);
+                                }
+                                // Get visual summary from Gemini analyses
+                                const geminiSummary = this.visualMerger
+                                    ? this.visualMerger.getSessionVisualSummary(this.batchAccumulator)
+                                    : null;
+                                await coachingMemory.buildAndSaveSessionMemory(
+                                    endedSession,
+                                    endedSession.strokes,
+                                    endedSession.summary.coachNotes || coachNotes,
+                                    geminiSummary,
+                                    structuredObs
+                                );
+                            } catch (e) {
+                                console.error('Coaching memory save failed:', e);
                             }
                         }
 
@@ -5396,6 +5602,16 @@
                                     });
                                     if (progress) endedSession.summary.visualProgress = progress;
                                 } catch (e) { console.error('Visual progress analysis failed:', e); }
+                            }
+                        }
+
+                        // Submit anonymous telemetry (fire-and-forget)
+                        if (this._useSupabase?.() || (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated())) {
+                            const telemetryPayload = sessionStorage.buildTelemetryPayload(endedSession, endedSession.summary);
+                            if (telemetryPayload) {
+                                supabaseClient.submitTelemetry(telemetryPayload).catch(e =>
+                                    console.error('Telemetry submission failed:', e)
+                                );
                             }
                         }
 
@@ -5534,10 +5750,44 @@
                     prompt += '\n';
                 }
 
+                // Within-session observational intelligence
+                for (const s of summaries) {
+                    // Deterioration windows
+                    if (this.batchAccumulator) {
+                        const deter = this.batchAccumulator.findDeteriorationWindow(s.strokeType);
+                        if (deter) {
+                            prompt += `DETERIORATION: ${s.strokeType} quality dropped ${deter.qualityDrop}pts around strokes ${deter.strokeRange[0]}-${deter.strokeRange[1]}`;
+                            const drops = Object.entries(deter.metricDrops);
+                            if (drops.length > 0) {
+                                prompt += ` (${drops.map(([k, v]) => `${k}: ${v.from}→${v.to}`).join(', ')})`;
+                            }
+                            prompt += '\n';
+                        }
+
+                        // Streak detection
+                        const streak = this.batchAccumulator.findStreak(s.strokeType);
+                        if (streak) {
+                            prompt += `STREAK: ${streak.length} ${s.strokeType}s in a row above 80 (avg ${streak.avgQuality}). What were they doing differently?\n`;
+                        }
+                    }
+
+                    // Cross-session coaching memory context
+                    if (typeof coachingMemory !== 'undefined' && coachingMemory.isLoaded) {
+                        const memCtx = coachingMemory.formatForBatchPrompt(s);
+                        if (memCtx) prompt += memCtx;
+                    }
+                }
+
                 // Improvement plan context
                 if (typeof improvementTracker !== 'undefined') {
                     const planContext = improvementTracker.formatForSystemPrompt?.();
                     if (planContext) prompt += planContext + '\n';
+                }
+
+                // Adaptive threshold context
+                if (typeof adaptiveThresholds !== 'undefined' && adaptiveThresholds.isLoaded) {
+                    const thresholdContext = adaptiveThresholds.formatForBatchPrompt(summaries);
+                    if (thresholdContext) prompt += thresholdContext + '\n';
                 }
 
                 prompt += 'Choose ONE response: A) Full coaching (under 20 sec), B) Brief encouragement (under 5 sec), or C) respond with exactly "[SILENCE]".\n';
@@ -5866,8 +6116,21 @@
             }
         }
 
+        // --- Onboarding back navigation ---
+        function obGoBack(fromScreen, toScreen) {
+            transitionScreens(fromScreen, toScreen);
+        }
+
         // --- Screen 1: Sport Selection ---
         function obSelectSport(sport) {
+            // Safety net: if authenticated user with completed onboarding reaches here, skip to app
+            if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                const profile = (typeof playerProfile !== 'undefined') ? playerProfile.profile : null;
+                if (profile?.onboardingCompleted) {
+                    transitionScreens('obSportScreen', 'permissionScreen');
+                    return;
+                }
+            }
             onboardingState.sport = sport;
             setTimeout(() => transitionScreens('obSportScreen', 'obSkillScreen'), 400);
         }
@@ -6416,6 +6679,14 @@ This is a demo — make them feel excited about the coaching experience.`;
             localStorage.removeItem('ace_user_email');
             localStorage.removeItem('ace_user_display_name');
             localStorage.removeItem('ace_login_pending');
+            // If user is authenticated with completed onboarding, don't re-onboard — go to app
+            if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+                const profile = (typeof playerProfile !== 'undefined') ? playerProfile.profile : null;
+                if (profile?.onboardingCompleted) {
+                    transitionScreens('welcomeBackScreen', 'permissionScreen');
+                    return;
+                }
+            }
             transitionScreens('welcomeBackScreen', 'obSportScreen');
         }
 
@@ -6572,6 +6843,10 @@ This is a demo — make them feel excited about the coaching experience.`;
             // Clear replay recordings
             if (tennisAI?.replayManager) {
                 tennisAI.replayManager.clearReplays();
+            }
+            // Reset micro-confirmations state
+            if (typeof microConfirmations !== 'undefined') {
+                microConfirmations.resetSession();
             }
         }
 
@@ -7991,6 +8266,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             const ntrpLevel = profile?.ntrpLevel || (typeof onboardingState !== 'undefined' && onboardingState.ntrpLevel) || localOb.ntrpLevel || null;
             const tier = profile?.subscriptionTier || 'free';
             const goals = profile?.improvementGoals || (typeof onboardingState !== 'undefined' && onboardingState.goals) || localOb.goals || [];
+            const itData = (typeof improvementTracker !== 'undefined') ? improvementTracker.data : null;
 
             // Coach avatar SVG by key
             const coachAvatars = {
@@ -8032,7 +8308,179 @@ This is a demo — make them feel excited about the coaching experience.`;
             </div>`;
             html += '</div>';
 
-            // 3. STROKE PROFICIENCY
+            // 3. PERFORMANCE OVERVIEW (only if sessions exist)
+            if (stats && stats.totalSessions > 0) {
+                const avgScore = stats.overallAverage || 0;
+                const trend = stats.trend || 'stable';
+                const trendIcon = trend === 'improving' ? '↑' : trend === 'declining' ? '↓' : '~';
+                const trendLabel = trend === 'improving' ? 'Improving' : trend === 'declining' ? 'Declining' : 'Stable';
+
+                html += '<div class="profile-section">';
+                html += '<div class="profile-section-title">Performance</div>';
+                html += `<div class="profile-perf-hero">
+                    <div class="profile-perf-score">${avgScore}</div>
+                    <div class="profile-perf-label">Average Quality</div>
+                    <div class="profile-perf-trend ${trend}">${trendIcon} ${trendLabel}</div>`;
+
+                // Sparkline from recent sessions (newest on right)
+                if (stats.recentSessions && stats.recentSessions.length > 1) {
+                    const sparkSessions = stats.recentSessions.slice(0, 10).reverse();
+                    const scores = sparkSessions.map(s => s.summary?.averageScore || 0);
+                    const maxScore = Math.max(...scores, 1);
+                    html += '<div class="profile-sparkline">';
+                    scores.forEach(sc => {
+                        const h = Math.max(3, (sc / maxScore) * 32);
+                        const color = sc >= 75 ? 'rgba(76,175,80,0.6)' : sc >= 60 ? 'rgba(160,240,255,0.5)' : 'rgba(244,67,54,0.5)';
+                        html += `<div class="profile-sparkline-bar" style="height:${h}px;background:${color}"></div>`;
+                    });
+                    html += '</div>';
+                }
+                html += '</div></div>';
+            }
+
+            // 4. SESSION HISTORY (last 5)
+            if (stats && stats.recentSessions && stats.recentSessions.length > 0) {
+                const recent = stats.recentSessions.slice(0, 5);
+                html += '<div class="profile-section">';
+                html += '<div class="profile-section-title">Recent Sessions</div>';
+                recent.forEach(sess => {
+                    const date = new Date(sess.date);
+                    const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const score = Math.round(sess.summary?.averageScore || 0);
+                    const strokes = sess.summary?.totalStrokes || 0;
+                    const dur = sess.summary?.duration || 0;
+                    const durMin = Math.round(dur / 60000);
+                    const scoreBg = score >= 75 ? 'rgba(76,175,80,0.15)' : score >= 60 ? 'rgba(160,240,255,0.12)' : 'rgba(244,67,54,0.15)';
+                    const scoreColor = score >= 75 ? '#4CAF50' : score >= 60 ? 'var(--accent-ozone)' : '#F44336';
+                    html += `<div class="profile-session-card">
+                        <div class="profile-session-score" style="background:${scoreBg};color:${scoreColor}">${score}</div>
+                        <div class="profile-session-info">
+                            <div class="profile-session-date">${dateStr}</div>
+                            <div class="profile-session-meta">${strokes} strokes${durMin > 0 ? ` &middot; ${durMin}m` : ''}</div>
+                        </div>
+                    </div>`;
+                });
+                html += '</div>';
+            }
+
+            // 5. STRENGTHS & WEAKNESSES (from coaching orchestrator + improvementTracker)
+            if (itData) {
+                const strengths = [];
+                const weaknesses = [];
+
+                // Gather from fault history
+                const faultHistory = itData.faultHistory || {};
+                Object.entries(faultHistory).forEach(([faultId, info]) => {
+                    if (info.resolved) {
+                        strengths.push({ name: faultId.replace(/([A-Z])/g, ' $1').trim(), detail: 'Resolved' });
+                    } else {
+                        const count = info.sessionCount || info.count || 0;
+                        weaknesses.push({ name: faultId.replace(/([A-Z])/g, ' $1').trim(), detail: `${count} sessions`, critical: count >= 5 });
+                    }
+                });
+
+                // Gather from stroke metrics — improving types are strengths
+                Object.entries(itData.strokeMetrics || {}).forEach(([type, sessions]) => {
+                    if (sessions.length >= 2) {
+                        const last = sessions[sessions.length - 1].avgQuality;
+                        const first = sessions[0].avgQuality;
+                        if (last >= 75 && last > first) {
+                            strengths.push({ name: type, detail: `Avg ${Math.round(last)}` });
+                        }
+                    }
+                });
+
+                if (strengths.length > 0 || weaknesses.length > 0) {
+                    html += '<div class="profile-section">';
+                    html += '<div class="profile-section-title">Strengths & Weaknesses</div>';
+                    html += '<div class="profile-sw-grid">';
+                    strengths.slice(0, 4).forEach(s => {
+                        html += `<div class="profile-sw-item strength"><div class="profile-sw-name">${s.name}</div><div class="profile-sw-detail">${s.detail}</div></div>`;
+                    });
+                    weaknesses.slice(0, 4).forEach(w => {
+                        html += `<div class="profile-sw-item ${w.critical ? 'critical' : 'weakness'}"><div class="profile-sw-name">${w.name}</div><div class="profile-sw-detail">${w.detail}</div></div>`;
+                    });
+                    html += '</div></div>';
+                }
+            }
+
+            // 6. COACHING PLAN
+            const plan = itData?.coachingPlan;
+            if (plan && plan.focusAreas && plan.focusAreas.length > 0) {
+                html += '<div class="profile-section">';
+                html += '<div class="profile-section-title">Coaching Plan</div>';
+                plan.focusAreas.forEach(focus => {
+                    const progressPct = (focus.baseline != null && focus.target != null && focus.target !== focus.baseline)
+                        ? Math.min(100, Math.max(0, Math.round(((focus.current || focus.baseline) - focus.baseline) / (focus.target - focus.baseline) * 100)))
+                        : 0;
+                    html += `<div class="profile-plan-item">
+                        <div class="profile-plan-focus">${focus.metric ? focus.metric.replace(/([A-Z])/g, ' $1').trim() : 'Focus'}</div>
+                        ${focus.drill ? `<div class="profile-plan-drill">${focus.drill}</div>` : ''}
+                        <div class="profile-plan-bar"><div class="profile-plan-bar-fill" style="width:${progressPct}%"></div></div>
+                        <div class="profile-plan-target">
+                            <span>${focus.baseline != null ? `Baseline: ${Math.round(focus.baseline)}` : ''}</span>
+                            <span>${focus.target != null ? `Target: ${Math.round(focus.target)}` : ''}</span>
+                        </div>
+                    </div>`;
+                });
+                if (plan.sessionGoal) {
+                    html += `<div class="profile-plan-goal">${plan.sessionGoal}</div>`;
+                }
+                html += '</div>';
+            }
+
+            // 7. SKILL LEVEL TRACK
+            if (ntrpLevel) {
+                const levels = [
+                    { key: '2.0-2.5', label: 'Beginner' },
+                    { key: '3.0-3.5', label: 'Intermediate' },
+                    { key: '4.0-4.5', label: 'Advanced' },
+                    { key: '5.0+',    label: 'Elite' }
+                ];
+                const activeIdx = levels.findIndex(l => l.key === ntrpLevel);
+                html += '<div class="profile-section">';
+                html += '<div class="profile-section-title">Skill Level</div>';
+                html += '<div class="profile-skill-track">';
+                levels.forEach((l, i) => {
+                    html += `<div class="profile-skill-seg${i <= activeIdx ? ' filled' : ''}"></div>`;
+                });
+                html += '</div>';
+                html += '<div class="profile-skill-labels">';
+                levels.forEach((l, i) => {
+                    html += `<span class="${i === activeIdx ? 'active' : ''}">${l.label}</span>`;
+                });
+                html += '</div></div>';
+            }
+
+            // 8. FAULT TRACKER
+            if (itData) {
+                const faultHistory = itData.faultHistory || {};
+                const faultEntries = Object.entries(faultHistory);
+                const activeFaults = faultEntries.filter(([_, f]) => !f.resolved);
+                const resolvedFaults = faultEntries.filter(([_, f]) => f.resolved);
+                if (faultEntries.length > 0) {
+                    html += '<div class="profile-section">';
+                    html += '<div class="profile-section-title">Fault Tracker</div>';
+                    activeFaults.forEach(([id, f]) => {
+                        const name = id.replace(/([A-Z])/g, ' $1').trim();
+                        const count = f.sessionCount || f.count || 0;
+                        html += `<div class="profile-fault-row">
+                            <div class="profile-fault-name">${name}</div>
+                            <div class="profile-fault-count">${count} sessions</div>
+                        </div>`;
+                    });
+                    resolvedFaults.forEach(([id]) => {
+                        const name = id.replace(/([A-Z])/g, ' $1').trim();
+                        html += `<div class="profile-fault-row">
+                            <div class="profile-fault-name resolved">${name}</div>
+                            <div class="profile-fault-check">&#10003;</div>
+                        </div>`;
+                    });
+                    html += '</div>';
+                }
+            }
+
+            // 9. STROKE PROFICIENCY
             const strokeProf = profile?.strokeProficiency;
             if (strokeProf) {
                 const activeTypes = Object.entries(strokeProf).filter(([_, p]) => p.attempts > 0);
@@ -8045,7 +8493,6 @@ This is a demo — make them feel excited about the coaching experience.`;
                         const barColor = score >= 75 ? '#4CAF50' : score >= 60 ? 'var(--accent-ozone)' : '#F44336';
                         let detail = `${prof.attempts} strokes`;
                         if (prof.bestScore > 0) detail += ` &middot; Best ${Math.round(prof.bestScore)}`;
-                        // Trend arrow from improvementTracker if available
                         if (typeof improvementTracker !== 'undefined') {
                             const progress = improvementTracker.getProgressForStroke?.(type);
                             if (progress && progress.trend === 'improving') detail += ' &middot; <span style="color:#4CAF50">↑</span>';
@@ -8064,7 +8511,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 }
             }
 
-            // 4. MILESTONES
+            // 10. MILESTONES
             const milestones = profile?.milestones;
             if (milestones && milestones.length > 0) {
                 html += '<div class="profile-section">';
@@ -8076,7 +8523,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 html += '</div></div>';
             }
 
-            // 5. GOALS
+            // 11. GOALS
             if (goals && goals.length > 0) {
                 html += '<div class="profile-section">';
                 html += '<div class="profile-section-title">Goals</div>';
@@ -8087,7 +8534,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 html += '</div></div>';
             }
 
-            // 6. SETTINGS
+            // 12. SETTINGS
             html += '<div class="profile-section">';
             html += '<div class="profile-section-title">Settings</div>';
 
@@ -8663,6 +9110,17 @@ This is a demo — make them feel excited about the coaching experience.`;
                 if (typeof playerProfile !== 'undefined') await playerProfile.init();
                 if (typeof improvementTracker !== 'undefined') await improvementTracker.init();
                 if (typeof coachNotebook !== 'undefined') await coachNotebook.init();
+                if (typeof CoachingMemory !== 'undefined') {
+                    window.coachingMemory = new CoachingMemory();
+                    await coachingMemory.init();
+                }
+                if (typeof AdaptiveThresholds !== 'undefined') {
+                    window.adaptiveThresholds = new AdaptiveThresholds();
+                    await adaptiveThresholds.init();
+                }
+                if (typeof MicroConfirmations !== 'undefined') {
+                    window.microConfirmations = new MicroConfirmations();
+                }
 
                 // CurriculumEngine needs separate init
                 // (instantiated later in TennisAI, but we can pre-load)

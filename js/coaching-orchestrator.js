@@ -146,13 +146,25 @@ class CoachingOrchestrator {
 
             evaluatedCount++;
 
+            // Apply adaptive threshold offsets if available
+            let adjustedMin = rule.min;
+            let adjustedMax = rule.max;
+            if (typeof adaptiveThresholds !== 'undefined' && adaptiveThresholds.isLoaded) {
+                if (adjustedMin !== undefined) {
+                    adjustedMin = adaptiveThresholds.getAdjustedThreshold(metricName, adjustedMin);
+                }
+                if (adjustedMax !== undefined) {
+                    adjustedMax = adaptiveThresholds.getAdjustedThreshold(metricName, adjustedMax);
+                }
+            }
+
             // Check min condition
-            if (rule.min !== undefined && metricValue < rule.min) {
+            if (adjustedMin !== undefined && metricValue < adjustedMin) {
                 return false;
             }
 
             // Check max condition
-            if (rule.max !== undefined && metricValue > rule.max) {
+            if (adjustedMax !== undefined && metricValue > adjustedMax) {
                 return false;
             }
 

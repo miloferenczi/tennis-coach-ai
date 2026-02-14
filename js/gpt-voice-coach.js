@@ -169,9 +169,11 @@ PLAYER CONTEXT:
       }
     }
 
-    // Get coach notebook context if available
+    // Get coaching memory context (structured memory replaces notebook when available)
     let notebookContext = '';
-    if (typeof coachNotebook !== 'undefined') {
+    if (typeof coachingMemory !== 'undefined' && coachingMemory.isLoaded && coachingMemory.recentMemory.length > 0) {
+      notebookContext = coachingMemory.formatForSystemPrompt();
+    } else if (typeof coachNotebook !== 'undefined') {
       notebookContext = coachNotebook.formatForSystemPrompt();
     }
 
@@ -196,6 +198,12 @@ FORM TARGETS FOR THIS PLAYER (${skillLevel} level):
 `;
     }
 
+    // Get adaptive thresholds context if available
+    let adaptiveContext = '';
+    if (typeof adaptiveThresholds !== 'undefined' && adaptiveThresholds.isLoaded) {
+      adaptiveContext = adaptiveThresholds.formatForSystemPrompt();
+    }
+
     // Get curriculum context if available
     let curriculumContext = '';
     if (typeof tennisAI !== 'undefined' && tennisAI?.curriculumEngine?.isActive()) {
@@ -215,7 +223,7 @@ SCORING SYSTEM:
 - Biomechanical form is phase-by-phase evaluation: preparation, loading, acceleration, follow-through
 - Velocities are in body-relative units (torso-lengths/sec) -- camera-independent
 - Power alone doesn't make a good stroke. Proper form generates power naturally.
-${formTargetsBlock}${trackerContext}${curriculumContext}${rallyContext}
+${formTargetsBlock}${trackerContext}${adaptiveContext}${curriculumContext}${rallyContext}
 YOUR IDENTITY:
 - You are ${this.coachName}, their personal tennis coach, not a generic AI assistant
 - ${this.coachPersonality || 'You speak naturally like a real courtside coach - confident, direct, warm'}
@@ -309,8 +317,19 @@ DRILL MODE ACTIVE:
       }
     }
 
-    // Inject coach's own notes from last session
-    if (typeof coachNotebook !== 'undefined') {
+    // Inject structured memory for greeting (prefer over notebook)
+    if (typeof coachingMemory !== 'undefined' && coachingMemory.isLoaded && coachingMemory.recentMemory.length > 0) {
+      const lastMem = coachingMemory.recentMemory[coachingMemory.recentMemory.length - 1];
+      const dateStr = coachingMemory._formatDate(new Date(lastMem.sessionDate));
+      greetingPrompt += `\nLast session was ${dateStr}.`;
+      if (lastMem.coachNotesFreetext) {
+        greetingPrompt += ` Your notes: "${lastMem.coachNotesFreetext}"`;
+      }
+      if (lastMem.observations?.nextSessionFocus) {
+        greetingPrompt += `\nYou planned to focus on: "${lastMem.observations.nextSessionFocus}"`;
+      }
+      greetingPrompt += `\nReference the date and something specific from your notes in the greeting.`;
+    } else if (typeof coachNotebook !== 'undefined') {
       const ctx = coachNotebook.getPromptContext();
       if (ctx.mostRecent) {
         greetingPrompt += `\nYour notes from last session: "${ctx.mostRecent.coachNotes}"`;
@@ -729,6 +748,17 @@ DRILL MODE ACTIVE:
 
         // Form details with plan progress
         prompt += this.buildFormDetailsBlock(data);
+
+        // Cross-session memory context
+        if (typeof coachingMemory !== 'undefined' && coachingMemory.isLoaded && data.strokeType) {
+          const memCtx = coachingMemory.formatForStrokePrompt(data.strokeType, {
+            rotation: data.technique?.shoulderRotation ? Math.abs(data.technique.shoulderRotation) : null,
+            hipShoulderSeparation: data.technique?.hipShoulderSeparation,
+            elbowAngle: data.technique?.elbowAngleAtContact,
+            smoothness: data.smoothness ?? data.quality?.breakdown?.smoothness
+          });
+          if (memCtx) prompt += memCtx;
+        }
 
         prompt += `YOUR TASK: Use sandwich coaching - briefly acknowledge a strength, deliver the correction cue, then encourage. Reference specific angles/metrics. Under 15 seconds. Be direct and actionable like a real coach.\n`;
         if (data.brevityInstruction) {
@@ -1208,6 +1238,72 @@ Rules:
           }
         } catch (e) {
           console.error('Plan synthesis JSON parse failed:', e, 'Raw:', text);
+          resolve(null);
+        }
+      };
+
+      this.dataChannel.send(JSON.stringify({
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'user',
+          content: [{ type: 'input_text', text: prompt }]
+        }
+      }));
+      this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
+    });
+  }
+
+  /**
+   * Synthesize structured observations at session end.
+   * Returns { standoutMoment, breakthrough, nextSessionFocus, fatiguePoint } or null.
+   */
+  synthesizeStructuredObservations(sessionSummary) {
+    if (!this.isConnected || !this.dataChannel || this.dataChannel.readyState !== 'open') {
+      return Promise.resolve(null);
+    }
+
+    let breakdownStr = '';
+    if (sessionSummary.strokeTypeBreakdowns) {
+      for (const [type, bd] of Object.entries(sessionSummary.strokeTypeBreakdowns)) {
+        breakdownStr += `  ${type}: ${bd.count} strokes, quality=${bd.avgQuality}`;
+        if (bd.avgFormScore) breakdownStr += `, form=${bd.avgFormScore}`;
+        breakdownStr += '\n';
+      }
+    }
+
+    const prompt = `SESSION COMPLETE - Write structured observations as JSON.
+
+Session: ${sessionSummary.totalStrokes || 0} strokes, ${sessionSummary.averageScore || 0} avg.
+${breakdownStr ? `Breakdowns:\n${breakdownStr}` : ''}
+Weaknesses: ${(sessionSummary.weaknesses || []).join(', ') || 'none'}
+Trend: ${sessionSummary.improvement > 0 ? '+' + sessionSummary.improvement : sessionSummary.improvement || 0}
+
+Output ONLY a JSON object:
+{"standoutMoment":"one specific thing they did well with a metric","breakthrough":"a measurable improvement or null","nextSessionFocus":"what to prioritize next","fatiguePoint":"when quality dropped or null"}`;
+
+    return new Promise((resolve) => {
+      this.awaitingNotebook = true;
+
+      const timeout = setTimeout(() => {
+        if (this.awaitingNotebook) {
+          this.awaitingNotebook = false;
+          this.notebookResolve = null;
+          resolve(null);
+        }
+      }, 8000);
+
+      this.notebookResolve = (text) => {
+        clearTimeout(timeout);
+        try {
+          let jsonStr = text.trim();
+          if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+          }
+          const obs = JSON.parse(jsonStr);
+          resolve(obs);
+        } catch (e) {
+          console.error('Structured observations parse failed:', e);
           resolve(null);
         }
       };

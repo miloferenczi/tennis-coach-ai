@@ -19,6 +19,8 @@ class BatchCoachingAccumulator {
     this.pendingRallyAnalyses = [];
     // reference to last added entry (for async visual attachment)
     this._lastEntry = null;
+    // global sequential index (across all stroke types)
+    this._globalIndex = 0;
   }
 
   /**
@@ -33,6 +35,7 @@ class BatchCoachingAccumulator {
     }
 
     const entry = {
+      globalIndex: this._globalIndex++,
       quality: data.quality || 0,
       formScore: data.formScore || null,
       powerScore: data.powerScore || null,
@@ -229,6 +232,112 @@ class BatchCoachingAccumulator {
   }
 
   /**
+   * Get a slice of strokes from a specific type bucket.
+   * @param {string} strokeType
+   * @param {number} start - start index
+   * @param {number} end - end index (exclusive)
+   * @returns {Array} stroke entries
+   */
+  getStrokeSlice(strokeType, start, end) {
+    const bucket = this.buckets[strokeType];
+    if (!bucket) return [];
+    return bucket.slice(start, end);
+  }
+
+  /**
+   * Find deterioration windows in undelivered strokes for a stroke type.
+   * Returns { strokeRange, qualityDrop, metricDrops } or null.
+   */
+  findDeteriorationWindow(strokeType) {
+    const all = this.buckets[strokeType] || [];
+    const watermark = this.watermarks[strokeType] || 0;
+    const strokes = all.slice(watermark);
+    if (strokes.length < 6) return null;
+
+    const windowSize = Math.min(4, Math.floor(strokes.length / 2));
+    let maxDrop = 0;
+    let dropStart = 0;
+
+    for (let i = windowSize; i < strokes.length; i++) {
+      const before = strokes.slice(Math.max(0, i - windowSize * 2), i - windowSize);
+      const after = strokes.slice(i - windowSize, i);
+      if (before.length < 2) continue;
+
+      const beforeAvg = before.reduce((a, s) => a + s.quality, 0) / before.length;
+      const afterAvg = after.reduce((a, s) => a + s.quality, 0) / after.length;
+      const drop = beforeAvg - afterAvg;
+
+      if (drop > maxDrop) {
+        maxDrop = drop;
+        dropStart = i - windowSize;
+      }
+    }
+
+    if (maxDrop < 8) return null;
+
+    // Find which metric dropped most
+    const beforeSlice = strokes.slice(Math.max(0, dropStart - windowSize), dropStart);
+    const afterSlice = strokes.slice(dropStart, dropStart + windowSize);
+    const metricDrops = {};
+
+    for (const key of ['rotation', 'hipSep', 'smoothness']) {
+      const bVals = beforeSlice.filter(s => s.metrics[key] != null).map(s => s.metrics[key]);
+      const aVals = afterSlice.filter(s => s.metrics[key] != null).map(s => s.metrics[key]);
+      if (bVals.length > 0 && aVals.length > 0) {
+        const bAvg = bVals.reduce((a, b) => a + b, 0) / bVals.length;
+        const aAvg = aVals.reduce((a, b) => a + b, 0) / aVals.length;
+        if (bAvg - aAvg > 2) {
+          metricDrops[key] = { from: +bAvg.toFixed(1), to: +aAvg.toFixed(1) };
+        }
+      }
+    }
+
+    return {
+      strokeRange: [watermark + dropStart, watermark + dropStart + windowSize],
+      qualityDrop: +maxDrop.toFixed(1),
+      metricDrops
+    };
+  }
+
+  /**
+   * Detect streak of consecutive high-quality strokes in a bucket.
+   * @param {string} strokeType
+   * @param {number} threshold - quality threshold (default 80)
+   * @returns {{ length, avgQuality }|null}
+   */
+  findStreak(strokeType, threshold = 80) {
+    const all = this.buckets[strokeType] || [];
+    const watermark = this.watermarks[strokeType] || 0;
+    const strokes = all.slice(watermark);
+
+    let currentStreak = 0;
+    let bestStreak = 0;
+    let streakQualities = [];
+    let bestQualities = [];
+
+    for (const s of strokes) {
+      if (s.quality >= threshold) {
+        currentStreak++;
+        streakQualities.push(s.quality);
+        if (currentStreak > bestStreak) {
+          bestStreak = currentStreak;
+          bestQualities = [...streakQualities];
+        }
+      } else {
+        currentStreak = 0;
+        streakQualities = [];
+      }
+    }
+
+    if (bestStreak < 4) return null;
+
+    return {
+      length: bestStreak,
+      avgQuality: +(bestQualities.reduce((a, b) => a + b, 0) / bestQualities.length).toFixed(1)
+    };
+  }
+
+  /**
    * Reset all state (on session reset).
    */
   reset() {
@@ -237,6 +346,7 @@ class BatchCoachingAccumulator {
     this.pendingTriggers = [];
     this.pendingRallyAnalyses = [];
     this._lastEntry = null;
+    this._globalIndex = 0;
   }
 
   // --- Private helpers ---

@@ -48,6 +48,10 @@ class InsightMiner {
     const hiddenStrength = this.findHiddenStrengths(strokes, crossSessionData);
     if (hiddenStrength) insights.push(hiddenStrength);
 
+    // 6. Rally position patterns
+    const rallyPattern = this.findRallyPositionPatterns(strokes);
+    if (rallyPattern) insights.push(rallyPattern);
+
     // Sort by significance and return top 3
     insights.sort((a, b) => b.significance - a.significance);
     return insights.slice(0, 3);
@@ -315,6 +319,70 @@ class InsightMiner {
       actionable: i.actionable,
       significance: i.significance
     }));
+  }
+
+  /**
+   * 6. Find quality correlation with rally stroke position.
+   * e.g. "After the 3rd rally stroke, forehand quality drops 15pts"
+   * @param {Array} strokes - session strokes with rallyContext
+   * @returns {Object|null} insight
+   */
+  findRallyPositionPatterns(strokes) {
+    if (!strokes || strokes.length < 10) return null;
+
+    // Group strokes by their position within a rally
+    const byPosition = {};
+    for (const s of strokes) {
+      const pos = s.rallyContext?.strokeInRally || s.rally_context?.strokeInRally;
+      if (pos == null || pos < 1) continue;
+      const bucket = pos <= 2 ? 'early (1-2)' : pos <= 4 ? 'mid (3-4)' : 'late (5+)';
+      if (!byPosition[bucket]) byPosition[bucket] = [];
+      byPosition[bucket].push(s);
+    }
+
+    const buckets = Object.keys(byPosition);
+    if (buckets.length < 2) return null;
+
+    // Compare average quality across rally positions
+    const avgByBucket = {};
+    for (const [bucket, bStrokes] of Object.entries(byPosition)) {
+      if (bStrokes.length < 3) continue;
+      avgByBucket[bucket] = +(bStrokes.reduce((a, s) => a + (s.quality || 0), 0) / bStrokes.length).toFixed(1);
+    }
+
+    const positions = Object.keys(avgByBucket);
+    if (positions.length < 2) return null;
+
+    // Find biggest drop from early to late
+    const earlyAvg = avgByBucket['early (1-2)'];
+    const lateAvg = avgByBucket['late (5+)'];
+    const midAvg = avgByBucket['mid (3-4)'];
+
+    let drop = 0;
+    let dropFrom = '';
+    let dropTo = '';
+
+    if (earlyAvg != null && lateAvg != null && (earlyAvg - lateAvg) > drop) {
+      drop = earlyAvg - lateAvg;
+      dropFrom = 'early';
+      dropTo = 'late';
+    }
+    if (earlyAvg != null && midAvg != null && (earlyAvg - midAvg) > drop) {
+      drop = earlyAvg - midAvg;
+      dropFrom = 'early';
+      dropTo = 'mid';
+    }
+
+    if (drop < 8) return null;
+
+    return {
+      type: 'rally_position',
+      significance: Math.min(85, drop * 2.5),
+      headline: `Quality drops ${Math.round(drop)} points from ${dropFrom} to ${dropTo} rally strokes`,
+      detail: `Early rally avg: ${earlyAvg}, ${dropTo} rally avg: ${dropTo === 'late' ? lateAvg : midAvg}. You may be lunging instead of recovering.`,
+      evidence: { avgByBucket, drop: Math.round(drop) },
+      actionable: `Focus on recovery between rally strokes — split step and reset your base before the next ball.`
+    };
   }
 
   // --- Helpers ---

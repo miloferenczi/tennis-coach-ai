@@ -266,3 +266,125 @@ create table if not exists public.guest_trials (
 
 create index if not exists idx_guest_trials_ip
   on public.guest_trials (ip_address, created_at desc);
+
+-- ============================================================
+-- 9. structured_session_memory — Rich per-session coaching memory
+-- ============================================================
+create table if not exists public.structured_session_memory (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles on delete cascade,
+  session_id uuid references public.sessions on delete set null,
+  session_date timestamptz not null default now(),
+  session_number integer not null default 1,
+  stroke_summaries jsonb not null default '{}'::jsonb,
+  coaching_moments jsonb not null default '[]'::jsonb,
+  observations jsonb not null default '{}'::jsonb,
+  visual_summary jsonb,
+  coach_notes_freetext text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_structured_memory_user
+  on public.structured_session_memory (user_id, session_date desc);
+
+alter table public.structured_session_memory enable row level security;
+
+create policy "Users can read own structured memory"
+  on public.structured_session_memory for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own structured memory"
+  on public.structured_session_memory for insert
+  with check (auth.uid() = user_id);
+
+-- ============================================================
+-- 10. coaching_effectiveness — Track which coaching cues work
+-- ============================================================
+create table if not exists public.coaching_effectiveness (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles on delete cascade,
+  session_id uuid references public.sessions on delete set null,
+  coaching_cue text not null,
+  issue_id text not null,
+  stroke_type text not null,
+  pre_metrics jsonb not null default '{}'::jsonb,
+  post_metrics jsonb not null default '{}'::jsonb,
+  quality_delta real,
+  target_metric_delta real,
+  effective boolean,
+  strokes_between integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_coaching_effectiveness_user
+  on public.coaching_effectiveness (user_id, issue_id);
+
+alter table public.coaching_effectiveness enable row level security;
+
+create policy "Users can read own coaching effectiveness"
+  on public.coaching_effectiveness for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own coaching effectiveness"
+  on public.coaching_effectiveness for insert
+  with check (auth.uid() = user_id);
+
+-- ============================================================
+-- 11. anonymous_telemetry — Anonymized per-session metrics
+-- ============================================================
+-- No RLS: inserted by submit-telemetry Edge Function using service role.
+-- No user_id stored — fully anonymized.
+create table if not exists public.anonymous_telemetry (
+  id uuid primary key default gen_random_uuid(),
+  skill_level text not null default 'intermediate',
+  ntrp_level text,
+  session_number integer,
+  stroke_type text not null,
+  stroke_count integer not null default 0,
+  avg_quality real,
+  avg_form_score real,
+  metrics jsonb not null default '{}'::jsonb,
+  fault_frequencies jsonb not null default '{}'::jsonb,
+  session_duration_minutes real,
+  telemetry_version integer not null default 1,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_telemetry_skill_stroke
+  on public.anonymous_telemetry (skill_level, stroke_type);
+
+-- ============================================================
+-- 12. micro_confirmations — Player feedback on coaching & classification
+-- ============================================================
+create table if not exists public.micro_confirmations (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles on delete cascade,
+  session_id uuid references public.sessions on delete set null,
+  confirmation_type text not null, -- coaching_quality | stroke_classification | fault_accuracy
+  coaching_issue_id text,
+  player_rating integer, -- 1 (thumbs down) or 5 (thumbs up)
+  detected_stroke_type text,
+  confirmed_stroke_type text, -- null if correct, actual type if wrong
+  fault_id text,
+  was_real boolean,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_micro_confirmations_user
+  on public.micro_confirmations (user_id, confirmation_type);
+
+alter table public.micro_confirmations enable row level security;
+
+create policy "Users can read own confirmations"
+  on public.micro_confirmations for select
+  using (auth.uid() = user_id);
+
+create policy "Users can insert own confirmations"
+  on public.micro_confirmations for insert
+  with check (auth.uid() = user_id);
+
+-- ============================================================
+-- 13. adaptive_thresholds column on improvement_tracker
+-- ============================================================
+ALTER TABLE public.improvement_tracker
+  ADD COLUMN IF NOT EXISTS adaptive_thresholds jsonb NOT NULL DEFAULT '{}'::jsonb;

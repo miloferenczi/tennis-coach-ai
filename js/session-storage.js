@@ -443,6 +443,91 @@ class SessionStorage {
   }
 
   /**
+   * Build an anonymized telemetry payload for the submit-telemetry Edge Function.
+   * Contains per-stroke-type metric distributions with zero PII.
+   * @param {Object} session - ended session with strokes array
+   * @param {Object} summary - session summary
+   * @returns {Object} { entries: [...] } ready to POST
+   */
+  buildTelemetryPayload(session, summary) {
+    if (!session?.strokes || session.strokes.length === 0 || !summary) return null;
+
+    const skillLevel = summary.skillLevel || 'intermediate';
+    const ntrpLevel = (typeof playerProfile !== 'undefined' && playerProfile.profile?.ntrpLevel)
+      ? playerProfile.profile.ntrpLevel : null;
+    const sessionNumber = (typeof playerProfile !== 'undefined' && playerProfile.profile?.totalSessions)
+      ? playerProfile.profile.totalSessions : null;
+    const durationMinutes = summary.duration ? +(summary.duration / 60000).toFixed(1) : null;
+
+    // Group strokes by type
+    const byType = {};
+    for (const s of session.strokes) {
+      const type = s.type || 'unknown';
+      if (!byType[type]) byType[type] = [];
+      byType[type].push(s);
+    }
+
+    const entries = [];
+    for (const [strokeType, strokes] of Object.entries(byType)) {
+      if (strokes.length === 0) continue;
+
+      const qualities = strokes.map(s => s.quality).filter(q => q != null);
+      const formScores = strokes.map(s => s.qualityBreakdown?.biomechanical).filter(v => v != null);
+
+      // Per-metric distributions
+      const metrics = {};
+      const metricAccessors = {
+        rotation: s => s.physics?.rotation ? Math.abs(s.physics.rotation) : null,
+        hipSep: s => s.technique?.hipShoulderSeparation,
+        elbowAngle: s => s.technique?.elbowAngle,
+        smoothness: s => s.physics?.smoothness,
+        velocity: s => s.physics?.velocity,
+        acceleration: s => s.physics?.acceleration
+      };
+
+      for (const [metricName, accessor] of Object.entries(metricAccessors)) {
+        const vals = strokes.map(accessor).filter(v => v != null).sort((a, b) => a - b);
+        if (vals.length >= 2) {
+          metrics[metricName] = {
+            avg: +(vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(2),
+            p25: +vals[Math.floor(vals.length * 0.25)].toFixed(2),
+            p50: +vals[Math.floor(vals.length * 0.50)].toFixed(2),
+            p75: +vals[Math.floor(vals.length * 0.75)].toFixed(2)
+          };
+        }
+      }
+
+      // Fault frequencies (ratio 0-1)
+      const faultCounts = {};
+      strokes.forEach(s => {
+        (s.biomechanical?.faults || []).forEach(f => {
+          faultCounts[f] = (faultCounts[f] || 0) + 1;
+        });
+      });
+      const faultFrequencies = {};
+      for (const [fault, count] of Object.entries(faultCounts)) {
+        faultFrequencies[fault] = +(count / strokes.length).toFixed(3);
+      }
+
+      entries.push({
+        skillLevel,
+        ntrpLevel,
+        sessionNumber,
+        strokeType,
+        strokeCount: strokes.length,
+        avgQuality: qualities.length ? +(qualities.reduce((a, b) => a + b, 0) / qualities.length).toFixed(1) : null,
+        avgFormScore: formScores.length ? +(formScores.reduce((a, b) => a + b, 0) / formScores.length).toFixed(1) : null,
+        metrics,
+        faultFrequencies,
+        sessionDurationMinutes: durationMinutes,
+        telemetryVersion: 1
+      });
+    }
+
+    return entries.length > 0 ? { entries } : null;
+  }
+
+  /**
    * Clear all stored data
    */
   clearAllData() {

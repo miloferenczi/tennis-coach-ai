@@ -252,6 +252,55 @@ class VisualAnalysisMerger {
   }
 
   /**
+   * Aggregate all Gemini visual analyses from the session into summary patterns.
+   * Called at session end by CoachingMemory.buildAndSaveSessionMemory().
+   * @param {Object} batchAccumulator - has buckets with visualAnalysis on entries
+   * @returns {Object|null} { dominantGrip, racketFacePattern, contactPointPattern }
+   */
+  getSessionVisualSummary(batchAccumulator) {
+    if (!batchAccumulator) return null;
+
+    const gripCounts = {};
+    const racketFaceCounts = {};
+    const contactPointCounts = {};
+    let totalVisual = 0;
+
+    for (const bucket of Object.values(batchAccumulator.buckets)) {
+      for (const entry of bucket) {
+        const va = entry.visualAnalysis;
+        if (!va) continue;
+        totalVisual++;
+
+        const grip = va.grip || va.gripType;
+        if (grip) gripCounts[grip] = (gripCounts[grip] || 0) + 1;
+
+        const rf = va.racketFace || va.racketFaceAtContact;
+        if (rf) racketFaceCounts[rf] = (racketFaceCounts[rf] || 0) + 1;
+
+        const cp = va.contactPoint;
+        if (cp) {
+          const key = typeof cp === 'string' ? cp : (cp.position || cp.relative_to_body || 'unknown');
+          contactPointCounts[key] = (contactPointCounts[key] || 0) + 1;
+        }
+      }
+    }
+
+    if (totalVisual === 0) return null;
+
+    const topEntry = (counts) => {
+      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+      return sorted.length > 0 ? sorted[0][0] : null;
+    };
+
+    return {
+      dominantGrip: topEntry(gripCounts),
+      racketFacePattern: topEntry(racketFaceCounts),
+      contactPointPattern: topEntry(contactPointCounts),
+      sampleCount: totalVisual
+    };
+  }
+
+  /**
    * Clear cached data.
    */
   reset() {

@@ -23,7 +23,8 @@ class ImprovementTracker {
           version: 1,
           strokeMetrics: dbData.strokeMetrics || {},
           faultHistory: dbData.faultHistory || {},
-          coachingPlan: dbData.coachingPlan || null
+          coachingPlan: dbData.coachingPlan || null,
+          adaptiveThresholds: dbData.adaptiveThresholds || {}
         };
         this.isLoaded = true;
         return;
@@ -56,7 +57,8 @@ class ImprovementTracker {
       version: 1,
       strokeMetrics: {},
       faultHistory: {},
-      coachingPlan: null
+      coachingPlan: null,
+      adaptiveThresholds: {}
     };
   }
 
@@ -65,7 +67,8 @@ class ImprovementTracker {
       await supabaseClient.updateImprovementTracker({
         strokeMetrics: this.data.strokeMetrics,
         faultHistory: this.data.faultHistory,
-        coachingPlan: this.data.coachingPlan
+        coachingPlan: this.data.coachingPlan,
+        adaptiveThresholds: this.data.adaptiveThresholds || {}
       });
     } else {
       try {
