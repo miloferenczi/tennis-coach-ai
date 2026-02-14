@@ -5779,6 +5779,7 @@
         // PREMIUM ONBOARDING STATE MACHINE
         // ============================================
 
+        let appFullyInitialized = false;
         const onboardingState = {
             sport: 'tennis',
             ntrpLevel: null,
@@ -6323,6 +6324,9 @@ This is a demo — make them feel excited about the coaching experience.`;
                 playerProfile.profile.displayName = onboardingState.displayName;
                 playerProfile.profile.onboardingCompleted = true;
             }
+
+            // Prevent auth change handler from re-navigating
+            appFullyInitialized = true;
 
             // Transition to full app
             const visibleScreen = document.querySelector('.screen[style*="display: flex"], .screen:not([style*="display: none"])');
@@ -8559,6 +8563,8 @@ This is a demo — make them feel excited about the coaching experience.`;
             // Listen for auth state changes (handles magic link callback from onboarding sign-up)
             supabaseClient.onAuthChange(async (event, session, user) => {
                 if (event === 'SIGNED_IN' && user) {
+                    // Skip if app is already running (token refresh, not a new sign-in)
+                    if (appFullyInitialized) return;
                     // Migrate old localStorage data if exists
                     if (supabaseClient.hasLocalStorageData()) {
                         showToast('Migrating your data...');
@@ -8609,6 +8615,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                     // Normal sign-in (not from onboarding)
                     const profile = await supabaseClient.loadProfile();
                     if (profile?.onboardingCompleted) {
+                        appFullyInitialized = true;
                         showWelcomeScreen();
                     } else {
                         // Signed in but never completed onboarding
@@ -8625,6 +8632,7 @@ This is a demo — make them feel excited about the coaching experience.`;
 
                 if (profile?.onboardingCompleted) {
                     // Returning authenticated user — show welcome
+                    appFullyInitialized = true;
                     showWelcomeScreen();
                 } else {
                     // Authenticated but never finished onboarding — check for stored state
