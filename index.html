@@ -2026,6 +2026,7 @@
             border: 2px dashed var(--border-subtle, rgba(255,255,255,0.1));
             margin: 16px;
             border-radius: var(--radius-lg, 16px);
+            min-height: 200px;
         }
 
         .video-upload-zone.dragover {
@@ -8256,12 +8257,14 @@ This is a demo — make them feel excited about the coaching experience.`;
         function populateProfileTab() {
             _profileTabPopulated = true;
             const container = document.getElementById('profileTabContent');
+            if (!container) { console.error('populateProfileTab: container not found'); return; }
+            try {
             let html = '';
 
             // --- Data sources ---
-            const profile = (typeof playerProfile !== 'undefined') ? playerProfile.profile : null;
-            const localOb = (() => { try { return JSON.parse(localStorage.getItem('ace_onboarding') || '{}'); } catch(e) { return {}; } })();
-            const displayName = profile?.displayName || (typeof onboardingState !== 'undefined' && onboardingState.displayName) || localOb.displayName || null;
+            const profile = (typeof playerProfile !== 'undefined' && playerProfile.isLoaded) ? playerProfile.profile : null;
+            const localOb = (() => { try { return JSON.parse(localStorage.getItem('ace_onboarding_state') || '{}'); } catch(e) { return {}; } })();
+            const displayName = profile?.displayName || (typeof onboardingState !== 'undefined' && onboardingState.displayName) || localOb.displayName || localStorage.getItem('ace_user_display_name') || null;
             const coachKey = profile?.coachPreference || (typeof onboardingState !== 'undefined' && onboardingState.coachPreference) || localOb.coachPreference || 'alex';
             const ntrpLevel = profile?.ntrpLevel || (typeof onboardingState !== 'undefined' && onboardingState.ntrpLevel) || localOb.ntrpLevel || null;
             const tier = profile?.subscriptionTier || 'free';
@@ -8576,6 +8579,18 @@ This is a demo — make them feel excited about the coaching experience.`;
             html += '</div>';
 
             container.innerHTML = html;
+            } catch (err) {
+                console.error('populateProfileTab error:', err);
+                container.innerHTML = `
+                    <div class="profile-header">
+                        <div class="profile-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg></div>
+                        <div class="profile-name">${localStorage.getItem('ace_user_display_name') || 'Player'}</div>
+                        <div class="profile-meta"><span class="profile-tier-badge free">Free</span></div>
+                    </div>
+                    <div class="profile-section"><div class="profile-section-title">Settings</div>
+                        <div class="profile-row" onclick="handleSignOut()"><div class="profile-row-text">Sign Out</div></div>
+                    </div>`;
+            }
         }
 
         function populateHomeStats() {
