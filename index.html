@@ -3742,8 +3742,48 @@
                         <div class="ob-card-check"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#0A0A0A" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></div>
                     </div>
                 </div>
+                <button class="btn-skip" onclick="showLoginScreen()" style="margin-top:24px;">Already have an account? <span style="color:#CDFF00;">Log in</span></button>
             </div>
             <div class="ob-progress"><div class="ob-progress-fill" style="width:9%"></div></div>
+        </div>
+
+        <!-- Login Screen (for users who know they have an account) -->
+        <div id="loginScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="hero-title" style="font-size:48px;">ACE<span class="accent">.</span></div>
+                <div class="hero-subtitle">WELCOME BACK</div>
+                <div class="api-input-group" style="width:100%;margin-top:32px;">
+                    <label class="api-label">EMAIL ADDRESS</label>
+                    <div class="api-input-wrapper">
+                        <input type="email" id="loginEmail" class="api-input" placeholder="you@example.com" autocomplete="email" />
+                    </div>
+                </div>
+                <button class="btn-primary" id="loginSendBtn" onclick="loginSendMagicLink()" style="margin-top:16px;">
+                    SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>
+                </button>
+                <div id="loginStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
+                <button class="btn-skip" onclick="loginGoBack()">&larr; Back to sign up</button>
+            </div>
+        </div>
+
+        <!-- Welcome Back Screen (auto-shown for known returning users) -->
+        <div id="welcomeBackScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="hero-title" style="font-size:72px;">ACE<span class="accent">.</span></div>
+                <div class="hero-subtitle">WELCOME BACK</div>
+                <div id="welcomeBackName" style="font-size:20px;color:#fff;margin-top:12px;font-weight:600;display:none;"></div>
+                <div class="api-input-group" style="width:100%;margin-top:32px;">
+                    <label class="api-label">EMAIL ADDRESS</label>
+                    <div class="api-input-wrapper">
+                        <input type="email" id="welcomeBackEmail" class="api-input" placeholder="you@example.com" autocomplete="email" />
+                    </div>
+                </div>
+                <button class="btn-primary" id="welcomeBackSendBtn" onclick="welcomeBackSendLink()" style="margin-top:16px;">
+                    SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>
+                </button>
+                <div id="welcomeBackStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
+                <button class="btn-skip" id="welcomeBackNotYouBtn" onclick="welcomeBackStartFresh()">Not you? <span style="color:#CDFF00;">Start fresh</span></button>
+            </div>
         </div>
 
         <!-- Onboarding 2: Skill Level (NTRP) -->
@@ -6272,6 +6312,109 @@ This is a demo — make them feel excited about the coaching experience.`;
                 sendBtn.textContent = 'EMAIL SENT \u2713';
                 // Persist onboarding state so magic link opened in new tab can resume
                 localStorage.setItem('ace_onboarding_state', JSON.stringify(onboardingState));
+                localStorage.setItem('ace_login_pending', email);
+            }
+        }
+
+        // --- Login Screen (existing users without stored email) ---
+        function showLoginScreen() {
+            transitionScreens('obSportScreen', 'loginScreen');
+            setTimeout(() => {
+                const input = document.getElementById('loginEmail');
+                if (input) input.focus();
+            }, 450);
+        }
+
+        function loginGoBack() {
+            transitionScreens('loginScreen', 'obSportScreen');
+        }
+
+        async function loginSendMagicLink() {
+            const emailInput = document.getElementById('loginEmail');
+            const statusEl = document.getElementById('loginStatus');
+            const sendBtn = document.getElementById('loginSendBtn');
+
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                statusEl.textContent = 'Please enter a valid email address.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'SENDING...';
+
+            const { error } = await supabaseClient.signInExistingUser(email);
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = 'SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>';
+            } else {
+                statusEl.textContent = 'Check your email for the login link!';
+                statusEl.style.color = '#CDFF00';
+                sendBtn.textContent = 'EMAIL SENT \u2713';
+                localStorage.setItem('ace_login_pending', email);
+            }
+        }
+
+        // --- Welcome Back Screen (known returning users) ---
+        async function welcomeBackSendLink() {
+            const emailInput = document.getElementById('welcomeBackEmail');
+            const statusEl = document.getElementById('welcomeBackStatus');
+            const sendBtn = document.getElementById('welcomeBackSendBtn');
+
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                statusEl.textContent = 'Please enter a valid email address.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'SENDING...';
+
+            const { error } = await supabaseClient.signInExistingUser(email);
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = 'SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>';
+            } else {
+                statusEl.textContent = 'Check your email for the login link!';
+                statusEl.style.color = '#CDFF00';
+                sendBtn.textContent = 'EMAIL SENT \u2713';
+                // Update stored email in case they edited it
+                localStorage.setItem('ace_user_email', email);
+                localStorage.setItem('ace_login_pending', email);
+            }
+        }
+
+        function welcomeBackStartFresh() {
+            localStorage.removeItem('ace_user_email');
+            localStorage.removeItem('ace_user_display_name');
+            localStorage.removeItem('ace_login_pending');
+            transitionScreens('welcomeBackScreen', 'obSportScreen');
+        }
+
+        function populateWelcomeBackScreen(displayName, email) {
+            const nameEl = document.getElementById('welcomeBackName');
+            if (displayName) {
+                nameEl.textContent = displayName;
+                nameEl.style.display = 'block';
+            } else {
+                nameEl.style.display = 'none';
+            }
+
+            const emailInput = document.getElementById('welcomeBackEmail');
+            if (email) emailInput.value = email;
+
+            // Customize "Not you?" button text
+            const notYouBtn = document.getElementById('welcomeBackNotYouBtn');
+            if (displayName) {
+                notYouBtn.innerHTML = `Not ${displayName}? <span style="color:#CDFF00;">Start fresh</span>`;
+            } else {
+                notYouBtn.innerHTML = `Not you? <span style="color:#CDFF00;">Start fresh</span>`;
             }
         }
 
@@ -6311,6 +6454,14 @@ This is a demo — make them feel excited about the coaching experience.`;
                     trialUsed: true,
                 });
                 await loadUserData();
+                // Store email + name for returning user detection
+                const finishUser = supabaseClient.getUser();
+                if (finishUser?.email) {
+                    localStorage.setItem('ace_user_email', finishUser.email);
+                }
+                if (onboardingState.displayName) {
+                    localStorage.setItem('ace_user_display_name', onboardingState.displayName);
+                }
             } else {
                 // Safety net — shouldn't trigger since sign-up is mandatory
                 localStorage.setItem('ace_onboarding', JSON.stringify(onboardingState));
@@ -8501,7 +8652,7 @@ This is a demo — make them feel excited about the coaching experience.`;
         /**
          * Show the welcome/permission screen with returning user context.
          */
-        function showWelcomeScreen() {
+        function showWelcomeScreenFrom(fromScreenId) {
             // Update welcome for returning users
             if (typeof playerProfile !== 'undefined' && playerProfile.isLoaded) {
                 const profile = playerProfile.profile;
@@ -8537,7 +8688,11 @@ This is a demo — make them feel excited about the coaching experience.`;
                 }
             }
 
-            transitionScreens('checkingAuthScreen', 'permissionScreen');
+            transitionScreens(fromScreenId, 'permissionScreen');
+        }
+
+        function showWelcomeScreen() {
+            showWelcomeScreenFrom('checkingAuthScreen');
         }
 
         /**
@@ -8573,6 +8728,43 @@ This is a demo — make them feel excited about the coaching experience.`;
                     }
 
                     await loadUserData();
+
+                    // Store email for returning user detection
+                    if (user.email) {
+                        localStorage.setItem('ace_user_email', user.email);
+                    }
+
+                    // Read login pending BEFORE clearing (needed for new-tab detection)
+                    const loginPending = localStorage.getItem('ace_login_pending');
+                    localStorage.removeItem('ace_login_pending');
+
+                    // Check if sign-in came from login or welcome-back screen
+                    const loginScreenEl = document.getElementById('loginScreen');
+                    const loginVisible = loginScreenEl && loginScreenEl.style.display !== 'none';
+                    const welcomeBackScreenEl = document.getElementById('welcomeBackScreen');
+                    const welcomeBackVisible = welcomeBackScreenEl && welcomeBackScreenEl.style.display !== 'none';
+
+                    if (loginVisible || welcomeBackVisible || loginPending) {
+                        const profile = await supabaseClient.loadProfile();
+                        // Store display name for future welcome-back
+                        if (profile?.displayName) {
+                            localStorage.setItem('ace_user_display_name', profile.displayName);
+                        }
+
+                        // Determine which screen we're transitioning from
+                        let fromScreen = 'checkingAuthScreen';
+                        if (loginVisible) fromScreen = 'loginScreen';
+                        else if (welcomeBackVisible) fromScreen = 'welcomeBackScreen';
+
+                        if (profile?.onboardingCompleted) {
+                            appFullyInitialized = true;
+                            showWelcomeScreenFrom(fromScreen);
+                        } else {
+                            // Logged in but never completed onboarding
+                            transitionScreens(fromScreen, 'obSportScreen');
+                        }
+                        return;
+                    }
 
                     // Check if sign-in happened during onboarding (sign-up screen visible in same tab)
                     const signupScreen = document.getElementById('obSignupScreen');
@@ -8614,6 +8806,10 @@ This is a demo — make them feel excited about the coaching experience.`;
 
                     // Normal sign-in (not from onboarding)
                     const profile = await supabaseClient.loadProfile();
+                    // Store display name for future welcome-back
+                    if (profile?.displayName) {
+                        localStorage.setItem('ace_user_display_name', profile.displayName);
+                    }
                     if (profile?.onboardingCompleted) {
                         appFullyInitialized = true;
                         showWelcomeScreen();
@@ -8629,6 +8825,10 @@ This is a demo — make them feel excited about the coaching experience.`;
             if (user) {
                 await loadUserData();
                 const profile = await supabaseClient.loadProfile();
+
+                // Store email + name for returning user detection
+                if (user.email) localStorage.setItem('ace_user_email', user.email);
+                if (profile?.displayName) localStorage.setItem('ace_user_display_name', profile.displayName);
 
                 if (profile?.onboardingCompleted) {
                     // Returning authenticated user — show welcome
@@ -8652,8 +8852,28 @@ This is a demo — make them feel excited about the coaching experience.`;
                     transitionScreens('checkingAuthScreen', 'obSportScreen');
                 }
             } else {
-                // Not signed in — start fresh onboarding
-                transitionScreens('checkingAuthScreen', 'obSportScreen');
+                // Not signed in — check if we know this user
+                const pendingLogin = localStorage.getItem('ace_login_pending');
+                const storedEmail = localStorage.getItem('ace_user_email');
+                const storedName = localStorage.getItem('ace_user_display_name');
+
+                if (pendingLogin) {
+                    // User reloaded while waiting for magic link — show appropriate screen
+                    if (storedName || storedEmail) {
+                        populateWelcomeBackScreen(storedName, pendingLogin);
+                        transitionScreens('checkingAuthScreen', 'welcomeBackScreen');
+                    } else {
+                        document.getElementById('loginEmail').value = pendingLogin;
+                        transitionScreens('checkingAuthScreen', 'loginScreen');
+                    }
+                } else if (storedEmail) {
+                    // Known returning user — show welcome back with pre-filled email
+                    populateWelcomeBackScreen(storedName, storedEmail);
+                    transitionScreens('checkingAuthScreen', 'welcomeBackScreen');
+                } else {
+                    // Truly new user — fresh onboarding
+                    transitionScreens('checkingAuthScreen', 'obSportScreen');
+                }
             }
         }
 

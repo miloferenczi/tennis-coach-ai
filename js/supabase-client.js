@@ -107,6 +107,34 @@ class ACESupabaseClient {
   }
 
   /**
+   * Sign in an existing user with email magic link (no account creation).
+   * Use on the login screen to prevent accidental account creation.
+   * @param {string} email
+   * @returns {{ error: string|null }}
+   */
+  async signInExistingUser(email) {
+    if (!this.client) return { error: 'Client not initialized' };
+
+    const { error } = await this.client.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: false
+      }
+    });
+
+    if (error) {
+      console.error('SupabaseClient: signInExistingUser error', error);
+      // Supabase returns "Signups not allowed for otp" when user doesn't exist
+      if (error.message?.includes('Signups not allowed') || error.message?.includes('not allowed')) {
+        return { error: 'No account found with that email. Try signing up instead.' };
+      }
+      return { error: error.message };
+    }
+
+    return { error: null };
+  }
+
+  /**
    * Sign out and clear caches.
    */
   async signOut() {
