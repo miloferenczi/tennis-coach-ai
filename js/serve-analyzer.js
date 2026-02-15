@@ -92,6 +92,15 @@ class ServeAnalyzer {
     for (let i = 3; i < searchEnd; i++) {
       const lm = poseHistory[i].landmarks;
       if (!lm || !lm[idx.nonDomWrist] || !lm[idx.domElbow]) continue;
+      // Skip frames where key serve landmarks are not visible
+      if (typeof isLandmarkVisible === 'function') {
+        const needed = [idx.nonDomWrist, idx.domElbow, idx.domShoulder, idx.domWrist, idx.domHip, idx.domKnee, idx.domAnkle];
+        let skip = false;
+        for (const n of needed) {
+          if (!isLandmarkVisible(lm[n], 0.4)) { skip = true; break; }
+        }
+        if (skip) continue;
+      }
 
       // 1) Toss hand height — lower Y = higher = better (scale 0-50)
       const tossY = lm[idx.nonDomWrist].y;
@@ -514,6 +523,11 @@ class ServeAnalyzer {
   /** Calculate angle at p2 (vertex) formed by p1-p2-p3, in degrees */
   _angle(p1, p2, p3) {
     if (!p1 || !p2 || !p3) return 180;
+    // Skip if any of the three landmarks are not visible
+    if (typeof isLandmarkVisible === 'function' &&
+        (!isLandmarkVisible(p1) || !isLandmarkVisible(p2) || !isLandmarkVisible(p3))) {
+      return 180; // neutral default (straight)
+    }
     const rad = Math.atan2(p3.y - p2.y, p3.x - p2.x) -
                 Math.atan2(p1.y - p2.y, p1.x - p2.x);
     let deg = Math.abs(rad * 180 / Math.PI);

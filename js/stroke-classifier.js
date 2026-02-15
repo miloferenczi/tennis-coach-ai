@@ -150,11 +150,11 @@ class StrokeClassifier {
             scores.smoothness * this.qualityWeights.smoothness
         );
 
-        // Add technique bonus
-        const finalScore = Math.min(100, overallScore + scores.technique);
+        // Add technique bonus, cap at 100
+        const finalScore = Math.round(Math.min(100, overallScore + scores.technique));
 
         return {
-            overall: Math.round(finalScore),
+            overall: finalScore,
             breakdown: scores,
             feedback: this.generateQualityFeedback(scores, strokeType)
         };
@@ -178,10 +178,10 @@ class StrokeClassifier {
         const overallScore = 0.60 * biomechanicalEval.overall + 0.40 * powerScore;
 
         const technique = this.assessTechnique(strokeType, velocity, acceleration, rotation);
-        const finalScore = Math.min(100, overallScore + technique);
+        const finalScore = Math.round(Math.min(100, overallScore + technique));
 
         return {
-            overall: Math.round(finalScore),
+            overall: finalScore,
             breakdown: {
                 velocity: velScore,
                 acceleration: accelScore,

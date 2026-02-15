@@ -9,7 +9,7 @@ class KineticChainAnalyzer {
         // Define body segments in correct activation order
         this.chainSequence = [
             'ankle',
-            'knee', 
+            'knee',
             'hip',
             'torso',
             'shoulder',
@@ -17,22 +17,47 @@ class KineticChainAnalyzer {
             'wrist'
         ];
 
+        // Dominant hand — updated by EnhancedTennisAnalyzer after handedness detection
+        this.dominantHand = null;
+
         // Map segment names to Kalman joint names for velocity lookup
-        this.segmentToJointMap = {
-            ankle: ['rightAnkle', 'leftAnkle'],
-            knee: ['rightKnee'],
-            hip: ['rightHip', 'leftHip'],
-            torso: ['rightShoulder', 'leftShoulder'],
-            shoulder: ['rightShoulder'],
-            elbow: ['rightElbow'],
-            wrist: ['rightWrist']
-        };
+        // Initialized for right-handed; updated by setDominantHand()
+        this._buildJointMap('right');
 
         // Timing tolerance between segments (frames)
         this.timingTolerance = {
             optimal: 2,      // Within 2 frames is optimal
             acceptable: 4,   // Within 4 frames is acceptable
             poor: 8          // More than 8 frames apart is poor
+        };
+    }
+
+    /**
+     * Set dominant hand and rebuild joint map for kinetic chain analysis.
+     * Called from EnhancedTennisAnalyzer once handedness is locked.
+     */
+    setDominantHand(hand) {
+        this.dominantHand = hand;
+        this._buildJointMap(hand || 'right');
+    }
+
+    /**
+     * Build segment-to-joint mapping based on handedness.
+     * Bilateral segments (ankle, hip, torso) use both sides.
+     * Unilateral chain segments (knee, shoulder, elbow, wrist) use dominant side.
+     */
+    _buildJointMap(hand) {
+        const isLeft = hand === 'left';
+        const dom = isLeft ? 'left' : 'right';
+        const cap = dom.charAt(0).toUpperCase() + dom.slice(1);
+        this.segmentToJointMap = {
+            ankle: ['rightAnkle', 'leftAnkle'],             // both sides
+            knee: [`${dom}Knee`],                            // dominant side
+            hip: ['rightHip', 'leftHip'],                    // both sides
+            torso: ['rightShoulder', 'leftShoulder'],        // both sides
+            shoulder: [`${dom}Shoulder`],                     // dominant side
+            elbow: [`${dom}Elbow`],                           // dominant side
+            wrist: [`${dom}Wrist`]                            // dominant side
         };
     }
 
@@ -139,52 +164,36 @@ class KineticChainAnalyzer {
         }
 
         // Fallback: position differencing between consecutive frames
+        // Uses the segment-to-joint map (handedness-aware)
         const current = currentFrame.joints;
         const previous = previousFrame.joints;
 
         if (!current || !previous) return 0;
 
-        switch (segment) {
-            case 'ankle':
-                return this.averagePointVelocity(
-                    [current.rightAnkle, current.leftAnkle],
-                    [previous.rightAnkle, previous.leftAnkle]
-                );
+        const jointNames = this.segmentToJointMap[segment];
+        if (!jointNames || jointNames.length === 0) return 0;
 
-            case 'knee':
-                return this.pointVelocity(current.rightKnee, previous.rightKnee);
-
-            case 'hip':
-                return this.averagePointVelocity(
-                    [current.rightHip, current.leftHip],
-                    [previous.rightHip, previous.leftHip]
-                );
-
-            case 'torso':
-                return this.averagePointVelocity(
-                    [current.rightShoulder, current.leftShoulder],
-                    [previous.rightShoulder, previous.leftShoulder]
-                );
-
-            case 'shoulder':
-                return this.pointVelocity(current.rightShoulder, previous.rightShoulder);
-
-            case 'elbow':
-                return this.pointVelocity(current.rightElbow, previous.rightElbow);
-
-            case 'wrist':
-                return this.pointVelocity(current.rightWrist, previous.rightWrist);
-
-            default:
-                return 0;
+        if (jointNames.length === 1) {
+            return this.pointVelocity(current[jointNames[0]], previous[jointNames[0]]);
         }
+
+        // Multi-joint: average velocity
+        const curPts = jointNames.map(n => current[n]);
+        const prevPts = jointNames.map(n => previous[n]);
+        return this.averagePointVelocity(curPts, prevPts);
     }
 
     /**
-     * Calculate velocity magnitude between two positions of a single point
+     * Calculate velocity magnitude between two positions of a single point.
+     * Returns 0 if either point has low visibility.
      */
     pointVelocity(current, previous) {
         if (!current || !previous) return 0;
+        // Skip calculation for invisible landmarks
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(current) || !isLandmarkVisible(previous))) {
+            return 0;
+        }
         const dx = current.x - previous.x;
         const dy = current.y - previous.y;
         return Math.sqrt(dx * dx + dy * dy);

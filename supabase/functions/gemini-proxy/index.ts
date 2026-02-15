@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Check subscription tier — enforce server-side limits
+    // Check subscription tier — free users get limited Gemini calls
     const { data: profile } = await supabase
       .from("profiles")
       .select("subscription_tier, trial_start_date")
@@ -46,6 +46,12 @@ Deno.serve(async (req) => {
       .single();
 
     const tier = profile?.subscription_tier || "free";
+    if (tier === "free") {
+      return new Response(JSON.stringify({ error: "Gemini features require a Pro or Trial subscription" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Check trial expiry
     if (tier === "trial" && profile?.trial_start_date) {
@@ -59,61 +65,58 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Free tier: still allowed (limited on client side to 2 observations),
-    // but we log it for monitoring. Pro/trial get full access.
-
-    // Parse request body for session config
-    const body = await req.json().catch(() => ({}));
-    const instructions = body.instructions || "";
-    const voice = body.voice || "ash";
-
-    // Get ephemeral token from OpenAI
-    const openaiKey = Deno.env.get("OPENAI_API_KEY");
-    if (!openaiKey) {
-      return new Response(JSON.stringify({ error: "OpenAI API key not configured" }), {
+    const geminiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!geminiKey) {
+      return new Response(JSON.stringify({ error: "Gemini API key not configured" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const tokenResponse = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${openaiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        session: {
-          type: "realtime",
-          model: "gpt-realtime",
-          voice: voice,
-          instructions: instructions,
-          modalities: ["text", "audio"],
-          input_audio_transcription: { model: "whisper-1" },
-        }
-      }),
-    });
+    // Parse the Gemini request body from the client
+    const body = await req.json().catch(() => null);
+    if (!body) {
+      return new Response(JSON.stringify({ error: "Invalid request body" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    if (!tokenResponse.ok) {
-      const errText = await tokenResponse.text();
-      console.error("OpenAI token error:", errText);
-      return new Response(JSON.stringify({ error: "Failed to get OpenAI token" }), {
+    // Extract model from request or use default (validated against allowlist)
+    const allowedModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+    const requestedModel = body.model || "gemini-2.5-flash";
+    const model = allowedModels.includes(requestedModel) ? requestedModel : "gemini-2.5-flash";
+    delete body.model; // Don't forward model field to Gemini API
+
+    // Forward request to Gemini API
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": geminiKey,
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!geminiResponse.ok) {
+      const errText = await geminiResponse.text();
+      console.error("Gemini API error:", geminiResponse.status, errText);
+      return new Response(JSON.stringify({ error: "Gemini API error", status: geminiResponse.status }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const tokenData = await tokenResponse.json();
+    const geminiData = await geminiResponse.json();
 
-    return new Response(JSON.stringify({
-      ephemeralKey: tokenData.value,
-      expiresAt: tokenData.expires_at,
-      tier: tier,
-    }), {
+    return new Response(JSON.stringify(geminiData), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("get-realtime-token error:", err);
+    console.error("gemini-proxy error:", err);
     return new Response(JSON.stringify({ error: "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

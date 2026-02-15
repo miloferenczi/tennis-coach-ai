@@ -24,7 +24,8 @@ class ImprovementTracker {
           strokeMetrics: dbData.strokeMetrics || {},
           faultHistory: dbData.faultHistory || {},
           coachingPlan: dbData.coachingPlan || null,
-          adaptiveThresholds: dbData.adaptiveThresholds || {}
+          adaptiveThresholds: dbData.adaptiveThresholds || {},
+          drillHistory: dbData.drillHistory || {}
         };
         this.isLoaded = true;
         return;
@@ -58,7 +59,8 @@ class ImprovementTracker {
       strokeMetrics: {},
       faultHistory: {},
       coachingPlan: null,
-      adaptiveThresholds: {}
+      adaptiveThresholds: {},
+      drillHistory: {}
     };
   }
 
@@ -68,7 +70,8 @@ class ImprovementTracker {
         strokeMetrics: this.data.strokeMetrics,
         faultHistory: this.data.faultHistory,
         coachingPlan: this.data.coachingPlan,
-        adaptiveThresholds: this.data.adaptiveThresholds || {}
+        adaptiveThresholds: this.data.adaptiveThresholds || {},
+        drillHistory: this.data.drillHistory || {}
       });
     } else {
       try {
@@ -382,6 +385,72 @@ class ImprovementTracker {
     }
 
     return progressItems.length > 0 ? progressItems.join(', ') : null;
+  }
+
+  // ================================================================
+  // Drill History Tracking
+  // ================================================================
+
+  /**
+   * Record a completed drill with score and difficulty.
+   * @param {string} drillId - e.g. 'footwork_base', 'serve_trophy_position'
+   * @param {number} score - 0-100 completion score
+   * @param {number} difficulty - current difficulty multiplier (default 1.0)
+   */
+  async recordDrillCompletion(drillId, score, difficulty = 1.0) {
+    if (!this.data.drillHistory) this.data.drillHistory = {};
+    if (!this.data.drillHistory[drillId]) {
+      this.data.drillHistory[drillId] = {
+        completions: [],
+        currentDifficulty: 1.0
+      };
+    }
+
+    const entry = this.data.drillHistory[drillId];
+    entry.completions.push({
+      date: Date.now(),
+      score,
+      difficulty
+    });
+
+    // Keep last 20 completions per drill
+    if (entry.completions.length > 20) {
+      entry.completions = entry.completions.slice(-20);
+    }
+
+    // Escalate difficulty: 3 consecutive completions at 80%+ → increase by 10%
+    const recent = entry.completions.slice(-3);
+    if (recent.length >= 3 && recent.every(c => c.score >= 80)) {
+      entry.currentDifficulty = +(entry.currentDifficulty * 1.1).toFixed(2);
+    }
+
+    await this.save();
+  }
+
+  /**
+   * Get current difficulty for a drill.
+   * @param {string} drillId
+   * @returns {number} difficulty multiplier (default 1.0)
+   */
+  getDrillDifficulty(drillId) {
+    return this.data.drillHistory?.[drillId]?.currentDifficulty || 1.0;
+  }
+
+  /**
+   * Get drill completion history.
+   * @param {string} drillId
+   * @returns {{ completions: Array, currentDifficulty: number }|null}
+   */
+  getDrillHistory(drillId) {
+    return this.data.drillHistory?.[drillId] || null;
+  }
+
+  /**
+   * Get all drill histories (for coaching memory prompts).
+   * @returns {Object} drillId → { completions, currentDifficulty }
+   */
+  getAllDrillHistory() {
+    return this.data.drillHistory || {};
   }
 
   /**

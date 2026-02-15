@@ -35,6 +35,7 @@
     <script src="js/kalman-velocity-estimator.js"></script>
 
         <!-- Add these new scripts in order -->
+    <script src="js/landmark-filter.js"></script>
     <script src="js/physics-analyzer.js"></script>
     <script src="js/stroke-classifier.js"></script>
     <script src="js/professional-references.js"></script>
@@ -3879,10 +3880,17 @@
                         <input type="email" id="loginEmail" class="api-input" placeholder="you@example.com" autocomplete="email" />
                     </div>
                 </div>
-                <button class="btn-primary" id="loginSendBtn" onclick="loginSendMagicLink()" style="margin-top:16px;">
-                    SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>
+                <div class="api-input-group" style="width:100%;margin-top:12px;">
+                    <label class="api-label">PASSWORD</label>
+                    <div class="api-input-wrapper">
+                        <input type="password" id="loginPassword" class="api-input" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')loginWithPassword()" />
+                    </div>
+                </div>
+                <button class="btn-primary" id="loginBtn" onclick="loginWithPassword()" style="margin-top:16px;">
+                    LOG IN <span style="margin-left:4px;">&rarr;</span>
                 </button>
                 <div id="loginStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
+                <button class="btn-skip" onclick="loginForgotPassword()" style="font-size:12px;">Forgot password? <span style="color:#A0F0FF;">Send a magic link</span></button>
                 <button class="btn-skip" onclick="loginGoBack()">&larr; Back to sign up</button>
             </div>
         </div>
@@ -3899,11 +3907,42 @@
                         <input type="email" id="welcomeBackEmail" class="api-input" placeholder="you@example.com" autocomplete="email" />
                     </div>
                 </div>
-                <button class="btn-primary" id="welcomeBackSendBtn" onclick="welcomeBackSendLink()" style="margin-top:16px;">
-                    SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>
+                <div class="api-input-group" style="width:100%;margin-top:12px;">
+                    <label class="api-label">PASSWORD</label>
+                    <div class="api-input-wrapper">
+                        <input type="password" id="welcomeBackPassword" class="api-input" placeholder="Enter your password" autocomplete="current-password" onkeydown="if(event.key==='Enter')welcomeBackLoginWithPassword()" />
+                    </div>
+                </div>
+                <button class="btn-primary" id="welcomeBackLoginBtn" onclick="welcomeBackLoginWithPassword()" style="margin-top:16px;">
+                    LOG IN <span style="margin-left:4px;">&rarr;</span>
                 </button>
                 <div id="welcomeBackStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
+                <button class="btn-skip" onclick="welcomeBackForgotPassword()" style="font-size:12px;">Forgot password? <span style="color:#A0F0FF;">Send a magic link</span></button>
                 <button class="btn-skip" id="welcomeBackNotYouBtn" onclick="welcomeBackStartFresh()">Not you? <span style="color:#A0F0FF;">Start fresh</span></button>
+            </div>
+        </div>
+
+        <!-- Reset Password Screen (shown after clicking password reset link) -->
+        <div id="resetPasswordScreen" class="screen" style="display:none;">
+            <div class="onboarding-content">
+                <div class="hero-title" style="font-size:48px;">ACE<span class="accent">.</span></div>
+                <div class="hero-subtitle">SET NEW PASSWORD</div>
+                <div class="api-input-group" style="width:100%;margin-top:32px;">
+                    <label class="api-label">NEW PASSWORD</label>
+                    <div class="api-input-wrapper">
+                        <input type="password" id="resetNewPassword" class="api-input" placeholder="At least 8 characters" autocomplete="new-password" />
+                    </div>
+                </div>
+                <div class="api-input-group" style="width:100%;margin-top:12px;">
+                    <label class="api-label">CONFIRM PASSWORD</label>
+                    <div class="api-input-wrapper">
+                        <input type="password" id="resetConfirmPassword" class="api-input" placeholder="Confirm your password" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitNewPassword()" />
+                    </div>
+                </div>
+                <button class="btn-primary" id="resetPasswordBtn" onclick="submitNewPassword()" style="margin-top:16px;">
+                    SET PASSWORD <span style="margin-left:4px;">&rarr;</span>
+                </button>
+                <div id="resetPasswordStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
             </div>
         </div>
 
@@ -4043,7 +4082,7 @@
             <div class="ob-progress"><div class="ob-progress-fill" style="width:90%"></div></div>
         </div>
 
-        <!-- Onboarding 6: Sign Up (magic link, mandatory before Meet Coach) -->
+        <!-- Onboarding 6: Sign Up (password primary, magic link fallback) -->
         <div id="obSignupScreen" class="screen" style="display:none;">
             <button class="ob-back-btn" onclick="obGoBack('obSignupScreen','obCoachScreen')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></button>
             <div class="onboarding-content">
@@ -4055,10 +4094,17 @@
                         <input type="email" id="obSignupEmail" class="api-input" placeholder="you@example.com" autocomplete="email" />
                     </div>
                 </div>
-                <button class="btn-primary" id="obSignupBtn" onclick="obSendMagicLink()" style="margin-top:16px;">
-                    SEND MAGIC LINK <span style="margin-left:4px;">&rarr;</span>
+                <div class="api-input-group" style="width:100%;margin-top:12px;">
+                    <label class="api-label">PASSWORD</label>
+                    <div class="api-input-wrapper">
+                        <input type="password" id="obSignupPassword" class="api-input" placeholder="At least 8 characters" autocomplete="new-password" onkeydown="if(event.key==='Enter')obSignUpWithPassword()" />
+                    </div>
+                </div>
+                <button class="btn-primary" id="obSignupBtn" onclick="obSignUpWithPassword()" style="margin-top:16px;">
+                    CREATE ACCOUNT <span style="margin-left:4px;">&rarr;</span>
                 </button>
                 <div id="obSignupStatus" style="color:rgba(255,255,255,0.5);font-size:13px;margin-top:12px;text-align:center;min-height:20px;"></div>
+                <button class="btn-skip" onclick="obSendMagicLink()">Or send a magic link instead</button>
             </div>
             <div class="ob-progress"><div class="ob-progress-fill" style="width:54%"></div></div>
         </div>
@@ -4800,6 +4846,29 @@
     </div>
 
     <script>
+        // ============================================
+        // GLOBAL ERROR HANDLERS
+        // Catch uncaught errors and show recovery toast
+        // ============================================
+        window.onerror = function(message, source, lineno, colno, error) {
+            console.error('Uncaught error:', message, 'at', source, lineno, colno, error);
+            if (typeof showToast === 'function') {
+                showToast('Something went wrong. The app may need to be refreshed.');
+            }
+            // Return false to allow default browser error handling (dev tools)
+            return false;
+        };
+
+        window.onunhandledrejection = function(event) {
+            console.error('Unhandled promise rejection:', event.reason);
+            // Only show toast for non-network errors (network errors are handled per-call)
+            if (event.reason && !(event.reason instanceof TypeError && event.reason.message?.includes('fetch'))) {
+                if (typeof showToast === 'function') {
+                    showToast('Something went wrong. The app may need to be refreshed.');
+                }
+            }
+        };
+
         // Tennis AI Application
         class TennisAI {
             constructor() {
@@ -4885,6 +4954,11 @@
                 if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
                     this.curriculumEngine.init();
                 }
+                // Load adaptive thresholds and NTRP anchor for model quality
+                this.enhancedAnalyzer.loadAdaptiveState();
+                const ntrp = (typeof onboardingState !== 'undefined' && onboardingState.ntrpLevel) ||
+                    localStorage.getItem('ace_ntrp_level');
+                if (ntrp) this.enhancedAnalyzer.setNtrpAnchor(ntrp);
                 this.shareCardGenerator = new ShareCardGenerator();
                 this.sessionVideoManager = new SessionVideoManager();
                 this.rallyTracker = new RallyTracker();
@@ -5050,13 +5124,20 @@
 
                 // getUserMedia first — reliably triggers loadedmetadata so we
                 // can size the canvas from the actual stream resolution.
-                const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: this.currentFacingMode,
-                        width: { ideal: 1280 },
-                        height: { ideal: 720 }
-                    }
-                });
+                let stream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({
+                        video: {
+                            facingMode: this.currentFacingMode,
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    });
+                } catch (cameraError) {
+                    const msg = this._getCameraErrorMessage(cameraError);
+                    if (typeof showToast === 'function') showToast(msg);
+                    throw cameraError;
+                }
 
                 this.video.srcObject = stream;
 
@@ -5082,6 +5163,25 @@
                         resolve();
                     };
                 });
+            }
+            _getCameraErrorMessage(error) {
+                const name = error.name || '';
+                if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+                    return 'Camera permission denied. Please allow camera access in your browser settings and reload.';
+                }
+                if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+                    return 'No camera found. Please connect a camera and try again.';
+                }
+                if (name === 'NotReadableError' || name === 'TrackStartError') {
+                    return 'Camera is in use by another app. Please close other apps using the camera and try again.';
+                }
+                if (name === 'OverconstrainedError') {
+                    return 'Camera does not support the requested resolution. Trying with default settings.';
+                }
+                if (name === 'AbortError') {
+                    return 'Camera access was interrupted. Please try again.';
+                }
+                return 'Unable to access camera. Please check your permissions and try again.';
             }
             onResults(results) {
                 // Clear and draw camera feed
@@ -5475,6 +5575,9 @@
                             adaptiveThresholds.recompute();
                         }
 
+                        // Persist adaptive state (visibility thresholds, skill hysteresis)
+                        this.enhancedAnalyzer.saveAdaptiveState();
+
                         // Force-flush all batch coaching at session end
                         if (this.batchAccumulator && typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
                             const endSummaries = this.batchAccumulator.getAllBatchSummaries();
@@ -5665,6 +5768,21 @@
             buildBatchPrompt(summaries, triggers, rallyAnalyses) {
                 let prompt = 'BATCH OBSERVATION REPORT\n';
                 prompt += `You observed the following strokes at a natural break. Choose your response: A) Full coaching, B) Brief encouragement, or C) [SILENCE].\n\n`;
+
+                // Player context: handedness
+                if (this.enhancedAnalyzer?.dominantHand) {
+                    prompt += `Player: ${this.enhancedAnalyzer.dominantHand}-handed\n`;
+                }
+
+                // Ball tracking session stats
+                if (this.ballTracker?.getSessionStats) {
+                    const bs = this.ballTracker.getSessionStats();
+                    if (bs && bs.analyzed > 0) {
+                        prompt += `Ball tracking: ${bs.inCourt}/${bs.analyzed} shots in court (${bs.accuracy}%)\n`;
+                    }
+                }
+
+                prompt += '\n';
 
                 for (const s of summaries) {
                     prompt += `--- ${s.strokeType.toUpperCase()} (${s.count} strokes) ---\n`;
@@ -6382,7 +6500,16 @@ Keep it under 15 seconds. Do NOT mention being AI.`;
                     await obStartTrialSession();
                 });
             } catch (e) {
-                showToast('Camera permission is required for stroke analysis');
+                const name = e.name || '';
+                let msg = 'Camera permission is required for stroke analysis.';
+                if (name === 'NotAllowedError' || name === 'PermissionDeniedError') {
+                    msg = 'Camera permission denied. Please allow camera access in your browser settings and reload.';
+                } else if (name === 'NotFoundError' || name === 'DevicesNotFoundError') {
+                    msg = 'No camera found. Please connect a camera and try again.';
+                } else if (name === 'NotReadableError' || name === 'TrackStartError') {
+                    msg = 'Camera is in use by another app. Please close other apps using the camera.';
+                }
+                showToast(msg);
             }
         }
 
@@ -6571,11 +6698,20 @@ This is a demo — make them feel excited about the coaching experience.`;
             transitionScreens('obReportScreen', 'obPricingScreen');
         }
 
-        // --- Screen 6: Sign Up (mandatory, before Meet Coach) ---
-        async function obSendMagicLink() {
+        // --- Screen 6: Sign Up (password primary, magic link fallback) ---
+
+        function validatePassword(password) {
+            if (!password || password.length < 8) {
+                return 'Password must be at least 8 characters.';
+            }
+            return null;
+        }
+
+        async function obSignUpWithPassword() {
             const emailInput = document.getElementById('obSignupEmail');
+            const passwordInput = document.getElementById('obSignupPassword');
             const statusEl = document.getElementById('obSignupStatus');
-            const sendBtn = document.getElementById('obSignupBtn');
+            const btn = document.getElementById('obSignupBtn');
 
             const email = emailInput.value.trim();
             if (!email || !email.includes('@')) {
@@ -6584,19 +6720,59 @@ This is a demo — make them feel excited about the coaching experience.`;
                 return;
             }
 
-            sendBtn.disabled = true;
-            sendBtn.textContent = 'SENDING...';
+            const password = passwordInput.value;
+            const pwError = validatePassword(password);
+            if (pwError) {
+                statusEl.textContent = pwError;
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'CREATING ACCOUNT...';
+            statusEl.textContent = '';
+
+            const { error, needsConfirmation } = await supabaseClient.signUpWithPassword(email, password);
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
+                btn.disabled = false;
+                btn.innerHTML = 'CREATE ACCOUNT <span style="margin-left:4px;">&rarr;</span>';
+            } else if (needsConfirmation) {
+                statusEl.textContent = 'Check your email to confirm your account, then come back.';
+                statusEl.style.color = '#A0F0FF';
+                btn.textContent = 'AWAITING CONFIRMATION';
+                localStorage.setItem('ace_onboarding_state', JSON.stringify(onboardingState));
+            }
+            // If no error and no confirmation needed, onAuthChange fires SIGNED_IN → handles transition
+        }
+
+        async function obSendMagicLink() {
+            const emailInput = document.getElementById('obSignupEmail');
+            const statusEl = document.getElementById('obSignupStatus');
+            const btn = document.getElementById('obSignupBtn');
+
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                statusEl.textContent = 'Please enter a valid email address.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            btn.disabled = true;
+            statusEl.textContent = 'Sending magic link...';
+            statusEl.style.color = 'rgba(255,255,255,0.5)';
 
             const { error } = await supabaseClient.signInWithMagicLink(email);
             if (error) {
                 statusEl.textContent = error;
                 statusEl.style.color = '#ff6b6b';
-                sendBtn.disabled = false;
-                sendBtn.innerHTML = 'SEND MAGIC LINK <span style="margin-left:4px;">&rarr;</span>';
+                btn.disabled = false;
+                btn.innerHTML = 'CREATE ACCOUNT <span style="margin-left:4px;">&rarr;</span>';
             } else {
                 statusEl.textContent = 'Check your email for the magic link!';
                 statusEl.style.color = '#A0F0FF';
-                sendBtn.textContent = 'EMAIL SENT \u2713';
+                btn.textContent = 'EMAIL SENT \u2713';
                 // Persist onboarding state so magic link opened in new tab can resume
                 localStorage.setItem('ace_onboarding_state', JSON.stringify(onboardingState));
             }
@@ -6615,10 +6791,11 @@ This is a demo — make them feel excited about the coaching experience.`;
             transitionScreens('loginScreen', 'obSportScreen');
         }
 
-        async function loginSendMagicLink() {
+        async function loginWithPassword() {
             const emailInput = document.getElementById('loginEmail');
+            const passwordInput = document.getElementById('loginPassword');
             const statusEl = document.getElementById('loginStatus');
-            const sendBtn = document.getElementById('loginSendBtn');
+            const btn = document.getElementById('loginBtn');
 
             const email = emailInput.value.trim();
             if (!email || !email.includes('@')) {
@@ -6627,28 +6804,58 @@ This is a demo — make them feel excited about the coaching experience.`;
                 return;
             }
 
-            sendBtn.disabled = true;
-            sendBtn.textContent = 'SENDING...';
+            const password = passwordInput.value;
+            if (!password) {
+                statusEl.textContent = 'Please enter your password.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
 
-            const { error } = await supabaseClient.signInExistingUser(email);
+            btn.disabled = true;
+            btn.textContent = 'LOGGING IN...';
+            statusEl.textContent = '';
+
+            const { error } = await supabaseClient.signInWithPassword(email, password);
             if (error) {
                 statusEl.textContent = error;
                 statusEl.style.color = '#ff6b6b';
-                sendBtn.disabled = false;
-                sendBtn.innerHTML = 'SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>';
+                btn.disabled = false;
+                btn.innerHTML = 'LOG IN <span style="margin-left:4px;">&rarr;</span>';
+            }
+            // On success, onAuthChange fires SIGNED_IN → handles transition
+        }
+
+        async function loginForgotPassword() {
+            const emailInput = document.getElementById('loginEmail');
+            const statusEl = document.getElementById('loginStatus');
+
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                statusEl.textContent = 'Enter your email above, then tap this link.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            statusEl.textContent = 'Sending reset link...';
+            statusEl.style.color = 'rgba(255,255,255,0.5)';
+
+            const { error } = await supabaseClient.resetPassword(email);
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
             } else {
-                statusEl.textContent = 'Check your email for the login link!';
+                statusEl.textContent = 'Check your email for a password reset link!';
                 statusEl.style.color = '#A0F0FF';
-                sendBtn.textContent = 'EMAIL SENT \u2713';
                 localStorage.setItem('ace_login_pending', email);
             }
         }
 
         // --- Welcome Back Screen (known returning users) ---
-        async function welcomeBackSendLink() {
+        async function welcomeBackLoginWithPassword() {
             const emailInput = document.getElementById('welcomeBackEmail');
+            const passwordInput = document.getElementById('welcomeBackPassword');
             const statusEl = document.getElementById('welcomeBackStatus');
-            const sendBtn = document.getElementById('welcomeBackSendBtn');
+            const btn = document.getElementById('welcomeBackLoginBtn');
 
             const email = emailInput.value.trim();
             if (!email || !email.includes('@')) {
@@ -6657,22 +6864,97 @@ This is a demo — make them feel excited about the coaching experience.`;
                 return;
             }
 
-            sendBtn.disabled = true;
-            sendBtn.textContent = 'SENDING...';
+            const password = passwordInput.value;
+            if (!password) {
+                statusEl.textContent = 'Please enter your password.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
 
-            const { error } = await supabaseClient.signInExistingUser(email);
+            btn.disabled = true;
+            btn.textContent = 'LOGGING IN...';
+            statusEl.textContent = '';
+
+            const { error } = await supabaseClient.signInWithPassword(email, password);
             if (error) {
                 statusEl.textContent = error;
                 statusEl.style.color = '#ff6b6b';
-                sendBtn.disabled = false;
-                sendBtn.innerHTML = 'SEND LOGIN LINK <span style="margin-left:4px;">&rarr;</span>';
+                btn.disabled = false;
+                btn.innerHTML = 'LOG IN <span style="margin-left:4px;">&rarr;</span>';
+            }
+            // On success, onAuthChange fires SIGNED_IN → handles transition
+        }
+
+        async function welcomeBackForgotPassword() {
+            const emailInput = document.getElementById('welcomeBackEmail');
+            const statusEl = document.getElementById('welcomeBackStatus');
+
+            const email = emailInput.value.trim();
+            if (!email || !email.includes('@')) {
+                statusEl.textContent = 'Enter your email above, then tap this link.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            statusEl.textContent = 'Sending reset link...';
+            statusEl.style.color = 'rgba(255,255,255,0.5)';
+
+            const { error } = await supabaseClient.resetPassword(email);
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
             } else {
-                statusEl.textContent = 'Check your email for the login link!';
+                statusEl.textContent = 'Check your email for a password reset link!';
                 statusEl.style.color = '#A0F0FF';
-                sendBtn.textContent = 'EMAIL SENT \u2713';
-                // Update stored email in case they edited it
                 localStorage.setItem('ace_user_email', email);
                 localStorage.setItem('ace_login_pending', email);
+            }
+        }
+
+        // --- Reset Password Screen (after clicking reset link from email) ---
+        async function submitNewPassword() {
+            const newPw = document.getElementById('resetNewPassword').value;
+            const confirmPw = document.getElementById('resetConfirmPassword').value;
+            const statusEl = document.getElementById('resetPasswordStatus');
+            const btn = document.getElementById('resetPasswordBtn');
+
+            const pwError = validatePassword(newPw);
+            if (pwError) {
+                statusEl.textContent = pwError;
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            if (newPw !== confirmPw) {
+                statusEl.textContent = 'Passwords do not match.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'SETTING PASSWORD...';
+            statusEl.textContent = '';
+
+            const { error } = await supabaseClient.updatePassword(newPw);
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
+                btn.disabled = false;
+                btn.innerHTML = 'SET PASSWORD <span style="margin-left:4px;">&rarr;</span>';
+                return;
+            }
+
+            // Password set successfully — navigate to app or onboarding
+            statusEl.textContent = 'Password set!';
+            statusEl.style.color = '#A0F0FF';
+
+            const profile = await supabaseClient.loadProfile();
+            if (profile?.onboardingCompleted) {
+                appFullyInitialized = true;
+                showWelcomeScreenFrom('resetPasswordScreen');
+            } else {
+                appFullyInitialized = true;
+                transitionScreens('resetPasswordScreen', 'obSportScreen');
             }
         }
 
@@ -6703,30 +6985,27 @@ This is a demo — make them feel excited about the coaching experience.`;
             const emailInput = document.getElementById('welcomeBackEmail');
             if (email) emailInput.value = email;
 
-            // Customize "Not you?" button text
+            // Customize "Not you?" button text (use textContent for user data to prevent XSS)
             const notYouBtn = document.getElementById('welcomeBackNotYouBtn');
-            if (displayName) {
-                notYouBtn.innerHTML = `Not ${displayName}? <span style="color:#A0F0FF;">Start fresh</span>`;
-            } else {
-                notYouBtn.innerHTML = `Not you? <span style="color:#A0F0FF;">Start fresh</span>`;
-            }
+            notYouBtn.textContent = '';
+            const notYouText = document.createTextNode(displayName ? `Not ${displayName}? ` : 'Not you? ');
+            const freshSpan = document.createElement('span');
+            freshSpan.style.color = '#A0F0FF';
+            freshSpan.textContent = 'Start fresh';
+            notYouBtn.appendChild(notYouText);
+            notYouBtn.appendChild(freshSpan);
         }
 
         // --- Screen 11: Pricing ---
         function obStartFreeTrial() {
             if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
-                supabaseClient.updateProfile({
-                    subscriptionTier: 'trial',
-                    trialStartDate: new Date().toISOString(),
-                });
+                supabaseClient.activateFreeTrial();
             }
             obFinishOnboarding(true);
         }
 
         function obContinueWithFree() {
-            if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
-                supabaseClient.updateProfile({ subscriptionTier: 'free' });
-            }
+            // subscription_tier defaults to 'free' in DB — no client-side update needed
             obFinishOnboarding(true);
         }
 
@@ -6802,6 +7081,12 @@ This is a demo — make them feel excited about the coaching experience.`;
         // TOAST NOTIFICATIONS
         // Slides down from top, auto-dismiss
         // ============================================
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
 
         function showToast(message) {
             const toast = document.getElementById('toast');
@@ -8286,9 +8571,9 @@ This is a demo — make them feel excited about the coaching experience.`;
             // 1. HEADER
             html += `<div class="profile-header">
                 <div class="profile-avatar">${avatarSvg}</div>
-                <div class="profile-name">${displayName || 'Player'}</div>
+                <div class="profile-name">${escapeHtml(displayName || 'Player')}</div>
                 <div class="profile-meta">
-                    ${ntrpLevel ? `<span>${ntrpLevel} NTRP</span>` : ''}
+                    ${ntrpLevel ? `<span>${escapeHtml(ntrpLevel)} NTRP</span>` : ''}
                     <span class="profile-tier-badge ${tierClass}">${tierLabel}</span>
                 </div>
             </div>`;
@@ -8584,7 +8869,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 container.innerHTML = `
                     <div class="profile-header">
                         <div class="profile-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5.5 21a6.5 6.5 0 0 1 13 0"/></svg></div>
-                        <div class="profile-name">${localStorage.getItem('ace_user_display_name') || 'Player'}</div>
+                        <div class="profile-name">${escapeHtml(localStorage.getItem('ace_user_display_name') || 'Player')}</div>
                         <div class="profile-meta"><span class="profile-tier-badge free">Free</span></div>
                     </div>
                     <div class="profile-section"><div class="profile-section-title">Settings</div>
@@ -9212,6 +9497,20 @@ This is a demo — make them feel excited about the coaching experience.`;
 
             // Listen for auth state changes (handles magic link callback from onboarding sign-up)
             supabaseClient.onAuthChange(async (event, session, user) => {
+                // --- PASSWORD_RECOVERY: user clicked a password reset link ---
+                if (event === 'PASSWORD_RECOVERY') {
+                    appFullyInitialized = true;
+                    // Determine which screen is currently visible to transition from
+                    const screens = ['checkingAuthScreen', 'loginScreen', 'welcomeBackScreen', 'obSportScreen'];
+                    let fromScreen = 'checkingAuthScreen';
+                    for (const id of screens) {
+                        const el = document.getElementById(id);
+                        if (el && el.style.display !== 'none') { fromScreen = id; break; }
+                    }
+                    transitionScreens(fromScreen, 'resetPasswordScreen');
+                    return;
+                }
+
                 if (event === 'SIGNED_IN' && user) {
                     // Skip if app is already running (token refresh, not a new sign-in)
                     if (appFullyInitialized) return;

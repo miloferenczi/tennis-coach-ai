@@ -123,7 +123,15 @@ class CurriculumEngine {
       'poorFollowThrough': 'follow_through',
       'poorFootwork': 'footwork',
       'lowRacquetSpeed': 'power',
-      'inconsistentContactPoint': 'contact_point'
+      'inconsistentContactPoint': 'contact_point',
+      // Volley faults
+      'punchingNotSwinging': 'volley_technique',
+      'volleyGripTooLow': 'volley_technique',
+      'volleyTooDeep': 'volley_footwork',
+      'noSplitStepBeforeVolley': 'volley_footwork',
+      // Overhead faults
+      'poorOverheadPositioning': 'overhead',
+      'lowOverheadContactPoint': 'overhead'
     };
     return map[faultId] || faultId;
   }
@@ -141,7 +149,10 @@ class CurriculumEngine {
       'footwork': { footworkScore: 55 },
       'power': { velocity: 0.04 },
       'contact_point': { contactPointVariance: 0.1 },
-      'consistency': { quality: 75 }
+      'consistency': { quality: 75 },
+      'volley_technique': { quality: 65 },
+      'volley_footwork': { footworkScore: 50 },
+      'overhead': { quality: 60 }
     };
 
     const targets = baseTargets[focusArea] || { quality: 70 };
@@ -164,13 +175,14 @@ class CurriculumEngine {
 
   /**
    * Get today's focus based on where we are in the curriculum.
+   * Uses session-count-based week detection: advances week only after
+   * enough sessions, auto-extends if player skipped time.
    * @returns {{ primaryFocus: string, secondaryFocus: string|null, targets: Object, weekTheme: string }|null}
    */
   getTodayFocus() {
     if (!this.curriculum) return null;
 
-    const daysSinceStart = (Date.now() - this.curriculum.startDate) / (1000 * 60 * 60 * 24);
-    const weekIndex = Math.min(3, Math.floor(daysSinceStart / 7));
+    const weekIndex = this._getEffectiveWeekIndex();
     const week = this.curriculum.weeks[weekIndex];
 
     if (!week) return null;
@@ -181,8 +193,70 @@ class CurriculumEngine {
       targets: week.targets,
       weekTheme: week.theme,
       weekNumber: week.number,
-      sessionsCompleted: this.curriculum.sessionsCompleted
+      sessionsCompleted: this.curriculum.sessionsCompleted,
+      behindSchedule: this._isBehindSchedule(),
+      extended: this.curriculum.extended || false
     };
+  }
+
+  /**
+   * Determine effective week index based on actual sessions played.
+   * Each week requires at least 2 sessions to advance.
+   * Falls back to calendar-based if sessions are on track.
+   */
+  _getEffectiveWeekIndex() {
+    const sessionsPerWeek = 2;
+    const sessionBasedWeek = Math.floor(this.curriculum.sessionsCompleted / sessionsPerWeek);
+    const daysSinceStart = (Date.now() - this.curriculum.startDate) / (1000 * 60 * 60 * 24);
+    const calendarWeek = Math.floor(daysSinceStart / 7);
+
+    // Use whichever is slower — don't advance until player has done the sessions
+    return Math.min(3, Math.min(sessionBasedWeek, calendarWeek));
+  }
+
+  /**
+   * Check if player is behind the calendar schedule.
+   */
+  _isBehindSchedule() {
+    const daysSinceStart = (Date.now() - this.curriculum.startDate) / (1000 * 60 * 60 * 24);
+    const expectedSessions = Math.floor(daysSinceStart / 7) * 2; // 2 sessions/week
+    return this.curriculum.sessionsCompleted < expectedSessions;
+  }
+
+  /**
+   * Check for gaps and auto-extend or regenerate the mesocycle.
+   * Call at session start. Returns 'extended' | 'regenerated' | null.
+   */
+  async checkAndAdjustSchedule() {
+    if (!this.curriculum) return null;
+
+    const daysSinceStart = (Date.now() - this.curriculum.startDate) / (1000 * 60 * 60 * 24);
+    const lastSessionDaysAgo = this.curriculum.lastSessionDate
+      ? (Date.now() - this.curriculum.lastSessionDate) / (1000 * 60 * 60 * 24)
+      : daysSinceStart;
+
+    // If curriculum expired by calendar but player hasn't finished, extend
+    if (daysSinceStart > 28 && this.curriculum.sessionsCompleted < 8) {
+      // Extend by the gap duration (up to 2 extra weeks)
+      const extensionDays = Math.min(14, lastSessionDaysAgo);
+      this.curriculum.startDate += extensionDays * 24 * 60 * 60 * 1000;
+      this.curriculum.extended = true;
+      await this.save();
+      return 'extended';
+    }
+
+    // If player skipped more than 2 weeks and hasn't progressed, regenerate
+    if (lastSessionDaysAgo > 14 && this.curriculum.sessionsCompleted < 4) {
+      // Record session dates for history
+      if (!this.curriculum.sessionDates) this.curriculum.sessionDates = [];
+
+      const skillLevel = this.curriculum.skillLevel || 'intermediate';
+      const improvementData = typeof improvementTracker !== 'undefined' ? improvementTracker : null;
+      await this.generateCurriculum(skillLevel, improvementData);
+      return 'regenerated';
+    }
+
+    return null;
   }
 
   /**
@@ -201,6 +275,36 @@ class CurriculumEngine {
   }
 
   /**
+   * Get drill difficulty from ImprovementTracker's persisted drill history.
+   * @param {string} drillId
+   * @returns {number} difficulty multiplier (default 1.0)
+   */
+  getDrillDifficulty(drillId) {
+    if (typeof improvementTracker !== 'undefined' && improvementTracker.isLoaded) {
+      return improvementTracker.getDrillDifficulty(drillId);
+    }
+    return 1.0;
+  }
+
+  /**
+   * Get a curriculum-aware drill suggestion including persisted difficulty.
+   * @param {string} drillId
+   * @returns {{ drillId: string, difficulty: number, targetReps: number, focusArea: string|null }}
+   */
+  getCurriculumDrillSuggestion(drillId) {
+    const difficulty = this.getDrillDifficulty(drillId);
+    const focus = this.getTodayFocus();
+    const baseReps = 10;
+
+    return {
+      drillId,
+      difficulty,
+      targetReps: Math.round(baseReps * difficulty),
+      focusArea: focus?.primaryFocus || null
+    };
+  }
+
+  /**
    * Format for GPT system prompt.
    */
   formatForSystemPrompt() {
@@ -216,27 +320,47 @@ class CurriculumEngine {
       block += `- Targets: ${JSON.stringify(focus.targets)}\n`;
     }
     block += `- Sessions completed: ${focus.sessionsCompleted}\n`;
+    if (focus.behindSchedule) {
+      block += `- Note: Player is behind schedule — encourage consistency and celebrate showing up.\n`;
+    }
+    if (focus.extended) {
+      block += `- Note: Curriculum was extended due to time gap — ease back in.\n`;
+    }
 
     return block;
   }
 
   /**
-   * Record a completed session.
+   * Record a completed session with date tracking.
    */
   async recordSession() {
     if (!this.curriculum) return;
     this.curriculum.sessionsCompleted++;
     this.curriculum.lastSessionDate = Date.now();
+
+    // Track session dates for gap detection
+    if (!this.curriculum.sessionDates) this.curriculum.sessionDates = [];
+    this.curriculum.sessionDates.push(Date.now());
+    // Keep last 20 dates
+    if (this.curriculum.sessionDates.length > 20) {
+      this.curriculum.sessionDates = this.curriculum.sessionDates.slice(-20);
+    }
+
     await this.save();
   }
 
   /**
    * Check if curriculum is active (not expired).
+   * Accounts for extensions: active until 28 days from (possibly adjusted) start date,
+   * OR until player has completed 8+ sessions.
    */
   isActive() {
     if (!this.curriculum) return false;
     const daysSinceStart = (Date.now() - this.curriculum.startDate) / (1000 * 60 * 60 * 24);
-    return daysSinceStart <= 28; // 4 weeks
+    // Active if within 28 days OR if player hasn't finished required sessions
+    if (daysSinceStart <= 28) return true;
+    if (this.curriculum.sessionsCompleted < 8 && this.curriculum.extended) return true;
+    return false;
   }
 
   // --- Persistence ---

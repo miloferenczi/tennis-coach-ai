@@ -8,6 +8,15 @@ class PhysicsAnalyzer {
         this.positionHistory = [];
         this.maxHistoryLength = 30; // Keep 1 second of data at 30fps
         this.frameRate = 30;
+        this.dominantHand = null; // 'right' or 'left'
+    }
+
+    setDominantHand(hand) {
+        this.dominantHand = hand;
+    }
+
+    _wristKey() {
+        return this.dominantHand === 'left' ? 'leftWrist' : 'rightWrist';
     }
 
     /**
@@ -76,10 +85,16 @@ class PhysicsAnalyzer {
     }
 
     /**
-     * Calculate velocity between two points
+     * Calculate velocity between two points.
+     * Skips if either landmark has low visibility.
      */
     getPointVelocity(current, previous, deltaTime) {
         if (!current || !previous || deltaTime === 0) {
+            return { magnitude: 0, components: { x: 0, y: 0 }, direction: 0 };
+        }
+        // Skip velocity calculation for invisible landmarks
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(current) || !isLandmarkVisible(previous))) {
             return { magnitude: 0, components: { x: 0, y: 0 }, direction: 0 };
         }
 
@@ -110,13 +125,15 @@ class PhysicsAnalyzer {
                 const current = this.positionHistory[i];
                 const previous = this.positionHistory[i - 2];
                 
-                const rightWrist = current.keyPoints.rightWrist;
-                const prevRightWrist = previous.keyPoints.rightWrist;
-                
-                if (rightWrist && prevRightWrist) {
+                const wk = this._wristKey();
+                const wrist = current.keyPoints[wk];
+                const prevWrist = previous.keyPoints[wk];
+
+                if (wrist && prevWrist &&
+                    (typeof isLandmarkVisible !== 'function' || (isLandmarkVisible(wrist) && isLandmarkVisible(prevWrist)))) {
                     const velocity = this.getPointVelocity(
-                        rightWrist, 
-                        prevRightWrist,
+                        wrist,
+                        prevWrist,
                         current.timestamp - previous.timestamp
                     );
                     velocities.push({
@@ -176,7 +193,12 @@ class PhysicsAnalyzer {
      */
     getShoulderAngle(keyPoints) {
         if (!keyPoints.leftShoulder || !keyPoints.rightShoulder) return 0;
-        
+        // Skip when shoulders not visible
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(keyPoints.leftShoulder) || !isLandmarkVisible(keyPoints.rightShoulder))) {
+            return 0;
+        }
+
         return Math.atan2(
             keyPoints.rightShoulder.y - keyPoints.leftShoulder.y,
             keyPoints.rightShoulder.x - keyPoints.leftShoulder.x
@@ -194,7 +216,7 @@ class PhysicsAnalyzer {
 
         recent.forEach(pose => {
             const wrist = pose.keyPoints.rightWrist || pose.keyPoints.leftWrist;
-            if (wrist) {
+            if (wrist && (typeof isLandmarkVisible !== 'function' || isLandmarkVisible(wrist))) {
                 maxY = Math.max(maxY, wrist.y);
                 minY = Math.min(minY, wrist.y);
             }
@@ -207,19 +229,17 @@ class PhysicsAnalyzer {
      * Extract swing path for visualization
      */
     extractSwingPath(length = 15) {
-        if (this.positionHistory.length < length) {
-            return this.positionHistory.map(p => ({
-                x: p.keyPoints.rightWrist?.x || 0,
-                y: p.keyPoints.rightWrist?.y || 0,
-                timestamp: p.timestamp
-            }));
-        }
-
-        return this.positionHistory.slice(-length).map(p => ({
-            x: p.keyPoints.rightWrist?.x || 0,
-            y: p.keyPoints.rightWrist?.y || 0,
-            timestamp: p.timestamp
-        }));
+        const wk = this._wristKey();
+        const mapFn = p => {
+            const w = p.keyPoints[wk];
+            if (!w || (typeof isLandmarkVisible === 'function' && !isLandmarkVisible(w))) {
+                return null;
+            }
+            return { x: w.x, y: w.y, timestamp: p.timestamp };
+        };
+        const source = this.positionHistory.length < length
+            ? this.positionHistory : this.positionHistory.slice(-length);
+        return source.map(mapFn).filter(Boolean);
     }
 
     /**
