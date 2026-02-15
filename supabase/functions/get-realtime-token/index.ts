@@ -100,6 +100,8 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Only type + model are valid in client_secrets session config.
+    // Voice, instructions, modalities are set client-side via session.update after WebRTC connects.
     const tokenResponse = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
       method: "POST",
       headers: {
@@ -110,10 +112,6 @@ Deno.serve(async (req) => {
         session: {
           type: "realtime",
           model: "gpt-realtime",
-          voice: voice,
-          instructions: instructions,
-          modalities: ["text", "audio"],
-          input_audio_transcription: { model: "whisper-1" },
         }
       }),
     });

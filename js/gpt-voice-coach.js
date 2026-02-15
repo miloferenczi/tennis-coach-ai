@@ -407,7 +407,10 @@ DRILL MODE ACTIVE:
             this.dataChannel.send(JSON.stringify({
               type: 'session.update',
               session: {
+                voice: this.voice || 'alloy',
                 instructions: this.getCoachingInstructions(),
+                modalities: ['text', 'audio'],
+                input_audio_transcription: { model: 'whisper-1' },
                 turn_detection: { type: 'server_vad' }
               }
             }));
