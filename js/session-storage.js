@@ -170,7 +170,7 @@ class SessionStorage {
     }
 
     // Archive the session (localStorage backup)
-    this.archiveSession(session);
+    await this.archiveSession(session);
 
     // Clear current session
     localStorage.removeItem(this.CURRENT_SESSION_KEY);
@@ -325,9 +325,9 @@ class SessionStorage {
   /**
    * Archive a completed session to history
    */
-  archiveSession(session) {
+  async archiveSession(session) {
     try {
-      const history = this.getSessionHistory();
+      const history = await this.getSessionHistory();
 
       // Add new session at the beginning
       history.unshift({
@@ -366,8 +366,8 @@ class SessionStorage {
   /**
    * Get aggregated statistics across all sessions
    */
-  getAggregatedStats() {
-    const history = this.getSessionHistory();
+  async getAggregatedStats() {
+    const history = await this.getSessionHistory();
     if (history.length === 0) return null;
 
     const totalStrokes = history.reduce((sum, s) => sum + (s.summary?.totalStrokes || 0), 0);

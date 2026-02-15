@@ -94,8 +94,10 @@
             /* Color System */
             --bg-primary: #0A0A0A;
             --bg-secondary: #141414;
-            --bg-surface: rgba(255, 255, 255, 0.06);
+            --bg-surface: rgba(255, 255, 255, 0.07);
+            --bg-surface-elevated: rgba(255, 255, 255, 0.10);
             --accent-ozone: #A0F0FF;
+            --accent-gradient: linear-gradient(135deg, #A0F0FF, #6BC5FF);
             --text-primary: #F5F5F5;
             --text-muted: #8A8A8A;
             --text-subtle: #666666;
@@ -103,6 +105,7 @@
             --success: #32D74B;
             --warning: #FF9500;
             --border-subtle: rgba(255, 255, 255, 0.08);
+            --border-accent: rgba(160, 240, 255, 0.15);
 
             /* Glass Effect */
             --glass-bg: rgba(10, 10, 10, 0.75);
@@ -2722,13 +2725,13 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }
 
         .home-greeting {
-            font-size: 28px;
-            font-weight: 800;
-            letter-spacing: -0.02em;
+            font-size: 32px;
+            font-weight: 900;
+            letter-spacing: -0.03em;
             color: var(--text-primary);
         }
 
@@ -2736,10 +2739,45 @@
             color: var(--accent-ozone);
         }
 
+        .home-header-badges {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .ntrp-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: var(--radius-full);
+            background: rgba(160, 240, 255, 0.12);
+            border: 1px solid rgba(160, 240, 255, 0.2);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent-ozone);
+            letter-spacing: 0.02em;
+        }
+
+        .streak-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: var(--radius-full);
+            background: rgba(255, 149, 0, 0.12);
+            border: 1px solid rgba(255, 149, 0, 0.2);
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--warning);
+        }
+
         .home-greeting-coach {
             font-size: 12px;
             color: var(--text-muted);
-            margin-top: 2px;
+            margin-top: 4px;
         }
 
         .home-greeting-progress {
@@ -2766,6 +2804,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
+            transition: transform 0.15s ease;
         }
 
         .home-settings-btn:active {
@@ -2785,15 +2824,17 @@
             font-family: var(--font-family);
             -webkit-tap-highlight-color: transparent;
             margin-bottom: 12px;
+            transition: transform 0.12s ease;
         }
 
         .home-cta:active {
-            transform: scale(0.98);
+            transform: scale(0.97);
         }
 
         .home-cta-primary {
-            background: var(--accent-ozone);
+            background: var(--accent-gradient);
             color: #0A0A0A;
+            box-shadow: 0 4px 24px rgba(160, 240, 255, 0.2);
         }
 
         .home-cta-primary .cta-icon {
@@ -2827,6 +2868,8 @@
             background: var(--bg-surface);
             color: var(--text-primary);
             border: 1px solid var(--border-subtle);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
 
         .home-cta-secondary .cta-icon {
@@ -2852,17 +2895,26 @@
             border-radius: var(--radius-md);
             padding: 16px;
             margin-bottom: 12px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
 
         .home-card-title {
-            font-size: 11px;
-            font-weight: 600;
+            font-size: 10px;
+            font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--text-muted);
-            margin-bottom: 10px;
+            margin-bottom: 12px;
         }
 
+        .home-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Legacy row layout (used by profile tab) */
         .home-stats-row {
             display: flex;
             gap: 12px;
@@ -2873,16 +2925,121 @@
             text-align: center;
         }
 
+        .home-stat-cell {
+            background: var(--bg-surface);
+            border-radius: var(--radius-sm);
+            padding: 14px 12px;
+            text-align: center;
+        }
+
         .home-stat-value {
-            font-size: 22px;
+            font-size: 24px;
             font-weight: 800;
             color: var(--text-primary);
+            letter-spacing: -0.02em;
         }
 
         .home-stat-label {
             font-size: 10px;
             color: var(--text-muted);
-            margin-top: 2px;
+            margin-top: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-weight: 600;
+        }
+
+        /* Focus Areas with progress bars */
+        .home-focus-item {
+            padding: 10px 0;
+        }
+
+        .home-focus-item + .home-focus-item {
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .home-focus-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .home-focus-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .home-focus-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .home-focus-bar {
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.06);
+            overflow: hidden;
+        }
+
+        .home-focus-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        /* Session History */
+        .home-session-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        .home-session-row:active {
+            opacity: 0.7;
+        }
+
+        .home-session-row + .home-session-row {
+            border-top: 1px solid var(--border-subtle);
+        }
+
+        .home-session-score-ring {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            font-weight: 800;
+            flex-shrink: 0;
+            border: 2px solid;
+        }
+
+        .home-session-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .home-session-date {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .home-session-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .home-session-chevron {
+            color: var(--text-subtle);
+            flex-shrink: 0;
         }
 
         .home-plan-item {
@@ -4352,6 +4509,7 @@
                                 <div class="stroke-metric-label">Velocity</div>
                             </div>
                         </div>
+                        <div id="strokeDetailFaults" style="display:none;margin-top:8px;"></div>
                         <div style="margin-top: 12px; display: flex; gap: 8px;">
                             <button class="btn btn-secondary" onclick="addToComparison()" style="flex: 1; padding: 8px; font-size: 11px;" id="compareBtn">
                                 + Compare
@@ -4422,6 +4580,10 @@
                 <div class="home-header">
                     <div>
                         <div class="home-greeting" id="homeGreetingText">ACE<span class="accent">.</span></div>
+                        <div class="home-header-badges" id="homeBadges" style="display:none;">
+                            <span class="ntrp-badge" id="homeNtrpBadge"></span>
+                            <span class="streak-badge" id="homeStreakBadge" style="display:none;"></span>
+                        </div>
                         <div class="home-greeting-coach" id="homeCoachLine"></div>
                         <div class="home-greeting-progress" id="homeProgressTidbit"></div>
                     </div>
@@ -4430,18 +4592,17 @@
                     </button>
                 </div>
 
-                <!-- Start Live Session CTA -->
+                <!-- CTAs -->
                 <button class="home-cta home-cta-primary" onclick="startLiveSession()">
                     <div class="cta-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg>
                     </div>
                     <div>
-                        <div class="home-cta-title">Start Live Session</div>
+                        <div class="home-cta-title">Record Live Session</div>
                         <div class="home-cta-subtitle">Camera coaching on court</div>
                     </div>
                 </button>
 
-                <!-- Upload Video CTA -->
                 <button class="home-cta home-cta-secondary" onclick="switchTab('upload')">
                     <div class="cta-icon">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -4452,29 +4613,39 @@
                     </div>
                 </button>
 
+                <!-- Training Objectives -->
+                <div class="home-card" id="homeFocusCard" style="display:none;">
+                    <div class="home-card-title">Training Objectives</div>
+                    <div id="homeFocusItems"></div>
+                </div>
+
                 <!-- Quick Stats -->
                 <div class="home-card" id="homeStatsCard" style="display:none;">
-                    <div class="home-card-title">Last Session</div>
-                    <div class="home-stats-row" id="homeStatsRow">
-                        <div class="home-stat">
+                    <div class="home-card-title">Quick Stats</div>
+                    <div class="home-stats-grid" id="homeStatsGrid">
+                        <div class="home-stat-cell">
+                            <div class="home-stat-value" id="homeStatTime">--</div>
+                            <div class="home-stat-label">Practice Time</div>
+                        </div>
+                        <div class="home-stat-cell">
+                            <div class="home-stat-value" id="homeStatSessions">--</div>
+                            <div class="home-stat-label">This Month</div>
+                        </div>
+                        <div class="home-stat-cell">
                             <div class="home-stat-value" id="homeStatAvg">--</div>
                             <div class="home-stat-label">Avg Quality</div>
                         </div>
-                        <div class="home-stat">
+                        <div class="home-stat-cell">
                             <div class="home-stat-value" id="homeStatStrokes">--</div>
-                            <div class="home-stat-label">Strokes</div>
-                        </div>
-                        <div class="home-stat">
-                            <div class="home-stat-value" id="homeStatSessions">--</div>
-                            <div class="home-stat-label">Sessions</div>
+                            <div class="home-stat-label">Total Strokes</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Improvement Plan Preview -->
-                <div class="home-card" id="homePlanCard" style="display:none;">
-                    <div class="home-card-title">Improvement Plan</div>
-                    <div id="homePlanItems"></div>
+                <!-- Session History -->
+                <div class="home-card" id="homeHistoryCard" style="display:none;">
+                    <div class="home-card-title">Recent Sessions</div>
+                    <div id="homeHistoryList"></div>
                 </div>
 
                 <!-- Pro Comparison CTA -->
@@ -5076,25 +5247,23 @@
                 try {
                     this.updateLoadingProgress(10, 'Loading MediaPipe libraries...');
                     await this.sleep(500);
-                    
-                    this.updateLoadingProgress(30, 'Initializing pose detection...');
+
+                    this.updateLoadingProgress(40, 'Initializing pose detection...');
                     await this.initializeMediaPipe();
-                    
-                    this.updateLoadingProgress(60, 'Setting up tennis analysis...');
+
+                    this.updateLoadingProgress(70, 'Setting up tennis analysis...');
                     await this.sleep(500);
-                    
-                    this.updateLoadingProgress(80, 'Configuring camera...');
-                    await this.setupCamera();
-                    
-                    this.updateLoadingProgress(90, 'Connecting ball tracking...');
-                    this.ballTracker.startCapture(this.video);
+
+                    this.updateLoadingProgress(90, 'Preparing dashboard...');
                     await this.sleep(300);
+
+                    this.cameraReady = false;
 
                     this.updateLoadingProgress(100, 'Ready to coach!');
                     await this.sleep(500);
 
                     this.completeInitialization();
-                    
+
                 } catch (error) {
                     this.showError('Failed to initialize: ' + error.message);
                 }
@@ -5160,9 +5329,30 @@
                         });
 
                         this.camera.start();
+                        this.cameraReady = true;
                         resolve();
                     };
                 });
+            }
+            teardownCamera() {
+                // Stop MediaPipe Camera frame loop
+                if (this.camera) {
+                    try { this.camera.stop(); } catch (e) {}
+                }
+                // Release all media tracks (turns off hardware LED)
+                if (this.video && this.video.srcObject) {
+                    this.video.srcObject.getTracks().forEach(track => track.stop());
+                    this.video.srcObject = null;
+                }
+                // Stop ball tracker capture
+                if (this.ballTracker) {
+                    try { this.ballTracker.stopCapture?.(); } catch (e) {}
+                }
+                // Stop scene analyzer
+                if (this.sceneAnalyzer) {
+                    try { this.sceneAnalyzer.stop?.(); } catch (e) {}
+                }
+                this.cameraReady = false;
             }
             _getCameraErrorMessage(error) {
                 const name = error.name || '';
@@ -5992,59 +6182,67 @@
                 return null; // Don't follow up for unremarkable outcomes
             }
 
-            completeInitialization() {
+            async completeInitialization() {
                 const loadingScreen = document.getElementById('loadingScreen');
                 const cameraContainer = document.getElementById('cameraContainer');
                 const isTrialSession = typeof onboardingState !== 'undefined' && onboardingState.trialSessionActive;
 
                 // Cinematic exit: Hold at READY for 1s, then enter appropriate mode
-                setTimeout(() => {
-                    loadingScreen.style.transition = 'opacity 300ms ease-out, transform 300ms ease-out';
-                    loadingScreen.style.opacity = '0';
-                    loadingScreen.style.transform = 'translateY(-30px)';
+                await new Promise(r => setTimeout(r, 1000));
 
-                    setTimeout(() => {
-                        loadingScreen.style.display = 'none';
-                        document.getElementById('aiStatusDot').className = 'status-dot ready';
+                loadingScreen.style.transition = 'opacity 300ms ease-out, transform 300ms ease-out';
+                loadingScreen.style.opacity = '0';
+                loadingScreen.style.transform = 'translateY(-30px)';
 
-                        if (isTrialSession) {
-                            // During onboarding trial — enter live mode with controls
-                            appMode = 'live';
-                            currentMode = 'practice';
-                            document.getElementById('bottomTabBar').style.display = 'none';
-                            document.getElementById('tabContent').classList.remove('active');
-                            cameraContainer.style.display = 'block';
-                            cameraContainer.style.opacity = '1';
-                            document.getElementById('liveSessionControls').classList.add('active');
-                            document.querySelector('.status-bar').style.display = '';
-                            document.querySelector('.coaching-panel').style.display = '';
-                            // Start analysis — TennisAI is ready since we're inside completeInitialization
-                            if (this.isReady && !this.isAnalyzing) {
-                                this.startAnalysis();
-                            }
-                        } else {
-                            // Normal flow — enter browse mode, camera stays hidden
-                            cameraContainer.style.display = 'none';
-                            document.getElementById('bottomTabBar').style.display = 'flex';
-                            document.getElementById('tabContent').classList.add('active');
-                            populateHomeStats();
-                        }
+                await new Promise(r => setTimeout(r, 300));
 
-                        // Start scene analysis if Gemini key is configured
+                loadingScreen.style.display = 'none';
+                document.getElementById('aiStatusDot').className = 'status-dot ready';
+
+                if (isTrialSession) {
+                    // During onboarding trial — start camera on demand, enter live mode
+                    appMode = 'live';
+                    currentMode = 'practice';
+                    document.getElementById('bottomTabBar').style.display = 'none';
+                    document.getElementById('tabContent').classList.remove('active');
+                    cameraContainer.style.display = 'block';
+                    cameraContainer.style.opacity = '1';
+                    document.getElementById('liveSessionControls').classList.add('active');
+                    document.querySelector('.status-bar').style.display = '';
+                    document.querySelector('.coaching-panel').style.display = '';
+
+                    // Start camera for trial (not auto-started anymore)
+                    try {
+                        document.getElementById('coachingText').textContent = 'Starting camera...';
+                        await this.setupCamera();
+                        this.ballTracker.startCapture(this.video);
                         if (this.sceneAnalyzer && this.sceneAnalyzer.enabled && this.video) {
                             this.sceneAnalyzer.start(this.video);
                         }
+                    } catch (error) {
+                        showToast(this._getCameraErrorMessage(error));
+                    }
 
-                        // Welcome coaching message ready for live mode
-                        const gptStatus = (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected)
-                            ? 'Voice coach connected.'
-                            : (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.useFallback)
-                                ? 'Voice coach unavailable — using text fallback.'
-                                : 'Connecting voice coach...';
-                        document.getElementById('coachingText').textContent =
-                            gptStatus + ' Tap REC to start.';
-                    }, 300);
-                }, 1000);
+                    // Start analysis
+                    if (this.isReady && !this.isAnalyzing) {
+                        this.startAnalysis();
+                    }
+                } else {
+                    // Normal flow — enter browse mode, camera stays off
+                    cameraContainer.style.display = 'none';
+                    document.getElementById('bottomTabBar').style.display = 'flex';
+                    document.getElementById('tabContent').classList.add('active');
+                    populateHomeStats();
+                }
+
+                // Welcome coaching message ready for live mode
+                const gptStatus = (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected)
+                    ? 'Voice coach connected.'
+                    : (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.useFallback)
+                        ? 'Voice coach unavailable — using text fallback.'
+                        : 'Connecting voice coach...';
+                document.getElementById('coachingText').textContent =
+                    gptStatus + ' Tap REC to start.';
             }
 
             updateRallyIndicator() {
@@ -6615,9 +6813,9 @@ This is a demo — make them feel excited about the coaching experience.`;
                 tennisAI.stopAnalysis();
             }
 
-            // Stop camera
-            if (tennisAI?.camera) {
-                tennisAI.camera.stop();
+            // Fully release camera hardware
+            if (tennisAI) {
+                tennisAI.teardownCamera();
             }
 
             // Disconnect voice
@@ -7141,13 +7339,12 @@ This is a demo — make them feel excited about the coaching experience.`;
             const wasAnalyzing = tennisAI.isAnalyzing;
             if (wasAnalyzing) tennisAI.stopAnalysis();
 
-            // Stop MediaPipe camera loop
-            if (tennisAI.camera) {
-                tennisAI.camera.stop();
-            }
+            // Fully release current camera before switching
+            tennisAI.teardownCamera();
 
             tennisAI.currentFacingMode = tennisAI.currentFacingMode === 'user' ? 'environment' : 'user';
             await tennisAI.setupCamera();
+            tennisAI.ballTracker.startCapture(tennisAI.video);
 
             if (wasAnalyzing) tennisAI.startAnalysis();
         }
@@ -7644,14 +7841,14 @@ This is a demo — make them feel excited about the coaching experience.`;
         }
 
         // Analytics Modal
-        function showAnalytics() {
+        async function showAnalytics() {
             if (typeof sessionStorage === 'undefined' || !sessionStorage.getAggregatedStats) {
                 showToast('Session history not available');
                 return;
             }
 
-            const stats = sessionStorage.getAggregatedStats();
-            const history = sessionStorage.getSessionHistory();
+            const stats = await sessionStorage.getAggregatedStats();
+            const history = await sessionStorage.getSessionHistory();
 
             // Get player profile stats
             let profileStats = null;
@@ -7863,7 +8060,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             document.getElementById('challengesContent').innerHTML = html;
         }
 
-        function startChallenge(challengeId) {
+        async function startChallenge(challengeId) {
             if (typeof challengeMode === 'undefined') return;
 
             // Don't start if already completed
@@ -7876,7 +8073,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 closeChallenges();
                 // Enter live mode if not already
                 if (appMode !== 'live') {
-                    startLiveSession();
+                    await startLiveSession();
                 }
                 updateActiveChallengeBar();
             }
@@ -7991,7 +8188,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             document.getElementById('drillListContent').innerHTML = html;
         }
 
-        function startDrill(drillId) {
+        async function startDrill(drillId) {
             if (typeof drillMode === 'undefined') return;
 
             const skillLevel = tennisAI?.playerProfile?.skillLevel || 'intermediate';
@@ -8003,7 +8200,7 @@ This is a demo — make them feel excited about the coaching experience.`;
 
             // Enter live mode if not already
             if (appMode !== 'live') {
-                startLiveSession();
+                await startLiveSession();
             }
 
             // Auto-start analysis if not running
@@ -8385,7 +8582,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             }
         }
 
-        function startLiveSession() {
+        async function startLiveSession() {
             appMode = 'live';
             currentMode = 'practice';
 
@@ -8402,6 +8599,27 @@ This is a demo — make them feel excited about the coaching experience.`;
             // Show live-mode overlays
             document.querySelector('.status-bar').style.display = '';
             document.querySelector('.coaching-panel').style.display = '';
+
+            // Start camera on demand if not already running
+            if (tennisAI && !tennisAI.cameraReady) {
+                document.getElementById('coachingText').textContent = 'Starting camera...';
+                try {
+                    await tennisAI.setupCamera();
+                    tennisAI.ballTracker.startCapture(tennisAI.video);
+                    if (tennisAI.sceneAnalyzer && tennisAI.sceneAnalyzer.enabled && tennisAI.video) {
+                        tennisAI.sceneAnalyzer.start(tennisAI.video);
+                    }
+                } catch (error) {
+                    showToast(tennisAI._getCameraErrorMessage(error));
+                    // Return to browse mode on failure
+                    appMode = 'browse';
+                    cam.style.display = 'none';
+                    document.getElementById('liveSessionControls').classList.remove('active');
+                    document.getElementById('bottomTabBar').style.display = 'flex';
+                    document.getElementById('tabContent').classList.add('active');
+                    return;
+                }
+            }
 
             // Auto-start analysis
             if (tennisAI && tennisAI.isReady && !tennisAI.isAnalyzing) {
@@ -8437,6 +8655,11 @@ This is a demo — make them feel excited about the coaching experience.`;
             // Trigger session reset (shows summary if strokes were hit)
             resetSession();
 
+            // Fully release camera hardware
+            if (tennisAI) {
+                tennisAI.teardownCamera();
+            }
+
             // Return to browse mode
             document.getElementById('cameraContainer').style.display = 'none';
             document.getElementById('bottomTabBar').style.display = 'flex';
@@ -8444,9 +8667,9 @@ This is a demo — make them feel excited about the coaching experience.`;
             switchTab('home');
         }
 
-        function startDrillFromTab(drillId) {
-            startLiveSession();
-            // Small delay to let camera show before starting drill
+        async function startDrillFromTab(drillId) {
+            await startLiveSession();
+            // Camera is ready now, start drill
             setTimeout(() => {
                 if (typeof drillMode !== 'undefined') {
                     const skillLevel = tennisAI?.playerProfile?.skillLevel || 'intermediate';
@@ -8459,13 +8682,13 @@ This is a demo — make them feel excited about the coaching experience.`;
             }, 300);
         }
 
-        function startChallengeFromTab(challengeId) {
+        async function startChallengeFromTab(challengeId) {
             if (typeof challengeMode === 'undefined') return;
             if (challengeMode.isCompleted(challengeId)) return;
 
             const challenge = challengeMode.startChallenge(challengeId);
             if (challenge) {
-                startLiveSession();
+                await startLiveSession();
                 updateActiveChallengeBar();
             }
         }
@@ -8539,7 +8762,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             container.innerHTML = html;
         }
 
-        function populateProfileTab() {
+        async function populateProfileTab() {
             _profileTabPopulated = true;
             const container = document.getElementById('profileTabContent');
             if (!container) { console.error('populateProfileTab: container not found'); return; }
@@ -8581,7 +8804,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             // 2. STATS ROW
             let stats = null;
             if (typeof sessionStorage !== 'undefined' && sessionStorage.getAggregatedStats) {
-                stats = sessionStorage.getAggregatedStats();
+                stats = await sessionStorage.getAggregatedStats();
             }
             const totalSessions = stats?.totalSessions || profile?.totalSessions || 0;
             const totalStrokes = stats?.totalStrokes || profile?.totalStrokes || 0;
@@ -8878,26 +9101,28 @@ This is a demo — make them feel excited about the coaching experience.`;
             }
         }
 
-        function populateHomeStats() {
+        async function populateHomeStats() {
             try {
-                // --- Personalized greeting ---
                 const greetingEl = document.getElementById('homeGreetingText');
                 const coachLineEl = document.getElementById('homeCoachLine');
                 const progressEl = document.getElementById('homeProgressTidbit');
 
-                // Get display name from playerProfile (returning user) or onboardingState (mid-onboarding)
                 const displayName = (typeof playerProfile !== 'undefined' && playerProfile.profile?.displayName)
                     || (typeof onboardingState !== 'undefined' && onboardingState.displayName)
                     || null;
 
-                // Get stats
+                const ntrpLevel = (typeof playerProfile !== 'undefined' && playerProfile.profile?.ntrpLevel)
+                    || (typeof onboardingState !== 'undefined' && onboardingState.ntrpLevel)
+                    || null;
+
+                // Get stats (now async)
                 let stats = null;
                 if (typeof sessionStorage !== 'undefined' && sessionStorage.getAggregatedStats) {
-                    stats = sessionStorage.getAggregatedStats();
+                    stats = await sessionStorage.getAggregatedStats();
                 }
                 const hasSessions = stats && stats.totalSessions > 0;
 
-                // Time-of-day greeting
+                // --- Greeting ---
                 if (greetingEl) {
                     if (!hasSessions && !displayName) {
                         greetingEl.innerHTML = 'ACE<span class="accent">.</span>';
@@ -8908,17 +9133,33 @@ This is a demo — make them feel excited about the coaching experience.`;
                         else if (hour < 17) timeGreeting = 'Good afternoon';
                         else timeGreeting = 'Good evening';
 
-                        if (hasSessions && displayName) {
+                        if (displayName) {
                             greetingEl.textContent = `${timeGreeting}, ${displayName}.`;
-                        } else if (displayName) {
-                            greetingEl.textContent = `Welcome, ${displayName}.`;
                         } else {
                             greetingEl.textContent = `${timeGreeting}.`;
                         }
                     }
                 }
 
-                // Coach line
+                // --- Badges (NTRP + Streak) ---
+                const badgesEl = document.getElementById('homeBadges');
+                if (badgesEl && (ntrpLevel || hasSessions)) {
+                    badgesEl.style.display = '';
+                    if (ntrpLevel) {
+                        document.getElementById('homeNtrpBadge').textContent = `NTRP ${ntrpLevel}`;
+                        document.getElementById('homeNtrpBadge').style.display = '';
+                    }
+                    if (hasSessions && stats.recentSessions) {
+                        const streak = calculatePracticeStreak(stats.recentSessions);
+                        if (streak >= 2) {
+                            const streakEl = document.getElementById('homeStreakBadge');
+                            streakEl.textContent = `${streak}-day streak`;
+                            streakEl.style.display = '';
+                        }
+                    }
+                }
+
+                // --- Coach line ---
                 if (coachLineEl) {
                     const coachKey = (typeof playerProfile !== 'undefined' && playerProfile.profile?.coachPreference)
                         || (typeof onboardingState !== 'undefined' && onboardingState.coachPreference)
@@ -8926,13 +9167,13 @@ This is a demo — make them feel excited about the coaching experience.`;
                     try {
                         const configs = GPTVoiceCoach.getCoachConfigs();
                         const coach = configs[coachKey] || configs.alex;
-                        coachLineEl.textContent = coach.name;
+                        coachLineEl.textContent = `Coach ${coach.name}`;
                     } catch (e) {
                         coachLineEl.textContent = '';
                     }
                 }
 
-                // Progress tidbit
+                // --- Progress tidbit ---
                 if (progressEl) {
                     let tidbit = null;
                     if (typeof improvementTracker !== 'undefined' && hasSessions) {
@@ -8952,39 +9193,135 @@ This is a demo — make them feel excited about the coaching experience.`;
                     }
                 }
 
-                // --- Stats card ---
-                if (hasSessions) {
-                    document.getElementById('homeStatsCard').style.display = '';
-                    const avgEl = document.getElementById('homeStatAvg');
-                    const avgVal = Math.round(stats.overallAverage || 0);
-                    let trendArrow = '';
-                    if (stats.trend === 'improving') trendArrow = ' <span style="color:#4CAF50">↑</span>';
-                    else if (stats.trend === 'declining') trendArrow = ' <span style="color:#F44336">↓</span>';
-                    avgEl.innerHTML = avgVal + trendArrow;
-                    document.getElementById('homeStatStrokes').textContent = stats.totalStrokes;
-                    document.getElementById('homeStatSessions').textContent = stats.totalSessions;
-                }
-
-                // --- Plan card ---
+                // --- Training Objectives (focus areas with progress bars) ---
                 if (typeof improvementTracker !== 'undefined') {
                     const plan = improvementTracker.getCoachingPlan?.();
                     if (plan && plan.focusAreas && plan.focusAreas.length > 0) {
-                        document.getElementById('homePlanCard').style.display = '';
-                        const planContainer = document.getElementById('homePlanItems');
-                        planContainer.innerHTML = plan.focusAreas.slice(0, 3).map(fa => `
-                            <div class="home-plan-item">
-                                <div class="home-plan-dot"></div>
-                                <div>
-                                    <div class="home-plan-text">${fa.area || fa.metric || fa.drill || ''}</div>
-                                    ${fa.target ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px;">Target: ${fa.target}</div>` : ''}
-                                </div>
-                            </div>
-                        `).join('');
+                        const focusCard = document.getElementById('homeFocusCard');
+                        focusCard.style.display = '';
+                        const container = document.getElementById('homeFocusItems');
+                        container.innerHTML = plan.focusAreas.slice(0, 3).map(fa => {
+                            const current = resolveCurrentMetricValue(fa, stats);
+                            const target = parseFloat(fa.target) || 0;
+                            const pct = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+                            const color = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--accent-ozone)';
+                            return `
+                                <div class="home-focus-item">
+                                    <div class="home-focus-header">
+                                        <span class="home-focus-label">${fa.area || fa.metric || fa.drill || ''}</span>
+                                        <span class="home-focus-value">${current}/${target || '?'}</span>
+                                    </div>
+                                    <div class="home-focus-bar">
+                                        <div class="home-focus-fill" style="width:${pct}%;background:${color};"></div>
+                                    </div>
+                                </div>`;
+                        }).join('');
                     }
+                }
+
+                // --- Quick Stats (2x2 grid) ---
+                if (hasSessions) {
+                    document.getElementById('homeStatsCard').style.display = '';
+
+                    // Practice time
+                    const totalMinutes = Math.round((stats.totalDuration || 0) / 60000);
+                    const timeStr = totalMinutes >= 60 ? `${Math.floor(totalMinutes / 60)}h ${totalMinutes % 60}m` : `${totalMinutes}m`;
+                    document.getElementById('homeStatTime').textContent = timeStr;
+
+                    // Sessions this month
+                    const now = new Date();
+                    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+                    const sessionsThisMonth = (stats.recentSessions || []).filter(s => (s.date || s.startTime) >= monthStart).length;
+                    document.getElementById('homeStatSessions').textContent = sessionsThisMonth;
+
+                    // Avg quality with trend
+                    const avgVal = Math.round(stats.overallAverage || 0);
+                    let trendArrow = '';
+                    if (stats.trend === 'improving') trendArrow = ' <span style="color:var(--success)">&#8593;</span>';
+                    else if (stats.trend === 'declining') trendArrow = ' <span style="color:var(--danger)">&#8595;</span>';
+                    document.getElementById('homeStatAvg').innerHTML = avgVal + trendArrow;
+
+                    // Total strokes
+                    document.getElementById('homeStatStrokes').textContent = stats.totalStrokes;
+                }
+
+                // --- Session History ---
+                if (hasSessions && stats.recentSessions && stats.recentSessions.length > 0) {
+                    document.getElementById('homeHistoryCard').style.display = '';
+                    const listEl = document.getElementById('homeHistoryList');
+                    listEl.innerHTML = stats.recentSessions.slice(0, 10).map((s, i) => {
+                        const score = Math.round(s.summary?.averageScore || 0);
+                        const color = qualityToColor(score);
+                        const date = new Date(s.date || s.startTime);
+                        const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        const strokes = s.summary?.totalStrokes || 0;
+                        const duration = s.summary?.duration ? Math.round(s.summary.duration / 60000) : 0;
+                        const durationStr = duration > 0 ? `${duration}m` : '';
+                        const meta = [strokes ? `${strokes} strokes` : '', durationStr].filter(Boolean).join(' / ');
+                        return `
+                            <div class="home-session-row" onclick="showSessionDetail(${i})">
+                                <div class="home-session-score-ring" style="color:${color};border-color:${color};">${score}</div>
+                                <div class="home-session-info">
+                                    <div class="home-session-date">${dateStr}</div>
+                                    <div class="home-session-meta">${meta}</div>
+                                </div>
+                                <svg class="home-session-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                            </div>`;
+                    }).join('');
                 }
             } catch (e) {
                 console.log('populateHomeStats:', e);
             }
+        }
+
+        function calculatePracticeStreak(sessions) {
+            if (!sessions || sessions.length === 0) return 0;
+            let streak = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const dayMs = 86400000;
+            for (let d = 0; d < 60; d++) {
+                const dayStart = today.getTime() - d * dayMs;
+                const dayEnd = dayStart + dayMs;
+                const hasSession = sessions.some(s => {
+                    const t = s.date || s.startTime;
+                    return t >= dayStart && t < dayEnd;
+                });
+                if (hasSession) {
+                    streak++;
+                } else if (d > 0) {
+                    break;
+                }
+                // If today has no session yet, keep going (allow "active" streaks)
+                if (d === 0 && !hasSession) continue;
+            }
+            return streak;
+        }
+
+        function qualityToColor(score) {
+            if (score >= 80) return 'var(--accent-ozone)';
+            if (score >= 60) return 'var(--warning)';
+            return 'var(--danger)';
+        }
+
+        function resolveCurrentMetricValue(focusArea, stats) {
+            // Try to get metric from improvementTracker history
+            const metric = focusArea.metric || '';
+            if (typeof improvementTracker !== 'undefined' && improvementTracker.getLatestMetric) {
+                const val = improvementTracker.getLatestMetric(metric);
+                if (val !== null && val !== undefined) return Math.round(val);
+            }
+            // Fallback: use overall average for quality-type metrics
+            if (metric.includes('quality') || metric.includes('form') || metric.includes('score')) {
+                return stats?.overallAverage || 0;
+            }
+            return 0;
+        }
+
+        function showSessionDetail(index) {
+            // Future: open a session detail view
+            // For now, show a toast with session info
+            showToast('Session detail view coming soon');
         }
 
         function openSettings() {
@@ -9073,20 +9410,28 @@ This is a demo — make them feel excited about the coaching experience.`;
 
                 // Start analysis
                 progressOverlay.classList.add('active');
+                document.getElementById('analysisProgressFill').style.width = '0%';
+                document.getElementById('analysisProgressPercent').textContent = '0%';
 
                 try {
                     await videoAnalyzer.initialize();
-                    await videoAnalyzer.loadVideo(file);
+                    const videoInfo = await videoAnalyzer.loadVideo(file);
 
                     const result = await videoAnalyzer.analyzeVideo((progress) => {
                         document.getElementById('analysisProgressFill').style.width = progress + '%';
                         document.getElementById('analysisProgressPercent').textContent = Math.round(progress) + '%';
                     });
 
+                    progressOverlay.classList.remove('active');
+
                     // Add stroke markers to timeline
                     renderStrokeMarkers(result.strokes);
 
-                    progressOverlay.classList.remove('active');
+                    if (result.strokes.length === 0) {
+                        showToast('No strokes detected. Try a different video with visible tennis swings.');
+                    } else {
+                        showToast(`Found ${result.strokes.length} stroke${result.strokes.length > 1 ? 's' : ''} at ${result.fps}fps`);
+                    }
                 } catch (error) {
                     console.error('Analysis failed:', error);
                     progressOverlay.classList.remove('active');
@@ -9157,14 +9502,35 @@ This is a demo — make them feel excited about the coaching experience.`;
 
             // Show stroke details
             const panel = document.getElementById('strokeDetailsPanel');
-            document.getElementById('strokeDetailType').textContent = stroke.type;
-            document.getElementById('strokeDetailScore').textContent = Math.round(stroke.quality);
+            document.getElementById('strokeDetailType').textContent = stroke.type || stroke.strokeType || 'unknown';
+
+            // Use biomechanical quality if available, else fallback
+            const quality = stroke.biomechanical?.overall ?? stroke.quality ?? 0;
+            document.getElementById('strokeDetailScore').textContent = Math.round(quality);
             document.getElementById('strokeDetailScore').style.color =
-                stroke.quality >= 80 ? 'var(--accent-ozone, #A0F0FF)' :
-                stroke.quality >= 60 ? '#FF9800' : '#f44336';
+                quality >= 80 ? 'var(--accent-ozone, #A0F0FF)' :
+                quality >= 60 ? '#FF9800' : '#f44336';
             document.getElementById('strokeDetailTime').textContent = formatVideoTime(stroke.time);
+
+            const vel = stroke.velocity ?? stroke.peakVelocity ?? 0;
             document.getElementById('strokeDetailVelocity').textContent =
-                (stroke.velocity * 100).toFixed(1);
+                typeof vel === 'number' ? (vel < 1 ? (vel * 100).toFixed(1) : vel.toFixed(1)) : '--';
+
+            // Show biomechanical faults if available
+            const faultContainer = document.getElementById('strokeDetailFaults');
+            if (faultContainer) {
+                const faults = stroke.biomechanical?.faults || [];
+                if (faults.length > 0) {
+                    faultContainer.innerHTML = faults.map(f => {
+                        const name = (typeof f === 'string') ? f : (f.id || f.name || '');
+                        return `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:var(--radius-full);background:rgba(255,59,48,0.15);color:var(--danger);font-size:11px;font-weight:600;">${name}</span>`;
+                    }).join('');
+                    faultContainer.style.display = '';
+                } else {
+                    faultContainer.innerHTML = '';
+                    faultContainer.style.display = 'none';
+                }
+            }
 
             // Update compare button state
             const isInComparison = comparisonStrokes.some(s => s._index === index);

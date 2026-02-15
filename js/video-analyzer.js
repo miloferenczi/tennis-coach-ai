@@ -1,5 +1,6 @@
 /**
- * VideoAnalyzer - Handles video upload and frame-by-frame analysis
+ * VideoAnalyzer - Full biomechanical analysis of uploaded videos
+ * Uses EnhancedTennisAnalyzer + LandmarkFilter for the same pipeline as live sessions.
  */
 class VideoAnalyzer {
   constructor() {
@@ -11,16 +12,19 @@ class VideoAnalyzer {
     this.analysisProgress = 0;
     this.detectedStrokes = [];
     this.frameData = [];
-    this.currentFrameIndex = 0;
     this.fps = 30;
     this.duration = 0;
+    this.analyzer = null;
+    this.landmarkFilter = null;
 
-    // Analysis settings
-    this.analysisInterval = 2; // Analyze every Nth frame for speed
+    this._consecutiveErrors = 0;
+    this._maxConsecutiveErrors = 10;
+    this._pendingPoseResolve = null;
+    this._lastPoseResult = null;
   }
 
   /**
-   * Initialize with MediaPipe pose
+   * Initialize MediaPipe Pose and the analysis pipeline
    */
   async initialize() {
     this.pose = new Pose({
@@ -29,23 +33,31 @@ class VideoAnalyzer {
 
     this.pose.setOptions({
       modelComplexity: 1,
-      smoothLandmarks: false, // Disable for video analysis
+      smoothLandmarks: false,
       enableSegmentation: false,
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5
     });
 
-    return new Promise((resolve) => {
-      this.pose.onResults((results) => {
-        this.onPoseResults(results);
-      });
-      // Initialize pose
-      this.pose.initialize().then(resolve);
+    this.pose.onResults((results) => {
+      this._lastPoseResult = results;
+      if (this._pendingPoseResolve) {
+        this._pendingPoseResolve(results);
+        this._pendingPoseResolve = null;
+      }
     });
+
+    await this.pose.initialize();
+
+    // Create analysis pipeline instances
+    this.analyzer = new EnhancedTennisAnalyzer();
+    if (typeof LandmarkFilter !== 'undefined') {
+      this.landmarkFilter = new LandmarkFilter();
+    }
   }
 
   /**
-   * Load a video file for analysis
+   * Load a video file and detect its real FPS
    */
   loadVideo(file) {
     return new Promise((resolve, reject) => {
@@ -58,7 +70,24 @@ class VideoAnalyzer {
 
       this.video.onloadedmetadata = () => {
         this.duration = this.video.duration;
-        this.fps = 30; // Assume 30fps
+
+        // Detect actual FPS via captureStream if available
+        try {
+          if (this.video.captureStream) {
+            const stream = this.video.captureStream();
+            const track = stream.getVideoTracks()[0];
+            if (track) {
+              const settings = track.getSettings();
+              if (settings.frameRate && settings.frameRate > 0) {
+                this.fps = settings.frameRate;
+              }
+              track.stop();
+            }
+            stream.getTracks().forEach(t => t.stop());
+          }
+        } catch (e) {
+          // Fallback: keep 30fps default
+        }
 
         // Create analysis canvas
         this.canvas = document.createElement('canvas');
@@ -70,7 +99,7 @@ class VideoAnalyzer {
           duration: this.duration,
           width: this.video.videoWidth,
           height: this.video.videoHeight,
-          fps: this.fps
+          fps: Math.round(this.fps)
         });
       };
 
@@ -81,261 +110,143 @@ class VideoAnalyzer {
   }
 
   /**
-   * Analyze the entire video
+   * Analyze the entire video using the full EnhancedTennisAnalyzer pipeline.
+   * Strokes are collected via the analyzer's onStrokeCallback — same as live.
    */
   async analyzeVideo(onProgress) {
-    if (!this.video || !this.pose) {
-      throw new Error('Video or pose not initialized');
+    if (!this.video || !this.pose || !this.analyzer) {
+      throw new Error('Video or analyzer not initialized');
     }
 
     this.isAnalyzing = true;
     this.detectedStrokes = [];
     this.frameData = [];
     this.analysisProgress = 0;
+    this._consecutiveErrors = 0;
 
+    // Hook into stroke detection
+    this.analyzer.onStrokeCallback = (strokeData) => {
+      this.detectedStrokes.push({
+        ...strokeData,
+        id: `stroke_${this.detectedStrokes.length}`,
+        time: this.video.currentTime
+      });
+    };
+
+    // Analyze every frame (fps-aware stepping)
+    const frameInterval = 1 / this.fps;
     const totalFrames = Math.floor(this.duration * this.fps);
-    const framesToAnalyze = Math.floor(totalFrames / this.analysisInterval);
 
-    // Create temporary analyzer for stroke detection
-    const tempAnalyzer = new EnhancedTennisAnalyzer();
+    for (let i = 0; i < totalFrames && this.isAnalyzing; i++) {
+      const time = i * frameInterval;
 
-    for (let i = 0; i < framesToAnalyze && this.isAnalyzing; i++) {
-      const frameIndex = i * this.analysisInterval;
-      const time = frameIndex / this.fps;
-
-      // Seek to frame
-      await this.seekToTime(time);
+      // Seek to frame with timeout
+      try {
+        await this.seekToTime(time);
+      } catch (e) {
+        this._consecutiveErrors++;
+        if (this._consecutiveErrors >= this._maxConsecutiveErrors) {
+          console.warn('VideoAnalyzer: too many seek errors, stopping analysis');
+          break;
+        }
+        continue;
+      }
 
       // Draw frame to canvas
       this.ctx.drawImage(this.video, 0, 0);
 
-      // Analyze frame
+      // Send to MediaPipe and get landmarks
       try {
-        await this.pose.send({ image: this.canvas });
+        const results = await this._sendFrame(this.canvas);
+        this._consecutiveErrors = 0;
+
+        if (results && results.poseLandmarks) {
+          let landmarks = results.poseLandmarks;
+
+          // Apply landmark filtering (body-relative normalization)
+          if (this.landmarkFilter) {
+            landmarks = this.landmarkFilter.filter(landmarks);
+          }
+
+          // Feed through the full analysis pipeline
+          const timestamp = time * 1000; // ms
+          this.analyzer.analyzePose(landmarks, timestamp);
+
+          this.frameData.push({
+            time,
+            landmarks,
+            frameIndex: i
+          });
+        }
       } catch (e) {
-        console.warn('Frame analysis failed:', e);
+        this._consecutiveErrors++;
+        if (this._consecutiveErrors >= this._maxConsecutiveErrors) {
+          console.warn('VideoAnalyzer: too many frame errors, stopping analysis');
+          break;
+        }
       }
 
       // Update progress
-      this.analysisProgress = ((i + 1) / framesToAnalyze) * 100;
+      this.analysisProgress = ((i + 1) / totalFrames) * 100;
       if (onProgress) {
         onProgress(this.analysisProgress);
       }
+
+      // Yield to UI thread every 10 frames
+      if (i % 10 === 0) {
+        await new Promise(r => setTimeout(r, 0));
+      }
     }
 
-    // Process collected frame data for stroke detection
-    this.detectStrokesFromFrameData(tempAnalyzer);
-
     this.isAnalyzing = false;
+
     return {
       strokes: this.detectedStrokes,
       frameCount: this.frameData.length,
-      duration: this.duration
+      duration: this.duration,
+      fps: Math.round(this.fps)
     };
   }
 
   /**
-   * Seek video to specific time
+   * Send a single frame to MediaPipe and return the results via promise
    */
-  seekToTime(time) {
-    return new Promise((resolve) => {
-      this.video.currentTime = time;
-      this.video.onseeked = () => resolve();
+  _sendFrame(canvas) {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this._pendingPoseResolve = null;
+        reject(new Error('Pose detection timeout'));
+      }, 5000);
+
+      this._pendingPoseResolve = (results) => {
+        clearTimeout(timeout);
+        resolve(results);
+      };
+
+      this.pose.send({ image: canvas }).catch((e) => {
+        clearTimeout(timeout);
+        this._pendingPoseResolve = null;
+        reject(e);
+      });
     });
   }
 
   /**
-   * Handle pose results from MediaPipe
+   * Seek video to specific time with 5s timeout
    */
-  onPoseResults(results) {
-    if (results.poseLandmarks) {
-      this.frameData.push({
-        time: this.video.currentTime,
-        landmarks: results.poseLandmarks,
-        frameIndex: this.frameData.length
-      });
-    }
-  }
+  seekToTime(time) {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.video.onseeked = null;
+        reject(new Error('Seek timeout'));
+      }, 5000);
 
-  /**
-   * Detect strokes from accumulated frame data
-   */
-  detectStrokesFromFrameData(analyzer) {
-    // Calculate velocities between frames
-    for (let i = 1; i < this.frameData.length; i++) {
-      const prev = this.frameData[i - 1];
-      const curr = this.frameData[i];
-      const dt = curr.time - prev.time;
-
-      if (dt <= 0) continue;
-
-      // Calculate wrist velocity
-      const prevWrist = prev.landmarks[16];
-      const currWrist = curr.landmarks[16];
-
-      const velocity = {
-        x: (currWrist.x - prevWrist.x) / dt,
-        y: (currWrist.y - prevWrist.y) / dt,
-        magnitude: Math.sqrt(
-          Math.pow((currWrist.x - prevWrist.x) / dt, 2) +
-          Math.pow((currWrist.y - prevWrist.y) / dt, 2)
-        )
+      this.video.onseeked = () => {
+        clearTimeout(timeout);
+        resolve();
       };
-
-      curr.velocity = velocity;
-    }
-
-    // Find velocity peaks (potential strokes)
-    const peakThreshold = 0.03;
-    const minTimeBetweenStrokes = 1.0; // seconds
-    let lastStrokeTime = -minTimeBetweenStrokes;
-
-    for (let i = 5; i < this.frameData.length - 5; i++) {
-      const frame = this.frameData[i];
-      if (!frame.velocity) continue;
-
-      const isLocalMax = this.isLocalMaximum(i, 5);
-      const isAboveThreshold = frame.velocity.magnitude > peakThreshold;
-      const hasEnoughTimePassed = frame.time - lastStrokeTime >= minTimeBetweenStrokes;
-
-      if (isLocalMax && isAboveThreshold && hasEnoughTimePassed) {
-        // Classify the stroke
-        const strokeType = this.classifyStrokeFromFrame(frame);
-        const quality = this.estimateQualityFromFrame(frame, i);
-
-        this.detectedStrokes.push({
-          id: `stroke_${this.detectedStrokes.length}`,
-          time: frame.time,
-          frameIndex: i,
-          type: strokeType,
-          quality: quality,
-          velocity: frame.velocity.magnitude,
-          landmarks: frame.landmarks
-        });
-
-        lastStrokeTime = frame.time;
-      }
-    }
-  }
-
-  /**
-   * Check if frame at index is a local velocity maximum
-   */
-  isLocalMaximum(index, window) {
-    const frame = this.frameData[index];
-    if (!frame.velocity) return false;
-
-    for (let i = index - window; i <= index + window; i++) {
-      if (i === index || i < 0 || i >= this.frameData.length) continue;
-      const other = this.frameData[i];
-      if (other.velocity && other.velocity.magnitude > frame.velocity.magnitude) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  /**
-   * Classify stroke type from frame data
-   */
-  classifyStrokeFromFrame(frame) {
-    const landmarks = frame.landmarks;
-    const rightWrist = landmarks[16];
-    const leftWrist = landmarks[15];
-    const rightShoulder = landmarks[12];
-    const leftShoulder = landmarks[11];
-    const nose = landmarks[0];
-
-    // Check for serve (high contact point)
-    if (rightWrist.y < nose.y - 0.1) {
-      return 'serve';
-    }
-
-    // Determine forehand vs backhand based on arm position
-    const shoulderMidX = (rightShoulder.x + leftShoulder.x) / 2;
-
-    // Check swing direction based on wrist relative to body center
-    if (rightWrist.x > shoulderMidX + 0.1) {
-      return 'forehand';
-    } else if (rightWrist.x < shoulderMidX - 0.1) {
-      return 'backhand';
-    }
-
-    // Check for volley (close to body, minimal backswing)
-    if (Math.abs(rightWrist.y - rightShoulder.y) < 0.15) {
-      return 'volley';
-    }
-
-    return 'forehand';
-  }
-
-  /**
-   * Estimate stroke quality from frame data
-   */
-  estimateQualityFromFrame(frame, frameIndex) {
-    let score = 50;
-
-    // Velocity bonus
-    if (frame.velocity && frame.velocity.magnitude > 0.05) {
-      score += 20;
-    } else if (frame.velocity && frame.velocity.magnitude > 0.03) {
-      score += 10;
-    }
-
-    // Elbow angle check
-    const landmarks = frame.landmarks;
-    const elbowAngle = this.calculateAngle(
-      landmarks[16], landmarks[14], landmarks[12]
-    );
-
-    if (elbowAngle > 140 && elbowAngle < 170) {
-      score += 15;
-    } else if (elbowAngle > 120) {
-      score += 8;
-    }
-
-    // Hip-shoulder separation
-    const hipSepAngle = this.calculateHipShoulderSeparation(landmarks);
-    if (hipSepAngle > 25) {
-      score += 15;
-    } else if (hipSepAngle > 15) {
-      score += 8;
-    }
-
-    return Math.min(100, Math.max(0, score));
-  }
-
-  /**
-   * Calculate angle between three points
-   */
-  calculateAngle(p1, p2, p3) {
-    const radians = Math.atan2(p3.y - p2.y, p3.x - p2.x) -
-                    Math.atan2(p1.y - p2.y, p1.x - p2.x);
-    let angle = Math.abs(radians * 180.0 / Math.PI);
-    if (angle > 180.0) angle = 360 - angle;
-    return angle;
-  }
-
-  /**
-   * Calculate hip-shoulder separation
-   */
-  calculateHipShoulderSeparation(landmarks) {
-    const leftShoulder = landmarks[11];
-    const rightShoulder = landmarks[12];
-    const leftHip = landmarks[23];
-    const rightHip = landmarks[24];
-
-    const shoulderAngle = Math.atan2(
-      rightShoulder.y - leftShoulder.y,
-      rightShoulder.x - leftShoulder.x
-    ) * 180 / Math.PI;
-
-    const hipAngle = Math.atan2(
-      rightHip.y - leftHip.y,
-      rightHip.x - leftHip.x
-    ) * 180 / Math.PI;
-
-    return Math.abs(shoulderAngle - hipAngle);
+      this.video.currentTime = time;
+    });
   }
 
   /**
@@ -343,7 +254,7 @@ class VideoAnalyzer {
    */
   getFrameAtTime(time) {
     let closest = this.frameData[0];
-    let minDiff = Math.abs(time - closest?.time || Infinity);
+    let minDiff = closest ? Math.abs(time - closest.time) : Infinity;
 
     for (const frame of this.frameData) {
       const diff = Math.abs(time - frame.time);
@@ -387,6 +298,8 @@ class VideoAnalyzer {
     this.canvas = null;
     this.frameData = [];
     this.detectedStrokes = [];
+    this.analyzer = null;
+    this.landmarkFilter = null;
   }
 }
 
