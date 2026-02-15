@@ -392,6 +392,87 @@ class StrokeReplayManager {
       .slice(0, n);
   }
 
+  // ========== Static Skeleton Drawing (reusable for video overlay) ==========
+
+  /**
+   * Draw a skeleton on any canvas from landmarks. Reusable across replay and video overlay.
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {Array} landmarks - MediaPipe pose landmarks (33 points with x, y, visibility)
+   * @param {number} w - Canvas width
+   * @param {number} h - Canvas height
+   * @param {Object} options - { phase, faults, faultLandmarkMap, showJointsOnly, alpha }
+   */
+  static drawSkeletonOnCanvas(ctx, landmarks, w, h, options = {}) {
+    if (!landmarks || landmarks.length < 29) return;
+
+    const connections = [
+      [11, 12], [11, 23], [12, 24], [23, 24],
+      [12, 14], [14, 16],
+      [11, 13], [13, 15],
+      [24, 26], [26, 28],
+      [23, 25], [25, 27]
+    ];
+
+    const phaseColors = {
+      preparation:   'rgba(60, 130, 246, ##A##)',
+      loading:       'rgba(250, 204, 21, ##A##)',
+      acceleration:  'rgba(249, 115, 22, ##A##)',
+      contact:       'rgba(255, 59, 48, ##A##)',
+      followThrough: 'rgba(50, 215, 75, ##A##)',
+      unknown:       'rgba(0, 255, 255, ##A##)'
+    };
+
+    const alpha = options.alpha ?? 1;
+    const phase = options.phase || 'unknown';
+    const colorTemplate = phaseColors[phase] || phaseColors.unknown;
+    const color = colorTemplate.replace(/##A##/g, alpha);
+    const dimColor = colorTemplate.replace(/##A##/g, (alpha * 0.4).toFixed(2));
+
+    const lm = landmarks;
+
+    // Draw connections
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = dimColor;
+    for (const [a, b] of connections) {
+      if (lm[a] && lm[b] && (lm[a].visibility > 0.3) && (lm[b].visibility > 0.3)) {
+        ctx.beginPath();
+        ctx.moveTo(lm[a].x * w, lm[a].y * h);
+        ctx.lineTo(lm[b].x * w, lm[b].y * h);
+        ctx.stroke();
+      }
+    }
+
+    // Draw joints
+    const faults = options.faults || [];
+    const faultLandmarkMap = options.faultLandmarkMap || null;
+
+    for (let i = 0; i < lm.length; i++) {
+      const pt = lm[i];
+      if (!pt || pt.visibility < 0.3) continue;
+
+      let isFault = false;
+      if (faultLandmarkMap && faults.length > 0) {
+        for (const fault of faults) {
+          const affected = faultLandmarkMap[fault.id || fault];
+          if (affected && affected.includes(i)) { isFault = true; break; }
+        }
+      }
+
+      ctx.beginPath();
+      ctx.arc(pt.x * w, pt.y * h, isFault ? 8 : 5, 0, Math.PI * 2);
+      ctx.fillStyle = isFault ? `rgba(255, 59, 48, ${0.9 * alpha})` : color;
+      ctx.fill();
+
+      if (isFault) {
+        ctx.strokeStyle = `rgba(255, 59, 48, ${0.5 * alpha})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(pt.x * w, pt.y * h, 12, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+  }
+
   // ========== Coach's Eye: Ghost Skeleton ==========
 
   /**

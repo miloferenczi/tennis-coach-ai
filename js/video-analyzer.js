@@ -113,7 +113,7 @@ class VideoAnalyzer {
    * Analyze the entire video using the full EnhancedTennisAnalyzer pipeline.
    * Strokes are collected via the analyzer's onStrokeCallback — same as live.
    */
-  async analyzeVideo(onProgress) {
+  async analyzeVideo(onProgress, onFrame) {
     if (!this.video || !this.pose || !this.analyzer) {
       throw new Error('Video or analyzer not initialized');
     }
@@ -171,6 +171,11 @@ class VideoAnalyzer {
           // Feed through the full analysis pipeline
           const timestamp = time * 1000; // ms
           this.analyzer.analyzePose(landmarks, timestamp);
+
+          // Fire onFrame callback for live skeleton rendering
+          if (onFrame) {
+            onFrame(landmarks, time, this.detectedStrokes.length);
+          }
 
           this.frameData.push({
             time,

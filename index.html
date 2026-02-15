@@ -2260,46 +2260,228 @@
             color: rgba(255, 255, 255, 0.6);
         }
 
-        /* Analysis Progress */
+        /* ===== Cinematic Upload Analysis Overlay ===== */
         .analysis-progress-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.9);
+            top: 0; left: 0; right: 0; bottom: 0;
             display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
             z-index: 200;
+            pointer-events: none;
         }
-
         .analysis-progress-overlay.active {
-            display: flex;
+            display: block;
         }
-
-        .analysis-progress-text {
-            font-size: 18px;
-            color: white;
-            margin-bottom: 20px;
+        /* Bottom gradient scrim */
+        .upload-analysis-scrim {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 45%;
+            background: linear-gradient(to top, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0.6) 50%, transparent 100%);
+            pointer-events: none;
         }
-
-        .analysis-progress-bar {
-            width: 80%;
-            max-width: 300px;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
+        /* Hero status text */
+        .upload-status-text {
+            position: absolute;
+            bottom: 64px; left: 0; right: 0;
+            text-align: center;
+            font-size: 24px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #fff;
+            padding: 0 20px;
+            animation: fadeSlideUp 0.5s ease forwards;
+        }
+        @media (min-width: 480px) {
+            .upload-status-text { font-size: 28px; }
+        }
+        /* Stats line below status */
+        .upload-stats-line {
+            position: absolute;
+            bottom: 40px; left: 0; right: 0;
+            text-align: center;
+            font-size: 13px;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 0.5px;
+        }
+        /* 2px shimmer progress line at very bottom */
+        .upload-progress-line {
+            position: absolute;
+            bottom: 0; left: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #A0F0FF, #6B8AFF, #A0F0FF);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s linear infinite;
+            transition: width 0.3s ease;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        /* Stroke pulse effect at wrist position */
+        .upload-stroke-pulse {
+            position: absolute;
+            width: 24px; height: 24px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(160,240,255,0.7) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            animation: strokePulse 0.8s ease-out forwards;
+        }
+        @keyframes strokePulse {
+            0% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%,-50%) scale(3); }
+        }
+        /* Upload Review overlay */
+        .upload-review {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: #0A0A0A;
+            transform: translateY(100%);
+            opacity: 0;
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
             overflow: hidden;
         }
-
-        .analysis-progress-fill {
-            height: 100%;
-            background: var(--accent-ozone, #A0F0FF);
-            width: 0%;
-            transition: width 0.2s;
+        .upload-review.visible {
+            transform: translateY(0);
+            opacity: 1;
         }
+        .upload-headline {
+            font-size: 28px;
+            font-weight: 800;
+            color: #fff;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+            text-align: center;
+            max-width: 320px;
+            margin: 0 auto 8px;
+        }
+        @media (min-width: 480px) {
+            .upload-headline { font-size: 32px; letter-spacing: -1px; }
+        }
+        .upload-coach-narrative {
+            font-size: 15px;
+            line-height: 1.6;
+            color: rgba(255,255,255,0.75);
+            margin: 12px 0;
+        }
+        .upload-listen-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(160,240,255,0.3);
+            background: rgba(160,240,255,0.08);
+            color: var(--accent-ozone, #A0F0FF);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .upload-listen-btn:active { opacity: 0.7; }
+        /* Upload stroke coaching card (glass-morphism) */
+        .upload-stroke-card {
+            position: absolute;
+            bottom: 80px; left: 16px; right: 16px;
+            background: rgba(10,10,10,0.92);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px;
+            padding: 16px;
+            transform: translateY(120%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 210;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+        .upload-stroke-card.visible {
+            transform: translateY(0);
+        }
+        .upload-stroke-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .upload-stroke-card-type {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.5);
+            font-weight: 600;
+        }
+        .upload-stroke-card-score {
+            font-size: 28px;
+            font-weight: 800;
+            font-variant-numeric: tabular-nums;
+        }
+        .upload-stroke-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+        .upload-stroke-bar-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.5);
+            width: 40px;
+            text-transform: uppercase;
+        }
+        .upload-stroke-bar-track {
+            flex: 1;
+            height: 4px;
+            background: rgba(255,255,255,0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .upload-stroke-bar-fill {
+            height: 100%;
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+        .upload-stroke-coaching {
+            font-size: 13px;
+            color: rgba(255,255,255,0.7);
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        .upload-stroke-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .upload-chip {
+            font-size: 11px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-weight: 600;
+        }
+        .upload-chip-strength {
+            background: rgba(50,215,75,0.15);
+            color: #32D74B;
+        }
+        .upload-chip-fault {
+            background: rgba(255,59,48,0.15);
+            color: #FF6961;
+        }
+        /* Play All button */
+        .upload-play-all-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            background: var(--accent-ozone, #A0F0FF);
+            color: #0A0A0A;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+        }
+        .upload-play-all-btn:active { opacity: 0.8; }
 
         @media (max-width: 480px) {
             .status-bar {
@@ -3947,6 +4129,10 @@
         @keyframes ringDraw {
             to { stroke-dashoffset: var(--ring-target); }
         }
+        @keyframes fadeSlideDown {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); }
+        }
 
         /* ============================================
            RESPONSIVE — SMALL PHONES
@@ -4357,6 +4543,13 @@
             </div>
         </div>
 
+        <!-- Upload Review Overlay (Coach's Review) -->
+        <div class="upload-review" id="uploadReview">
+            <div class="recap-scroll" id="uploadReviewScroll">
+                <!-- Dynamic content from showUploadReview() -->
+            </div>
+        </div>
+
         <!-- Toast Notification Container -->
         <div class="toast" id="toast"></div>
 
@@ -4475,11 +4668,12 @@
                             <button class="timeline-playback-btn" id="timelinePlayBtn" onclick="toggleVideoPlayback()">PLAY</button>
                             <span class="timeline-time" id="timelineTime">0:00 / 0:00</span>
                             <div style="margin-left: auto; display: flex; gap: 8px;">
+                                <button class="upload-play-all-btn" id="playAllBtn" onclick="playAllStrokes()" style="display:none;">
+                                    <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
+                                    Play All
+                                </button>
                                 <button class="btn btn-secondary" onclick="exportHighlightReel()" style="padding: 8px 12px; font-size: 11px;" title="Export best 5 strokes">
                                     Best 5
-                                </button>
-                                <button class="btn btn-secondary" onclick="exportBlooperReel()" style="padding: 8px 12px; font-size: 11px;" title="Export worst 5 for learning">
-                                    Learn 5
                                 </button>
                                 <button class="btn btn-secondary" onclick="clearAnalysisVideo()" style="padding: 8px 12px; font-size: 11px;">
                                     New
@@ -4533,13 +4727,12 @@
                         </button>
                     </div>
 
-                    <!-- Analysis Progress Overlay -->
+                    <!-- Cinematic Analysis Progress Overlay -->
                     <div class="analysis-progress-overlay" id="analysisProgressOverlay">
-                        <div class="analysis-progress-text">Analyzing video...</div>
-                        <div class="analysis-progress-bar">
-                            <div class="analysis-progress-fill" id="analysisProgressFill"></div>
-                        </div>
-                        <div style="margin-top: 12px; font-size: 14px; color: rgba(255,255,255,0.6);" id="analysisProgressPercent">0%</div>
+                        <div class="upload-analysis-scrim"></div>
+                        <div class="upload-status-text" id="uploadStatusText">READING YOUR GAME</div>
+                        <div class="upload-stats-line" id="uploadStatsLine"></div>
+                        <div class="upload-progress-line" id="uploadProgressLine" style="width: 0%"></div>
                     </div>
                 </div>
             </div>
@@ -9567,11 +9760,22 @@ This is a demo — make them feel excited about the coaching experience.`;
             });
         }
 
+        // Upload coaching data (populated after GPT call)
+        let uploadCoachingData = null;
+        let uploadPerStrokeCoaching = null;
+        let _playAllActive = false;
+        let _skeletonOverlayActive = false;
+        let _skeletonOverlayRaf = null;
+
         async function loadAnalysisVideo(file) {
             const uploadZone = document.getElementById('videoUploadZone');
             const playerArea = document.getElementById('videoPlayerArea');
             const video = document.getElementById('analysisVideo');
             const progressOverlay = document.getElementById('analysisProgressOverlay');
+
+            // Reset coaching state
+            uploadCoachingData = null;
+            uploadPerStrokeCoaching = null;
 
             // Show player area
             uploadZone.classList.add('has-video');
@@ -9583,29 +9787,82 @@ This is a demo — make them feel excited about the coaching experience.`;
             analysisVideoElement = video;
 
             video.onloadedmetadata = async () => {
-                // Set up canvas size
                 const canvas = document.getElementById('analysisCanvas');
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
 
-                // Update timeline
                 updateTimelineDisplay();
 
-                // Start analysis
+                // Show cinematic overlay with video visible at 40% opacity
                 progressOverlay.classList.add('active');
-                document.getElementById('analysisProgressFill').style.width = '0%';
-                document.getElementById('analysisProgressPercent').textContent = '0%';
+                video.style.opacity = '0.4';
+                const statusText = document.getElementById('uploadStatusText');
+                const statsLine = document.getElementById('uploadStatsLine');
+                const progressLine = document.getElementById('uploadProgressLine');
+                statusText.textContent = 'READING YOUR GAME';
+                statsLine.textContent = '';
+                progressLine.style.width = '0%';
+
+                let lastStrokeCount = 0;
+                let statusPhase = 0; // track which message we've shown
 
                 try {
                     await videoAnalyzer.initialize();
                     const videoInfo = await videoAnalyzer.loadVideo(file);
 
-                    const result = await videoAnalyzer.analyzeVideo((progress) => {
-                        document.getElementById('analysisProgressFill').style.width = progress + '%';
-                        document.getElementById('analysisProgressPercent').textContent = Math.round(progress) + '%';
-                    });
+                    const result = await videoAnalyzer.analyzeVideo(
+                        // onProgress
+                        (progress) => {
+                            progressLine.style.width = progress + '%';
+                            const strokeCount = videoAnalyzer.detectedStrokes.length;
+                            const avgQ = strokeCount > 0
+                                ? Math.round(videoAnalyzer.detectedStrokes.reduce((a, s) => a + (s.quality || 0), 0) / strokeCount)
+                                : 0;
+                            statsLine.textContent = strokeCount > 0
+                                ? `${strokeCount} stroke${strokeCount !== 1 ? 's' : ''} · ${avgQ} avg`
+                                : '';
 
+                            // Rotate status text at milestones
+                            if (strokeCount >= 1 && statusPhase < 1) {
+                                statusPhase = 1;
+                                rotateStatusText(statusText, 'FOUND YOUR FIRST STROKE');
+                            } else if (strokeCount >= 5 && statusPhase < 2) {
+                                statusPhase = 2;
+                                rotateStatusText(statusText, 'ANALYZING YOUR PATTERNS');
+                            }
+                            if (progress >= 80 && statusPhase < 3) {
+                                statusPhase = 3;
+                                rotateStatusText(statusText, 'BUILDING YOUR REVIEW');
+                            }
+                        },
+                        // onFrame — draw skeleton on canvas in real-time
+                        (landmarks, time, strokeCount) => {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            StrokeReplayManager.drawSkeletonOnCanvas(
+                                ctx, landmarks, canvas.width, canvas.height,
+                                { alpha: 0.7 }
+                            );
+
+                            // Pulse on new stroke detection
+                            if (strokeCount > lastStrokeCount) {
+                                lastStrokeCount = strokeCount;
+                                const latestStroke = videoAnalyzer.detectedStrokes[strokeCount - 1];
+                                createStrokePulse(landmarks, canvas, progressOverlay);
+                            }
+                        }
+                    );
+
+                    // Hold "YOUR REVIEW IS READY" before transitioning
+                    if (result.strokes.length > 0) {
+                        rotateStatusText(statusText, 'YOUR REVIEW IS READY');
+                        await new Promise(r => setTimeout(r, 1500));
+                    }
+
+                    // Clear overlay, restore video opacity
                     progressOverlay.classList.remove('active');
+                    video.style.opacity = '1';
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                     // Add stroke markers to timeline
                     renderStrokeMarkers(result.strokes);
@@ -9613,20 +9870,334 @@ This is a demo — make them feel excited about the coaching experience.`;
                     if (result.strokes.length === 0) {
                         showToast('No strokes detected. Try a different video with visible tennis swings.');
                     } else {
-                        showToast(`Found ${result.strokes.length} stroke${result.strokes.length > 1 ? 's' : ''} at ${result.fps}fps`);
+                        // Show Play All button
+                        const playAllBtn = document.getElementById('playAllBtn');
+                        if (playAllBtn) playAllBtn.style.display = '';
+
+                        // Generate GPT coaching (async — don't block the review)
+                        generateUploadCoaching(result.strokes).then(coaching => {
+                            uploadCoachingData = coaching;
+                            showUploadReview(result.strokes, coaching);
+                        }).catch(e => {
+                            console.warn('Upload coaching failed, showing data-only review:', e);
+                            showUploadReview(result.strokes, null);
+                        });
                     }
                 } catch (error) {
                     console.error('Analysis failed:', error);
                     progressOverlay.classList.remove('active');
+                    video.style.opacity = '1';
                     showToast('Failed to analyze video: ' + error.message);
                 }
             };
 
-            // Set up video time update
-            video.ontimeupdate = updateTimelineDisplay;
+            video.ontimeupdate = () => {
+                updateTimelineDisplay();
+                // Live skeleton overlay during playback
+                if (_skeletonOverlayActive) renderVideoSkeletonFrame();
+            };
         }
 
-        function updateTimelineDisplay() {
+        function rotateStatusText(el, newText) {
+            el.style.animation = 'none';
+            el.offsetHeight; // reflow
+            el.style.animation = 'fadeSlideDown 0.3s ease forwards';
+            setTimeout(() => {
+                el.textContent = newText;
+                el.style.animation = 'fadeSlideUp 0.4s ease forwards';
+            }, 300);
+        }
+
+        function createStrokePulse(landmarks, canvas, container) {
+            // Use dominant wrist (default right = index 16)
+            const wrist = landmarks[16] || landmarks[15];
+            if (!wrist) return;
+            const rect = canvas.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+            const x = rect.left - containerRect.left + wrist.x * rect.width;
+            const y = rect.top - containerRect.top + wrist.y * rect.height;
+            const pulse = document.createElement('div');
+            pulse.className = 'upload-stroke-pulse';
+            pulse.style.left = x + 'px';
+            pulse.style.top = y + 'px';
+            container.appendChild(pulse);
+            pulse.addEventListener('animationend', () => pulse.remove());
+        }
+
+        // ========== GPT Coaching Generation for Uploads ==========
+
+        async function generateUploadCoaching(strokes) {
+            // Requires authenticated user
+            if (!supabaseClient?.user) {
+                return { headline: 'YOUR ANALYSIS', narrative: null, perStroke: null };
+            }
+
+            try {
+                // 1. Accumulate strokes into BatchCoachingAccumulator
+                const accumulator = new BatchCoachingAccumulator({ batchThreshold: 1 });
+                strokes.forEach(s => {
+                    const strokeType = s.type || s.strokeType || 'unknown';
+                    accumulator.addStroke(strokeType, {
+                        quality: s.quality?.overall ?? s.quality ?? 0,
+                        formScore: s.quality?.breakdown?.form ?? null,
+                        powerScore: s.quality?.breakdown?.power ?? null,
+                        faults: s.biomechanicalEvaluation?.detectedFaults || [],
+                        strengths: s.strengths || [],
+                        orchestratorIssue: s.orchestratorIssue || null,
+                        hipSep: s.metrics?.hipSep ?? null,
+                        elbowAngle: s.metrics?.elbowAngle ?? null,
+                        rotation: s.metrics?.rotation ?? null,
+                        smoothness: s.smoothness ?? null,
+                        velocity: s.peakVelocity ?? null,
+                        footwork: s.footwork || null,
+                        serveAnalysis: s.serveAnalysis || null
+                    });
+                });
+                const summaries = accumulator.getAllBatchSummaries();
+
+                // 2. Build system prompt for overall coaching
+                let systemContext = `You are an expert tennis coach reviewing an uploaded video. The player hit ${strokes.length} strokes.`;
+                if (typeof improvementTracker !== 'undefined' && improvementTracker?.formatForSystemPrompt) {
+                    systemContext += '\n\n' + improvementTracker.formatForSystemPrompt();
+                }
+
+                const batchContext = summaries.map(s =>
+                    `${s.strokeType} (${s.count}): avg quality ${s.avgQuality}, ` +
+                    `form ${s.avgForm ?? '?'}, power ${s.avgPower ?? '?'}, ` +
+                    `trend ${s.trend > 0 ? '+' : ''}${s.trend}, ` +
+                    `strengths: ${s.consistentStrengths.join(', ') || 'none'}, ` +
+                    `top faults: ${s.topFaults.map(f => f.name + '(' + f.count + ')').join(', ') || 'none'}`
+                ).join('\n');
+
+                // Overall coaching call
+                const overallPrompt = `Based on this analysis, provide a coaching review:\n${batchContext}\n\n` +
+                    `Respond with ONLY a JSON object (no markdown fences):\n` +
+                    `{"headline":"ONE bold observation in max 10 words","narrative":"3-5 sentence coaching review. Lead with their biggest strength. Give ONE specific correction with a physical cue. End with encouragement.","topStrength":"their best quality","topCorrection":"the key fix","correctionCue":"physical cue for the fix","drillId":"suggested drill ID or null"}`;
+
+                const overallResult = await supabaseClient.chatCompletion(
+                    [{ role: 'system', content: systemContext }, { role: 'user', content: overallPrompt }],
+                    { model: 'gpt-4o-mini', max_tokens: 800, temperature: 0.5 }
+                );
+
+                let coaching = { headline: 'YOUR ANALYSIS', narrative: null };
+                if (overallResult) {
+                    try {
+                        const cleaned = overallResult.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+                        coaching = JSON.parse(cleaned);
+                    } catch (e) {
+                        coaching.narrative = overallResult;
+                    }
+                }
+
+                // 3. Per-stroke coaching call
+                let perStroke = null;
+                if (strokes.length > 0 && strokes.length <= 30) {
+                    const strokeDescriptions = strokes.map((s, i) => {
+                        const type = s.type || s.strokeType || 'unknown';
+                        const q = s.quality?.overall ?? s.quality ?? 0;
+                        const faults = (s.biomechanicalEvaluation?.detectedFaults || []).map(f => f.name || f.id).join(', ');
+                        return `#${i + 1} ${type} quality:${Math.round(q)} faults:[${faults}]`;
+                    }).join('\n');
+
+                    const perStrokePrompt = `For each stroke below, write 1-2 sentences of coaching. Reference specific faults. Give a physical cue.\n${strokeDescriptions}\n\n` +
+                        `Respond with ONLY a JSON array (no markdown fences):\n[{"strokeIndex":0,"coaching":"your text"},...]`;
+
+                    const perStrokeResult = await supabaseClient.chatCompletion(
+                        [{ role: 'system', content: 'Expert tennis coach giving per-stroke feedback.' }, { role: 'user', content: perStrokePrompt }],
+                        { model: 'gpt-4o-mini', max_tokens: 1500, temperature: 0.4 }
+                    );
+
+                    if (perStrokeResult) {
+                        try {
+                            const cleaned = perStrokeResult.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+                            perStroke = JSON.parse(cleaned);
+                            uploadPerStrokeCoaching = perStroke;
+                        } catch (e) {
+                            console.warn('Per-stroke coaching parse failed:', e);
+                        }
+                    }
+                }
+
+                coaching.perStroke = perStroke;
+                coaching.summaries = summaries;
+                return coaching;
+            } catch (e) {
+                console.error('generateUploadCoaching error:', e);
+                return { headline: 'YOUR ANALYSIS', narrative: null, perStroke: null };
+            }
+        }
+
+        // ========== Upload Review Overlay (The Reveal) ==========
+
+        function showUploadReview(strokes, coaching) {
+            const review = document.getElementById('uploadReview');
+            const scroll = document.getElementById('uploadReviewScroll');
+            if (!review || !scroll) return;
+
+            const cards = [];
+            let cardIndex = 0;
+            const coachName = localStorage.getItem('ace_coach_preference') || 'Alex';
+            const hasCoaching = coaching && coaching.narrative;
+            const headline = coaching?.headline || 'YOUR ANALYSIS';
+
+            // Average quality
+            const qualities = strokes.map(s => s.quality?.overall ?? s.quality ?? 0);
+            const avgScore = qualities.length ? Math.round(qualities.reduce((a, b) => a + b, 0) / qualities.length) : 0;
+            const bestScore = qualities.length ? Math.round(Math.max(...qualities)) : 0;
+            const duration = videoAnalyzer?.duration ? formatVideoTime(videoAnalyzer.duration) : '';
+            const ringCircumference = 339.292;
+            const ringTarget = ringCircumference - (avgScore / 100) * ringCircumference;
+
+            // Card 1: Coach's Headline
+            cards.push({ html: `
+                <div class="recap-label" style="text-align:center;margin-top:50px;">COACH'S REVIEW</div>
+                <div class="upload-headline">${escapeHtml(headline.toUpperCase())}</div>
+            `, cls: 'recap-card-transparent', delay: cardIndex++ });
+
+            // Card 2: Score Ring + Meta
+            cards.push({ html: `
+                <div class="recap-hero" style="padding-top:10px;">
+                    <div class="recap-score-ring-wrap">
+                        <svg class="recap-score-ring" viewBox="0 0 120 120">
+                            <circle class="ring-bg" cx="60" cy="60" r="54"/>
+                            <circle class="ring-fill" cx="60" cy="60" r="54" style="--ring-target: ${ringTarget}"/>
+                        </svg>
+                        <div class="recap-score-value">
+                            <span>${avgScore}</span>
+                            <small>/100</small>
+                        </div>
+                    </div>
+                    <div class="recap-meta">
+                        <span>${strokes.length} strokes</span>
+                        ${duration ? `<span>${duration}</span>` : ''}
+                        <span>Best ${bestScore}</span>
+                    </div>
+                </div>
+            `, cls: 'recap-card-transparent', delay: cardIndex++ });
+
+            // Card 3: Coach's Narrative (if coaching available)
+            if (hasCoaching) {
+                const listenBtn = window.speechSynthesis
+                    ? `<button class="upload-listen-btn" onclick="speakCoachReview()">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                        Listen
+                    </button>`
+                    : '';
+                cards.push({ html: `
+                    <div class="recap-label">COACH ${coachName.toUpperCase()}</div>
+                    <div class="upload-coach-narrative">"${escapeHtml(coaching.narrative)}"</div>
+                    ${listenBtn}
+                `, cls: 'recap-card', delay: cardIndex++ });
+            }
+
+            // Card 4: Stroke Breakdown
+            const byType = {};
+            strokes.forEach(s => {
+                const type = s.type || s.strokeType || 'unknown';
+                if (!byType[type]) byType[type] = { scores: [], count: 0 };
+                byType[type].scores.push(s.quality?.overall ?? s.quality ?? 0);
+                byType[type].count++;
+            });
+
+            let breakdownHtml = '<div class="recap-label">STROKE BREAKDOWN</div>';
+            for (const [type, data] of Object.entries(byType)) {
+                const avg = Math.round(data.scores.reduce((a, b) => a + b, 0) / data.scores.length);
+                const barColor = avg >= 80 ? 'var(--accent-ozone)' : avg >= 60 ? 'var(--warning)' : 'var(--danger)';
+                breakdownHtml += `
+                    <div class="recap-breakdown-row">
+                        <div class="recap-breakdown-header">
+                            <span class="recap-breakdown-type">${type}</span>
+                            <span class="recap-breakdown-score" style="color:${barColor}">${avg}</span>
+                        </div>
+                        <div class="recap-breakdown-bar-track">
+                            <div class="recap-breakdown-bar" style="width:${avg}%;background:${barColor}"></div>
+                        </div>
+                        <div class="recap-breakdown-count">${data.count} stroke${data.count !== 1 ? 's' : ''}</div>
+                    </div>`;
+            }
+            cards.push({ html: breakdownHtml, cls: 'recap-card', delay: cardIndex++ });
+
+            // Card 5: Actions
+            cards.push({ html: `
+                <div style="display:flex;flex-direction:column;gap:12px;align-items:center;padding:10px 0 40px;">
+                    <button class="upload-play-all-btn" onclick="closeUploadReview(); setTimeout(playAllStrokes, 400);" style="width:100%;justify-content:center;padding:14px;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
+                        Review Your Strokes
+                    </button>
+                    <button class="btn btn-secondary" onclick="closeUploadReview()" style="width:100%;padding:12px;font-size:14px;">
+                        Done
+                    </button>
+                </div>
+            `, cls: 'recap-card-transparent', delay: cardIndex++ });
+
+            // Render
+            scroll.innerHTML = cards.map((c, i) => {
+                const delay = (c.delay || i) * 0.15;
+                return `<div class="${c.cls}" style="animation-delay: ${delay}s">${c.html}</div>`;
+            }).join('');
+
+            review.classList.add('visible');
+        }
+
+        function closeUploadReview() {
+            const review = document.getElementById('uploadReview');
+            if (review) review.classList.remove('visible');
+        }
+
+        function speakCoachReview() {
+            if (!window.speechSynthesis || !uploadCoachingData?.narrative) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(uploadCoachingData.narrative);
+            utterance.rate = 0.95;
+            utterance.pitch = 1;
+            window.speechSynthesis.speak(utterance);
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // ========== Skeleton Overlay on Video Playback ==========
+
+        function startVideoSkeletonOverlay() {
+            _skeletonOverlayActive = true;
+        }
+
+        function stopVideoSkeletonOverlay() {
+            _skeletonOverlayActive = false;
+            const canvas = document.getElementById('analysisCanvas');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function renderVideoSkeletonFrame() {
+            const video = document.getElementById('analysisVideo');
+            const canvas = document.getElementById('analysisCanvas');
+            if (!video || !canvas || !videoAnalyzer?.frameData?.length) return;
+
+            const frame = videoAnalyzer.getFrameAtTime(video.currentTime);
+            if (!frame || !frame.landmarks) return;
+
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Check if current time is near a stroke (for fault highlighting)
+            const stroke = videoAnalyzer.getStrokeAtTime(video.currentTime, 0.5);
+            const faults = stroke?.biomechanicalEvaluation?.detectedFaults || [];
+            const faultMap = typeof tennisAI !== 'undefined' ? tennisAI.faultLandmarkMap : null;
+
+            StrokeReplayManager.drawSkeletonOnCanvas(
+                ctx, frame.landmarks, canvas.width, canvas.height,
+                { alpha: 0.8, faults, faultLandmarkMap: faultMap }
+            );
+        }
+
+        // ========== Enhanced Stroke Selection ==========
             const video = document.getElementById('analysisVideo');
             if (!video || !video.duration) return;
 
@@ -9683,47 +10254,110 @@ This is a demo — make them feel excited about the coaching experience.`;
             const video = document.getElementById('analysisVideo');
             video.currentTime = stroke.time;
 
-            // Show stroke details
+            // Enable skeleton overlay
+            startVideoSkeletonOverlay();
+            renderVideoSkeletonFrame();
+
+            // Get coaching text for this stroke
+            const perStroke = uploadPerStrokeCoaching;
+            const coachingEntry = perStroke?.find(e => e.strokeIndex === index);
+            const coachingText = coachingEntry?.coaching || '';
+
+            // Quality data
+            const quality = Math.round(stroke.biomechanical?.overall ?? stroke.quality?.overall ?? stroke.quality ?? 0);
+            const formScore = Math.round(stroke.quality?.breakdown?.form ?? stroke.biomechanical?.overall ?? quality);
+            const powerScore = Math.round(stroke.quality?.breakdown?.power ?? quality * 0.8);
+            const type = stroke.type || stroke.strokeType || 'unknown';
+            const scoreColor = quality >= 80 ? 'var(--accent-ozone)' : quality >= 60 ? 'var(--warning)' : 'var(--danger)';
+
+            // Faults and strengths
+            const faults = stroke.biomechanicalEvaluation?.detectedFaults || stroke.biomechanical?.faults || [];
+            const strengths = stroke.strengths || [];
+
+            // Build coaching card
+            let existingCard = document.getElementById('uploadStrokeCard');
+            if (!existingCard) {
+                existingCard = document.createElement('div');
+                existingCard.id = 'uploadStrokeCard';
+                existingCard.className = 'upload-stroke-card';
+                document.getElementById('videoPlayerArea').appendChild(existingCard);
+            }
+
+            const listenBtn = (window.speechSynthesis && coachingText)
+                ? `<button class="upload-listen-btn" onclick="speakStrokeCoaching(${index})">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                    Listen
+                  </button>`
+                : '';
+
+            const faultChips = faults.map(f => {
+                const name = (typeof f === 'string') ? f : (f.name || f.id || '');
+                return `<span class="upload-chip upload-chip-fault">${name}</span>`;
+            }).join('');
+            const strengthChips = strengths.map(s =>
+                `<span class="upload-chip upload-chip-strength">${s}</span>`
+            ).join('');
+
+            existingCard.innerHTML = `
+                <div class="upload-stroke-card-header">
+                    <div>
+                        <div class="upload-stroke-card-type">${type} #${index + 1}</div>
+                        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-top:2px;">${formatVideoTime(stroke.time)}</div>
+                    </div>
+                    <div class="upload-stroke-card-score" style="color:${scoreColor}">${quality}</div>
+                </div>
+                <div class="upload-stroke-bar-row">
+                    <span class="upload-stroke-bar-label">Form</span>
+                    <div class="upload-stroke-bar-track"><div class="upload-stroke-bar-fill" style="width:${formScore}%;background:var(--accent-ozone)"></div></div>
+                </div>
+                <div class="upload-stroke-bar-row">
+                    <span class="upload-stroke-bar-label">Power</span>
+                    <div class="upload-stroke-bar-track"><div class="upload-stroke-bar-fill" style="width:${powerScore}%;background:#6B8AFF"></div></div>
+                </div>
+                ${coachingText ? `<div class="upload-stroke-coaching">${escapeHtml(coachingText)}</div>` : ''}
+                <div class="upload-stroke-chips">${strengthChips}${faultChips}</div>
+                <div style="display:flex;gap:8px;margin-top:10px;align-items:center;">
+                    ${listenBtn}
+                    <button class="btn btn-secondary" onclick="hideStrokeCard()" style="margin-left:auto;padding:6px 12px;font-size:11px;">×</button>
+                </div>
+            `;
+
+            // Slide in
+            requestAnimationFrame(() => existingCard.classList.add('visible'));
+
+            // Also update the old panel (for compare functionality)
             const panel = document.getElementById('strokeDetailsPanel');
-            document.getElementById('strokeDetailType').textContent = stroke.type || stroke.strokeType || 'unknown';
-
-            // Use biomechanical quality if available, else fallback
-            const quality = stroke.biomechanical?.overall ?? stroke.quality ?? 0;
-            document.getElementById('strokeDetailScore').textContent = Math.round(quality);
-            document.getElementById('strokeDetailScore').style.color =
-                quality >= 80 ? 'var(--accent-ozone, #A0F0FF)' :
-                quality >= 60 ? '#FF9800' : '#f44336';
+            document.getElementById('strokeDetailType').textContent = type;
+            document.getElementById('strokeDetailScore').textContent = quality;
+            document.getElementById('strokeDetailScore').style.color = scoreColor;
             document.getElementById('strokeDetailTime').textContent = formatVideoTime(stroke.time);
-
             const vel = stroke.velocity ?? stroke.peakVelocity ?? 0;
             document.getElementById('strokeDetailVelocity').textContent =
                 typeof vel === 'number' ? (vel < 1 ? (vel * 100).toFixed(1) : vel.toFixed(1)) : '--';
-
-            // Show biomechanical faults if available
-            const faultContainer = document.getElementById('strokeDetailFaults');
-            if (faultContainer) {
-                const faults = stroke.biomechanical?.faults || [];
-                if (faults.length > 0) {
-                    faultContainer.innerHTML = faults.map(f => {
-                        const name = (typeof f === 'string') ? f : (f.id || f.name || '');
-                        return `<span style="display:inline-block;padding:2px 8px;margin:2px;border-radius:var(--radius-full);background:rgba(255,59,48,0.15);color:var(--danger);font-size:11px;font-weight:600;">${name}</span>`;
-                    }).join('');
-                    faultContainer.style.display = '';
-                } else {
-                    faultContainer.innerHTML = '';
-                    faultContainer.style.display = 'none';
-                }
-            }
-
-            // Update compare button state
             const isInComparison = comparisonStrokes.some(s => s._index === index);
             document.getElementById('compareBtn').textContent = isInComparison ? 'ADDED' : '+ Compare';
+            // Hide old panel — new card is primary
+            panel.classList.remove('visible');
+        }
 
-            panel.classList.add('visible');
+        function hideStrokeCard() {
+            const card = document.getElementById('uploadStrokeCard');
+            if (card) card.classList.remove('visible');
         }
 
         function hideStrokeDetails() {
             document.getElementById('strokeDetailsPanel').classList.remove('visible');
+            hideStrokeCard();
+        }
+
+        function speakStrokeCoaching(index) {
+            if (!window.speechSynthesis || !uploadPerStrokeCoaching) return;
+            const entry = uploadPerStrokeCoaching.find(e => e.strokeIndex === index);
+            if (!entry?.coaching) return;
+            window.speechSynthesis.cancel();
+            const utterance = new SpeechSynthesisUtterance(entry.coaching);
+            utterance.rate = 0.95;
+            window.speechSynthesis.speak(utterance);
         }
 
         function addToComparison() {
@@ -9887,9 +10521,97 @@ This is a demo — make them feel excited about the coaching experience.`;
             if (video.paused) {
                 video.play();
                 btn.textContent = 'PAUSE';
+                startVideoSkeletonOverlay();
             } else {
                 video.pause();
                 btn.textContent = 'PLAY';
+                // Keep skeleton visible when paused (shows current frame)
+                renderVideoSkeletonFrame();
+            }
+        }
+
+        // ========== Play All Narrated Walkthrough ==========
+
+        async function playAllStrokes() {
+            const strokes = videoAnalyzer?.detectedStrokes;
+            if (!strokes || strokes.length === 0) return;
+
+            const video = document.getElementById('analysisVideo');
+            const playAllBtn = document.getElementById('playAllBtn');
+
+            if (_playAllActive) {
+                // Stop walkthrough
+                _playAllActive = false;
+                video.pause();
+                window.speechSynthesis?.cancel();
+                if (playAllBtn) {
+                    playAllBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg> Play All';
+                }
+                return;
+            }
+
+            _playAllActive = true;
+            startVideoSkeletonOverlay();
+            if (playAllBtn) {
+                playAllBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Stop';
+            }
+
+            for (let i = 0; i < strokes.length && _playAllActive; i++) {
+                const stroke = strokes[i];
+                const seekTo = Math.max(0, stroke.time - 1.5);
+
+                // Seek to 1.5s before stroke
+                video.currentTime = seekTo;
+                await new Promise(r => setTimeout(r, 200));
+
+                // Play video until stroke time
+                video.play();
+                await new Promise(resolve => {
+                    const check = () => {
+                        if (!_playAllActive) { resolve(); return; }
+                        if (video.currentTime >= stroke.time - 0.05) {
+                            video.pause();
+                            resolve();
+                        } else {
+                            requestAnimationFrame(check);
+                        }
+                    };
+                    check();
+                });
+
+                if (!_playAllActive) break;
+
+                // Show coaching card
+                selectStroke(stroke, i);
+
+                // Speak coaching if available
+                const perStroke = uploadPerStrokeCoaching;
+                const entry = perStroke?.find(e => e.strokeIndex === i);
+                if (entry?.coaching && window.speechSynthesis) {
+                    await new Promise(resolve => {
+                        const utterance = new SpeechSynthesisUtterance(entry.coaching);
+                        utterance.rate = 0.95;
+                        utterance.onend = () => resolve();
+                        utterance.onerror = () => resolve();
+                        window.speechSynthesis.speak(utterance);
+                        // Safety timeout (max 15s per stroke)
+                        setTimeout(resolve, 15000);
+                    });
+                } else {
+                    // No speech — pause 3s to read card
+                    await new Promise(r => setTimeout(r, 3000));
+                }
+
+                if (!_playAllActive) break;
+
+                // Brief pause between strokes
+                await new Promise(r => setTimeout(r, 800));
+            }
+
+            // Walkthrough complete
+            _playAllActive = false;
+            if (playAllBtn) {
+                playAllBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg> Play All';
             }
         }
 
@@ -9899,6 +10621,11 @@ This is a demo — make them feel excited about the coaching experience.`;
             const playerArea = document.getElementById('videoPlayerArea');
             const strokePanel = document.getElementById('strokeDetailsPanel');
 
+            // Stop any active walkthrough
+            _playAllActive = false;
+            stopVideoSkeletonOverlay();
+            window.speechSynthesis?.cancel();
+
             // Reset video
             video.src = '';
             video.pause();
@@ -9907,13 +10634,20 @@ This is a demo — make them feel excited about the coaching experience.`;
             playerArea.classList.remove('active');
             uploadZone.classList.remove('has-video');
             strokePanel.classList.remove('visible');
+            hideStrokeCard();
+            closeUploadReview();
 
             // Clear markers
             document.querySelectorAll('.stroke-marker').forEach(m => m.remove());
 
-            // Clean up analyzer
-            videoAnalyzer.destroy();
+            // Hide Play All button
+            const playAllBtn = document.getElementById('playAllBtn');
+            if (playAllBtn) playAllBtn.style.display = 'none';
 
+            // Clean up analyzer and coaching data
+            videoAnalyzer.destroy();
+            uploadCoachingData = null;
+            uploadPerStrokeCoaching = null;
             selectedStroke = null;
         }
 
