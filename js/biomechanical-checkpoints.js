@@ -280,7 +280,8 @@ class BiomechanicalCheckpoints {
     return {
       latePreparation: {
         name: "Late Preparation",
-        priority: 10, // highest priority - foundational issue
+        priority: 10,
+        requiredVisibility: [11, 12], // shoulders for rotation
         detection: (metrics) => {
           return metrics.preparationDuration < 8 || metrics.shoulderRotationAtPrepEnd < 20;
         },
@@ -291,7 +292,7 @@ class BiomechanicalCheckpoints {
       armOnlySwing: {
         name: "Arm-Only Swing",
         priority: 9,
-        // CALIBRATED: pro p10=16° for hip-shoulder separation (2026-02-04)
+        requiredVisibility: [11, 12, 23, 24], // shoulders + hips
         detection: (metrics) => {
           return metrics.maxHipShoulderSeparation < 16 && metrics.shoulderRotationTotal < 25;
         },
@@ -302,7 +303,7 @@ class BiomechanicalCheckpoints {
       collapsingElbow: {
         name: "Chicken Wing / Collapsed Elbow",
         priority: 8,
-        // CALIBRATED: pro p10=62°, use 100° as threshold (2026-02-04)
+        requiredVisibility: [12, 14, 16], // right shoulder, elbow, wrist (overridden by handedness at call site)
         detection: (metrics) => {
           return metrics.elbowAngleAtContact < 100;
         },
@@ -313,6 +314,7 @@ class BiomechanicalCheckpoints {
       hittingOffBackFoot: {
         name: "Hitting Off Back Foot",
         priority: 7,
+        requiredVisibility: [23, 24, 27, 28], // hips + ankles
         detection: (metrics) => {
           return metrics.forwardMomentum < 0.2 && metrics.weightAtContactBack > 0.5;
         },
@@ -343,8 +345,9 @@ class BiomechanicalCheckpoints {
       noKneeBend: {
         name: "No Knee Bend / Stiff Legs",
         priority: 5,
+        requiredVisibility: [24, 26, 28], // hip, knee, ankle
         detection: (metrics) => {
-          return metrics.kneeBendAngle > 170; // nearly straight legs
+          return metrics.kneeBendAngle > 170;
         },
         fix: "Bend your knees to load power and improve balance",
         drills: ["Low ball feeding", "Squat-to-swing drill"]
@@ -363,6 +366,7 @@ class BiomechanicalCheckpoints {
       narrowBase: {
         name: "Narrow Stance",
         priority: 6,
+        requiredVisibility: [27, 28], // ankles
         detection: (metrics) => {
           return metrics.baseWidthRatio != null && metrics.baseWidthRatio < 0.6;
         },
@@ -373,6 +377,7 @@ class BiomechanicalCheckpoints {
       noStepIn: {
         name: "Static Feet",
         priority: 5,
+        requiredVisibility: [27, 28], // ankles
         detection: (metrics) => {
           return metrics.stepPattern === 'planted' &&
                  (metrics.footworkScore != null && metrics.footworkScore < 50);
@@ -384,6 +389,7 @@ class BiomechanicalCheckpoints {
       poorRecovery: {
         name: "Poor Recovery",
         priority: 4,
+        requiredVisibility: [27, 28], // ankles
         detection: (metrics) => {
           return metrics.recoveryDetected === false && metrics.footworkScore != null;
         },
@@ -394,6 +400,7 @@ class BiomechanicalCheckpoints {
       wrongStanceForStroke: {
         name: "Stance Limits Power",
         priority: 5,
+        requiredVisibility: [23, 24, 27, 28], // hips + ankles
         detection: (metrics) => {
           return metrics.stanceType === 'closed' &&
                  metrics.weightTransferDirection !== 'forward' &&
@@ -407,6 +414,7 @@ class BiomechanicalCheckpoints {
       noLegDrive: {
         name: "No Leg Drive",
         priority: 7,
+        requiredVisibility: [24, 26, 28], // hip, knee, ankle
         detection: (metrics) => {
           return metrics.isServe && metrics.serveLegDriveScore < 30;
         },
@@ -417,6 +425,7 @@ class BiomechanicalCheckpoints {
       noTrophyPosition: {
         name: "Missing Trophy Position",
         priority: 6,
+        requiredVisibility: [12, 14, 16], // shoulder, elbow, wrist
         detection: (metrics) => {
           return metrics.isServe && metrics.serveTrophyScore < 25;
         },
@@ -427,6 +436,7 @@ class BiomechanicalCheckpoints {
       lowServeContactPoint: {
         name: "Low Serve Contact",
         priority: 5,
+        requiredVisibility: [16, 0], // wrist + nose
         detection: (metrics) => {
           return metrics.isServe && metrics.serveContactHeightScore < 30;
         },
@@ -437,6 +447,7 @@ class BiomechanicalCheckpoints {
       flatServeNoTilt: {
         name: "No Shoulder Tilt",
         priority: 5,
+        requiredVisibility: [11, 12], // both shoulders
         detection: (metrics) => {
           return metrics.isServe && metrics.serveShoulderTiltScore < 25;
         },
@@ -497,6 +508,7 @@ class BiomechanicalCheckpoints {
    */
   extractMetrics(strokeData, sequenceAnalysis) {
     const metrics = {
+      _landmarks: strokeData._contactLandmarks || null, // used by detectFaults for visibility gating
       // From stroke data
       velocity: strokeData.velocity?.magnitude || 0,
       acceleration: strokeData.acceleration?.magnitude || 0,
@@ -661,13 +673,22 @@ class BiomechanicalCheckpoints {
   }
 
   /**
-   * Detect specific faults
+   * Detect specific faults.
+   * Each fault declares required landmark groups via requiredVisibility;
+   * faults are skipped when key landmarks aren't sufficiently visible.
    */
   detectFaults(metrics) {
     const detected = [];
 
     for (const [faultId, fault] of Object.entries(this.faultDetectors)) {
       try {
+        // Skip fault detection if required landmarks are not visible
+        if (fault.requiredVisibility && metrics._landmarks) {
+          const vis = typeof areLandmarksVisible === 'function'
+            ? areLandmarksVisible(metrics._landmarks, fault.requiredVisibility)
+            : true;
+          if (!vis) continue;
+        }
         if (fault.detection(metrics)) {
           detected.push({
             id: faultId,

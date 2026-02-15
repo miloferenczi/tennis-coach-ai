@@ -115,7 +115,8 @@ class RallyTracker {
     // Fire async Gemini rally analysis if available and rally was substantial
     if (rally.strokes.length >= 3 && typeof tennisAI !== 'undefined' && tennisAI.sceneAnalyzer?.enabled) {
       const rallySnapshot = { ...rally };
-      tennisAI.sceneAnalyzer.analyzeRally(rallySnapshot).then(result => {
+      const timeWindow = { startTime: rally.startTime, endTime: rally.endTime };
+      tennisAI.sceneAnalyzer.analyzeRally(rallySnapshot, timeWindow).then(result => {
         if (result && typeof tennisAI !== 'undefined') {
           rallySnapshot.geminiAnalysis = result;
           this.lastRallyAnalysis = result;

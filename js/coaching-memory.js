@@ -130,6 +130,12 @@ class CoachingMemory {
       block += '\nVISUAL PATTERNS:\n' + lastVisual;
     }
 
+    // Drill history
+    const drillBlock = this._buildDrillHistoryBlock();
+    if (drillBlock) {
+      block += '\nDRILL HISTORY:\n' + drillBlock;
+    }
+
     block += '\nUse these structured memories to reference specific dates, metrics, and what worked. Be eerily perceptive.\n';
     return block;
   }
@@ -203,6 +209,28 @@ class CoachingMemory {
     }
 
     return block;
+  }
+
+  /**
+   * Format drill history context for batch prompts.
+   * Enables referencing specific drill outcomes.
+   */
+  formatDrillContextForPrompt(drillId) {
+    if (typeof improvementTracker === 'undefined' || !improvementTracker.isLoaded) return '';
+
+    const history = improvementTracker.getDrillHistory(drillId);
+    if (!history || !history.completions || history.completions.length === 0) return '';
+
+    const recent = history.completions.slice(-3);
+    const scores = recent.map(c => c.score);
+    const lastDate = this._formatDate(new Date(recent[recent.length - 1].date));
+
+    let line = `DRILL HISTORY: ${drillId.replace(/_/g, ' ')} — `;
+    line += `last ${recent.length} scores: ${scores.join(', ')}, `;
+    line += `current difficulty: ${history.currentDifficulty}x, `;
+    line += `last practiced: ${lastDate}\n`;
+
+    return line;
   }
 
   // ================================================================
@@ -536,6 +564,110 @@ class CoachingMemory {
       }
     }
     return block;
+  }
+
+  /**
+   * Build drill history block for GPT prompt.
+   * Pulls from ImprovementTracker's persisted drillHistory.
+   * Enables prompts like "Last time you did shadow swing drill, elbow improved from 95 to 110."
+   */
+  _buildDrillHistoryBlock() {
+    if (typeof improvementTracker === 'undefined' || !improvementTracker.isLoaded) return '';
+
+    const allDrills = improvementTracker.getAllDrillHistory();
+    if (!allDrills || Object.keys(allDrills).length === 0) return '';
+
+    let block = '';
+    for (const [drillId, history] of Object.entries(allDrills)) {
+      if (!history.completions || history.completions.length === 0) continue;
+
+      const recent = history.completions.slice(-3);
+      const scores = recent.map(c => c.score);
+      const lastDate = new Date(recent[recent.length - 1].date);
+      const dateStr = this._formatDate(lastDate);
+
+      block += `- ${drillId.replace(/_/g, ' ')}: ${recent.length} recent completions, `;
+      block += `scores: ${scores.join(' → ')}, `;
+      block += `difficulty: ${history.currentDifficulty}x, `;
+      block += `last: ${dateStr}\n`;
+    }
+
+    // Cross-reference drill outcomes with stroke metrics
+    const drillMetricBlock = this._buildDrillMetricCorrelation(allDrills);
+    if (drillMetricBlock) block += drillMetricBlock;
+
+    return block;
+  }
+
+  /**
+   * Correlate drill completions with metric improvements.
+   * Looks for metric changes that coincide with drill practice.
+   */
+  _buildDrillMetricCorrelation(allDrills) {
+    if (this.recentMemory.length < 2) return '';
+
+    // Map drill IDs to relevant metrics
+    const drillMetricMap = {
+      'footwork_base': { metric: 'footworkScore', label: 'footwork score' },
+      'serve_trophy_position': { metric: 'serveTrophyScore', label: 'trophy position' },
+      'serve_leg_drive': { metric: 'serveLegDriveScore', label: 'leg drive' },
+      'shadow_swing': { metric: 'rotation', label: 'rotation' },
+      'contact_point': { metric: 'contactPointVariance', label: 'contact consistency' }
+    };
+
+    let block = '';
+    for (const [drillId, history] of Object.entries(allDrills)) {
+      const mapping = drillMetricMap[drillId];
+      if (!mapping || !history.completions || history.completions.length < 2) continue;
+
+      // Find sessions before and after drill practice
+      const firstDrillDate = history.completions[0].date;
+      const lastDrillDate = history.completions[history.completions.length - 1].date;
+
+      const before = this.recentMemory.filter(m => new Date(m.sessionDate).getTime() <= firstDrillDate);
+      const after = this.recentMemory.filter(m => new Date(m.sessionDate).getTime() >= lastDrillDate);
+
+      if (before.length === 0 || after.length === 0) continue;
+
+      // Check if the relevant metric improved
+      const getMetric = (mem) => {
+        for (const summaries of Object.values(mem.strokeSummaries || {})) {
+          const val = summaries.metrics?.[mapping.metric];
+          if (val != null) return val;
+        }
+        return null;
+      };
+
+      const beforeVal = getMetric(before[before.length - 1]);
+      const afterVal = getMetric(after[after.length - 1]);
+
+      if (beforeVal != null && afterVal != null && afterVal !== beforeVal) {
+        const direction = afterVal > beforeVal ? 'improved' : 'declined';
+        block += `  After ${drillId.replace(/_/g, ' ')} practice: ${mapping.label} ${direction} from ${Math.round(beforeVal)} to ${Math.round(afterVal)}\n`;
+      }
+    }
+
+    return block;
+  }
+
+  /**
+   * Record a drill session in coaching memory.
+   * Called when a drill is completed.
+   * @param {string} drillId - drill identifier
+   * @param {number} score - 0-100 completion score
+   * @param {number} difficulty - difficulty multiplier
+   * @param {Object} metrics - key metrics during drill (e.g. { elbowAngle: 110, rotation: 25 })
+   */
+  recordDrillSession(drillId, score, difficulty, metrics) {
+    // Store in the current session's coaching moments for memory persistence
+    this._coachingMoments.push({
+      type: 'drill_completion',
+      drillId,
+      score,
+      difficulty,
+      metrics: metrics || {},
+      timestamp: Date.now()
+    });
   }
 
   _getLatestVisualSummary() {

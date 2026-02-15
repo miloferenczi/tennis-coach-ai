@@ -225,6 +225,14 @@ class CoachingOrchestrator {
             'courtRecoveryQuality': metrics.courtRecoveryQuality ?? null,
             'courtZone': metrics.courtZone ?? null,
             'noSplitStepAtNet': metrics.noSplitStepAtNet ?? null,
+            // Volley metrics
+            'volleyFollowThroughLength': metrics.volleyFollowThroughLength ?? null,
+            'volleyContactHeight': metrics.volleyContactHeight ?? null,
+            'volleyContactDepth': metrics.volleyContactDepth ?? null,
+            'volleySplitStepDetected': metrics.volleySplitStepDetected ?? null,
+            // Overhead metrics
+            'overheadContactHeight': metrics.overheadContactHeight ?? null,
+            'overheadPositioningScore': metrics.overheadPositioningScore ?? null,
             // Gemini visual analysis metrics
             'geminiRacketFaceScore': metrics.geminiRacketFaceScore ?? null,
             'geminiContactPointScore': metrics.geminiContactPointScore ?? null,
@@ -282,7 +290,10 @@ class CoachingOrchestrator {
                     'follow_through': ['poorFollowThrough'],
                     'footwork': ['poorFootwork'],
                     'power': ['lowRacquetSpeed'],
-                    'contact_point': ['inconsistentContactPoint', 'contactBehindBody']
+                    'contact_point': ['inconsistentContactPoint', 'contactBehindBody'],
+                    'volley_technique': ['punchingNotSwinging', 'volleyGripTooLow'],
+                    'volley_footwork': ['volleyTooDeep', 'noSplitStepBeforeVolley'],
+                    'overhead': ['poorOverheadPositioning', 'lowOverheadContactPoint']
                 };
                 const issueIds = focusToIssues[overrideFocus] || [];
                 const curriculumMatch = matchingIssues.find(i => issueIds.includes(i.id));
@@ -641,6 +652,23 @@ class CoachingOrchestrator {
         }
         if (playerMetrics.geminiTossPlacement === 'in_front') {
             strengths.push('Good toss placement');
+        }
+        // Volley strengths
+        if ((playerMetrics.volleyContactHeight || 0) > 0.6 && playerMetrics.courtZone === 'net') {
+            strengths.push('Good volley contact height');
+        }
+        if (playerMetrics.volleySplitStepDetected && playerMetrics.courtZone === 'net') {
+            strengths.push('Good split step at net');
+        }
+        if ((playerMetrics.volleyFollowThroughLength || 1) < 0.25 && playerMetrics.courtZone === 'net') {
+            strengths.push('Compact volley technique');
+        }
+        // Overhead strengths
+        if ((playerMetrics.overheadPositioningScore || 0) > 65) {
+            strengths.push('Good overhead positioning');
+        }
+        if ((playerMetrics.overheadContactHeight || 0) > 0.7) {
+            strengths.push('Strong overhead contact point');
         }
 
         return strengths;

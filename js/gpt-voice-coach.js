@@ -20,6 +20,11 @@ class GPTVoiceCoach {
     // Free tier observation limit
     this.coachingObservationCount = 0;
     this.observationLimit = null; // null = unlimited
+    // WebRTC reconnection state
+    this._reconnectAttempts = 0;
+    this._maxReconnectAttempts = 3;
+    this._reconnecting = false;
+    this._lastEphemeralKey = null;
   }
 
   /**
@@ -31,7 +36,7 @@ class GPTVoiceCoach {
       alex: {
         name: 'Coach Alex',
         voice: 'alloy',
-        personality: 'You are encouraging and patient. You build confidence through positive reinforcement while gently guiding improvements. You celebrate small wins and keep the energy supportive.',
+        personality: 'You are warm and encouraging. You use "we" language ("let\'s work on this together", "we\'re getting closer"). You celebrate effort and progress, not just results — a player who tried something new deserves recognition even if the shot missed. When a player struggles or gets frustrated, you stay patient and calm, reminding them that improvement is a process. You believe in the journey and make every player feel like they belong on the court.',
         tagline: 'Encouraging & patient',
         description: 'Great for building confidence',
         previewText: "Hey, nice to meet you! I'm Coach Alex. Let's work on your game together — I can already tell you've got great potential."
@@ -39,7 +44,7 @@ class GPTVoiceCoach {
       jordan: {
         name: 'Coach Jordan',
         voice: 'echo',
-        personality: 'You are technical and precise. You focus on biomechanical details and give specific, measurable coaching cues. You are analytical but not cold — you show genuine investment in improvement.',
+        personality: 'You are precise and analytical. You use proper tennis terminology naturally — unit turn, kinetic chain, pronation, lag, racket drop. You reference specific angles and metrics ("your hip-shoulder separation was 18 degrees, we need 35"). You respect the science of the swing and explain the why behind every correction. When a player makes mistakes, you diagnose the root cause methodically rather than just describing symptoms. You show genuine investment in improvement through detailed, thoughtful feedback.',
         tagline: 'Technical & precise',
         description: 'Focused on mechanics',
         previewText: "I'm Coach Jordan. I focus on the details that matter — angles, timing, kinetic chain. Let's break down your technique and build it back stronger."
@@ -47,7 +52,7 @@ class GPTVoiceCoach {
       sam: {
         name: 'Coach Sam',
         voice: 'shimmer',
-        personality: 'You are high-energy and motivating. You push players harder while keeping it fun. You use competitive framing and challenge the player to beat their personal bests.',
+        personality: 'You are high-energy and enthusiastic. You use sports metaphors and competitive framing ("crush that ball", "you\'re on fire", "one more and you own this"). You push players to go for one more rep, one more set, always with infectious energy. When a player hits a breakthrough, you celebrate it loudly and memorably. You channel competitive energy — challenging the player to beat their personal bests, rival their last session, and play like they mean it. You keep it fun and intense at the same time.',
         tagline: 'High-energy & motivating',
         description: 'Pushes you to your best',
         previewText: "What's up! I'm Coach Sam. Ready to level up? I'm going to push you — but trust me, you're going to love the results. Let's go!"
@@ -371,6 +376,8 @@ DRILL MODE ACTIVE:
    * @param {boolean} [options.skipGreeting] - Skip auto-sending default instructions + greeting
    */
   async connectWebRTC(ephemeralKey, options = {}) {
+    this._lastEphemeralKey = ephemeralKey;
+    this._intentionalDisconnect = false;
     return new Promise(async (resolve, reject) => {
       try {
         this.pc = new RTCPeerConnection();
@@ -408,10 +415,14 @@ DRILL MODE ACTIVE:
           console.error('Data Channel error:', error);
           reject(error);
         };
-        
+
         this.dataChannel.onclose = () => {
           console.log('Data Channel disconnected');
           this.isConnected = false;
+          // Attempt reconnection if not intentionally disconnecting
+          if (!this._intentionalDisconnect) {
+            this._attemptReconnect();
+          }
         };
 
         const offer = await this.pc.createOffer();
@@ -1084,7 +1095,10 @@ Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 c
         block += `- Footwork: ${fw.stepPattern.pattern}\n`;
       }
       if (fw.recovery) {
-        block += `- Recovery: ${fw.recovery.recovered ? 'returned to ready' : 'did not recover'}\n`;
+        block += `- Recovery: ${fw.recovery.recovered ? 'returned to ready' : 'did not recover'}`;
+        if (fw.recovery.timeToReady != null) block += ` (${fw.recovery.timeToReady} frames)`;
+        if (fw.recovery.quality) block += ` — quality: ${fw.recovery.quality}`;
+        block += `\n`;
       }
       block += `- Footwork score: ${fw.score}/100\n`;
     }
@@ -1117,6 +1131,38 @@ Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 c
         block += `, score=${sa.tossArm.score}/100\n`;
       }
       block += `- Serve score: ${sa.serveScore}/100\n`;
+    }
+
+    // Phase durations (from MotionSequenceAnalyzer)
+    const phaseDurations = data.sequenceAnalysis?.phaseDurations;
+    if (phaseDurations) {
+      const parts = [];
+      if (phaseDurations.preparation > 0) parts.push(`prep=${phaseDurations.preparation}f`);
+      if (phaseDurations.loading > 0) parts.push(`load=${phaseDurations.loading}f`);
+      if (phaseDurations.acceleration > 0) parts.push(`accel=${phaseDurations.acceleration}f`);
+      if (phaseDurations.followThrough > 0) parts.push(`follow=${phaseDurations.followThrough}f`);
+      if (parts.length > 0) {
+        block += `- Phase durations: ${parts.join(', ')}\n`;
+      }
+    }
+
+    // Player handedness
+    if (typeof tennisAI !== 'undefined' && tennisAI.enhancedAnalyzer?.dominantHand) {
+      block += `- Handedness: ${tennisAI.enhancedAnalyzer.dominantHand}-handed\n`;
+    }
+
+    // Last ball tracking outcome
+    if (typeof tennisAI !== 'undefined' && tennisAI.ballTracker?.shotHistory?.length > 0) {
+      const lastShot = tennisAI.ballTracker.shotHistory[tennisAI.ballTracker.shotHistory.length - 1];
+      const o = lastShot?.outcome;
+      if (o && o.confidence > 0.3 && (Date.now() - (lastShot.timestamp || 0)) < 10000) {
+        let outcomeStr = o.in_court ? 'IN' : 'OUT';
+        if (o.net_clearance === false) outcomeStr += ' (net)';
+        if (o.landed_position) {
+          outcomeStr += ` at ${o.landed_position.x_meters?.toFixed(1)}m across, ${o.landed_position.y_meters?.toFixed(1)}m deep`;
+        }
+        block += `- Ball outcome: ${outcomeStr} (${Math.round((o.confidence || 0) * 100)}% confidence)\n`;
+      }
     }
 
     // Plan progress line
@@ -1158,14 +1204,12 @@ Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 c
 
   /**
    * Synthesize a coaching plan update at session end.
-   * Sends a structured prompt to GPT, parses the JSON response.
+   * Uses text-only chat completions API (via Edge Function) for cost efficiency.
+   * Falls back to Realtime channel if Edge Function is unavailable.
    * Returns the parsed plan object or null on failure.
    */
-  synthesizeCoachingPlan(sessionSummary, tracker) {
-    if (!this.isConnected || !this.dataChannel || this.dataChannel.readyState !== 'open') {
-      return Promise.resolve(null);
-    }
-    if (!tracker) return Promise.resolve(null);
+  async synthesizeCoachingPlan(sessionSummary, tracker) {
+    if (!tracker) return null;
 
     // Build context for plan synthesis
     const currentPlan = tracker.getCoachingPlan();
@@ -1188,7 +1232,7 @@ Write 3-5 flowing sentences as yourself (the coach) in first person. Under 500 c
       ? JSON.stringify(sessionSummary.strokeTypeBreakdowns)
       : 'not available';
 
-    const prompt = `Based on this session's data and your coaching observations, update the improvement plan.
+    const promptText = `Based on this session's data, update the improvement plan.
 
 Current plan: ${JSON.stringify(currentFocusAreas)}
 Session stroke breakdowns: ${breakdowns}
@@ -1208,10 +1252,30 @@ Rules:
 - Keep what's working from the current plan, update what changed
 - Output ONLY the JSON object, no other text`;
 
+    // Try text-only API via Edge Function first (much cheaper than Realtime audio)
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+      try {
+        const text = await supabaseClient.chatCompletion(
+          [{ role: 'user', content: promptText }],
+          { model: 'gpt-4o-mini', max_tokens: 500, temperature: 0.3 }
+        );
+        if (text) {
+          const plan = this._parsePlanJson(text);
+          if (plan) return plan;
+        }
+      } catch (e) {
+        console.warn('Plan synthesis via text API failed, falling back to Realtime:', e);
+      }
+    }
+
+    // Fallback: use Realtime channel if text API unavailable
+    if (!this.isConnected || !this.dataChannel || this.dataChannel.readyState !== 'open') {
+      return null;
+    }
+
     return new Promise((resolve) => {
       this.awaitingNotebook = true;
 
-      // 8-second timeout — preserve existing plan on failure
       const timeout = setTimeout(() => {
         if (this.awaitingNotebook) {
           this.awaitingNotebook = false;
@@ -1223,23 +1287,7 @@ Rules:
 
       this.notebookResolve = (text) => {
         clearTimeout(timeout);
-        try {
-          // Extract JSON from response (handle markdown code blocks)
-          let jsonStr = text.trim();
-          if (jsonStr.startsWith('```')) {
-            jsonStr = jsonStr.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
-          }
-          const plan = JSON.parse(jsonStr);
-          if (plan.focusAreas && Array.isArray(plan.focusAreas)) {
-            resolve(plan);
-          } else {
-            console.warn('Plan synthesis returned invalid structure:', plan);
-            resolve(null);
-          }
-        } catch (e) {
-          console.error('Plan synthesis JSON parse failed:', e, 'Raw:', text);
-          resolve(null);
-        }
+        resolve(this._parsePlanJson(text));
       };
 
       this.dataChannel.send(JSON.stringify({
@@ -1247,7 +1295,7 @@ Rules:
         item: {
           type: 'message',
           role: 'user',
-          content: [{ type: 'input_text', text: prompt }]
+          content: [{ type: 'input_text', text: promptText }]
         }
       }));
       this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
@@ -1255,14 +1303,35 @@ Rules:
   }
 
   /**
+   * Parse a plan JSON string from GPT response.
+   * Handles markdown code blocks and validates structure.
+   * @returns {Object|null}
+   */
+  _parsePlanJson(text) {
+    if (!text) return null;
+    try {
+      let jsonStr = text.trim();
+      if (jsonStr.startsWith('```')) {
+        jsonStr = jsonStr.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+      }
+      const plan = JSON.parse(jsonStr);
+      if (plan.focusAreas && Array.isArray(plan.focusAreas)) {
+        return plan;
+      }
+      console.warn('Plan synthesis returned invalid structure:', plan);
+      return null;
+    } catch (e) {
+      console.error('Plan synthesis JSON parse failed:', e, 'Raw:', text);
+      return null;
+    }
+  }
+
+  /**
    * Synthesize structured observations at session end.
+   * Uses text-only API for cost efficiency, falls back to Realtime.
    * Returns { standoutMoment, breakthrough, nextSessionFocus, fatiguePoint } or null.
    */
-  synthesizeStructuredObservations(sessionSummary) {
-    if (!this.isConnected || !this.dataChannel || this.dataChannel.readyState !== 'open') {
-      return Promise.resolve(null);
-    }
-
+  async synthesizeStructuredObservations(sessionSummary) {
     let breakdownStr = '';
     if (sessionSummary.strokeTypeBreakdowns) {
       for (const [type, bd] of Object.entries(sessionSummary.strokeTypeBreakdowns)) {
@@ -1272,7 +1341,7 @@ Rules:
       }
     }
 
-    const prompt = `SESSION COMPLETE - Write structured observations as JSON.
+    const promptText = `SESSION COMPLETE - Write structured observations as JSON.
 
 Session: ${sessionSummary.totalStrokes || 0} strokes, ${sessionSummary.averageScore || 0} avg.
 ${breakdownStr ? `Breakdowns:\n${breakdownStr}` : ''}
@@ -1281,6 +1350,30 @@ Trend: ${sessionSummary.improvement > 0 ? '+' + sessionSummary.improvement : ses
 
 Output ONLY a JSON object:
 {"standoutMoment":"one specific thing they did well with a metric","breakthrough":"a measurable improvement or null","nextSessionFocus":"what to prioritize next","fatiguePoint":"when quality dropped or null"}`;
+
+    // Try text-only API first
+    if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+      try {
+        const text = await supabaseClient.chatCompletion(
+          [{ role: 'user', content: promptText }],
+          { model: 'gpt-4o-mini', max_tokens: 300, temperature: 0.3 }
+        );
+        if (text) {
+          let jsonStr = text.trim();
+          if (jsonStr.startsWith('```')) {
+            jsonStr = jsonStr.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
+          }
+          return JSON.parse(jsonStr);
+        }
+      } catch (e) {
+        console.warn('Structured observations via text API failed, falling back:', e);
+      }
+    }
+
+    // Fallback: Realtime channel
+    if (!this.isConnected || !this.dataChannel || this.dataChannel.readyState !== 'open') {
+      return null;
+    }
 
     return new Promise((resolve) => {
       this.awaitingNotebook = true;
@@ -1300,8 +1393,7 @@ Output ONLY a JSON object:
           if (jsonStr.startsWith('```')) {
             jsonStr = jsonStr.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '');
           }
-          const obs = JSON.parse(jsonStr);
-          resolve(obs);
+          resolve(JSON.parse(jsonStr));
         } catch (e) {
           console.error('Structured observations parse failed:', e);
           resolve(null);
@@ -1313,7 +1405,7 @@ Output ONLY a JSON object:
         item: {
           type: 'message',
           role: 'user',
-          content: [{ type: 'input_text', text: prompt }]
+          content: [{ type: 'input_text', text: promptText }]
         }
       }));
       this.dataChannel.send(JSON.stringify({ type: 'response.create' }));
@@ -1348,12 +1440,85 @@ Output ONLY a JSON object:
   }
 
   disconnect() {
+    this._intentionalDisconnect = true;
+    this._reconnectAttempts = 0;
+    this._reconnecting = false;
     if (this.pc) {
       this.pc.close();
       this.pc = null;
       this.dataChannel = null;
     }
     this.isConnected = false;
+  }
+
+  /**
+   * Attempt WebRTC reconnection with exponential backoff.
+   * Max 3 attempts. Shows user feedback via showToast().
+   */
+  async _attemptReconnect() {
+    if (this._reconnecting || this._intentionalDisconnect) return;
+    if (this._reconnectAttempts >= this._maxReconnectAttempts) {
+      console.warn('GPT Voice Coach: max reconnection attempts reached');
+      if (typeof showToast === 'function') {
+        showToast('Voice coach disconnected. Falling back to text feedback.');
+      }
+      this.fallbackToSpeechSynthesis();
+      return;
+    }
+
+    this._reconnecting = true;
+    this._reconnectAttempts++;
+    const delay = Math.pow(2, this._reconnectAttempts) * 1000; // 2s, 4s, 8s
+
+    console.log(`GPT Voice Coach: reconnecting (attempt ${this._reconnectAttempts}/${this._maxReconnectAttempts}) in ${delay}ms`);
+    if (typeof showToast === 'function') {
+      showToast(`Voice coach reconnecting... (attempt ${this._reconnectAttempts})`);
+    }
+
+    await new Promise(r => setTimeout(r, delay));
+
+    try {
+      // Clean up old connection
+      if (this.pc) {
+        this.pc.close();
+        this.pc = null;
+        this.dataChannel = null;
+      }
+
+      // Get a fresh ephemeral key
+      let ephemeralKey = null;
+      if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+        const coachInstructions = this.getCoachingInstructions();
+        const tokenData = await supabaseClient.getRealtimeToken(coachInstructions, this.voice);
+        if (tokenData?.ephemeralKey) {
+          ephemeralKey = tokenData.ephemeralKey;
+        }
+      }
+
+      if (!ephemeralKey) {
+        throw new Error('Failed to get new token for reconnection');
+      }
+
+      await this.connectWebRTC(ephemeralKey, { skipGreeting: true });
+      this.isConnected = true;
+      this._reconnectAttempts = 0;
+      this._reconnecting = false;
+
+      console.log('GPT Voice Coach: reconnected successfully');
+      if (typeof showToast === 'function') {
+        showToast('Voice coach reconnected.');
+      }
+    } catch (e) {
+      console.error('GPT Voice Coach: reconnection failed:', e);
+      this._reconnecting = false;
+      // Will retry on next onclose event, or give up if max attempts reached
+      if (this._reconnectAttempts >= this._maxReconnectAttempts) {
+        if (typeof showToast === 'function') {
+          showToast('Voice coach disconnected. Using text feedback.');
+        }
+        this.fallbackToSpeechSynthesis();
+      }
+    }
   }
 }
 

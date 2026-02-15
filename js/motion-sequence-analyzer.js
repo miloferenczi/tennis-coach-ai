@@ -153,12 +153,18 @@ class MotionSequenceAnalyzer {
 
         // Look for downward then upward motion in hips/center of mass
         for (let i = 2; i < preparationData.length - 2; i++) {
-            const prev = preparationData[i - 2].joints.rightHip.y;
-            const current = preparationData[i].joints.rightHip.y;
-            const next = preparationData[i + 2].joints.rightHip.y;
+            const hip = preparationData[i].joints.rightHip;
+            const prevHip = preparationData[i - 2].joints.rightHip;
+            const nextHip = preparationData[i + 2].joints.rightHip;
+            if (!hip || !prevHip || !nextHip) continue;
+            // Skip frame if hip is not visible
+            if (typeof isLandmarkVisible === 'function' &&
+                (!isLandmarkVisible(hip) || !isLandmarkVisible(prevHip) || !isLandmarkVisible(nextHip))) {
+                continue;
+            }
 
             // Split step: down then up
-            if (current > prev && next < current) {
+            if (hip.y > prevHip.y && nextHip.y < hip.y) {
                 return true;
             }
         }
@@ -218,6 +224,12 @@ class MotionSequenceAnalyzer {
     estimateBackFootWeight(poseData) {
         const j = poseData.joints;
         if (!j.leftHip || !j.rightHip || !j.leftAnkle || !j.rightAnkle) return 0.5;
+        // Skip if hips or ankles not visible
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(j.leftHip) || !isLandmarkVisible(j.rightHip) ||
+             !isLandmarkVisible(j.leftAnkle) || !isLandmarkVisible(j.rightAnkle))) {
+            return 0.5;
+        }
 
         // Hip midpoint vs base-of-support midpoint on X axis
         const hipMidX = (j.leftHip.x + j.rightHip.x) / 2;
@@ -240,7 +252,13 @@ class MotionSequenceAnalyzer {
         const lastFrame = loadingData[loadingData.length - 1];
         const wrist = lastFrame.joints.rightWrist;
         const shoulder = lastFrame.joints.rightShoulder;
-        
+        if (!wrist || !shoulder) return false;
+        // Skip when landmarks not visible
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(wrist) || !isLandmarkVisible(shoulder))) {
+            return true; // degrade gracefully — don't penalize
+        }
+
         // Wrist should be behind shoulder during loading
         return wrist.x < shoulder.x;
     }
@@ -323,14 +341,23 @@ class MotionSequenceAnalyzer {
      */
     analyzeHipShoulderSeparation(accelerationData) {
         const separations = accelerationData.map(p => {
+            const j = p.joints;
+            if (!j.rightShoulder || !j.leftShoulder || !j.rightHip || !j.leftHip) return 0;
+            // Skip when shoulders or hips not visible
+            if (typeof isLandmarkVisible === 'function' &&
+                (!isLandmarkVisible(j.rightShoulder) || !isLandmarkVisible(j.leftShoulder) ||
+                 !isLandmarkVisible(j.rightHip) || !isLandmarkVisible(j.leftHip))) {
+                return 0;
+            }
+
             const shoulderAngle = Math.atan2(
-                p.joints.rightShoulder.y - p.joints.leftShoulder.y,
-                p.joints.rightShoulder.x - p.joints.leftShoulder.x
+                j.rightShoulder.y - j.leftShoulder.y,
+                j.rightShoulder.x - j.leftShoulder.x
             ) * 180 / Math.PI;
 
             const hipAngle = Math.atan2(
-                p.joints.rightHip.y - p.joints.leftHip.y,
-                p.joints.rightHip.x - p.joints.leftHip.x
+                j.rightHip.y - j.leftHip.y,
+                j.rightHip.x - j.leftHip.x
             ) * 180 / Math.PI;
 
             return Math.abs(shoulderAngle - hipAngle);
@@ -351,6 +378,13 @@ class MotionSequenceAnalyzer {
 
         const startJ = accelerationData[0].joints;
         const endJ = accelerationData[accelerationData.length - 1].joints;
+        if (!startJ.leftHip || !startJ.rightHip || !endJ.leftHip || !endJ.rightHip) return 0;
+        // Skip if hips not visible
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(startJ.leftHip) || !isLandmarkVisible(startJ.rightHip) ||
+             !isLandmarkVisible(endJ.leftHip) || !isLandmarkVisible(endJ.rightHip))) {
+            return 0.5; // neutral default
+        }
 
         // Use hip midpoint (both hips averaged) for center-of-mass proxy
         const startX = (startJ.leftHip.x + startJ.rightHip.x) / 2;
@@ -375,10 +409,22 @@ class MotionSequenceAnalyzer {
         let quality = 100;
         const contactFrame = contactData[0];
 
+        // Check visibility of key landmarks
+        const wrist = contactFrame.joints.rightWrist;
+        const shoulder = contactFrame.joints.rightShoulder;
+        const hip = contactFrame.joints.rightHip;
+        if (!wrist || !shoulder || !hip) {
+            return { quality: 50, issues: ['Key landmarks missing at contact'] };
+        }
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(wrist) || !isLandmarkVisible(shoulder) || !isLandmarkVisible(hip))) {
+            return { quality: 50, issues: ['Key landmarks not visible at contact'] };
+        }
+
         // Check contact point height (should be between waist and chest)
-        const wristHeight = contactFrame.joints.rightWrist.y;
-        const shoulderHeight = contactFrame.joints.rightShoulder.y;
-        const hipHeight = contactFrame.joints.rightHip.y;
+        const wristHeight = wrist.y;
+        const shoulderHeight = shoulder.y;
+        const hipHeight = hip.y;
 
         const idealHeight = (shoulderHeight + hipHeight) / 2;
         const heightDeviation = Math.abs(wristHeight - idealHeight);
@@ -500,13 +546,17 @@ class MotionSequenceAnalyzer {
      * Check if racket wraps around body
      */
     checkWrapAround(followThroughData) {
-        const start = followThroughData[0].joints.rightWrist;
         const end = followThroughData[followThroughData.length - 1].joints.rightWrist;
         const shoulder = followThroughData[followThroughData.length - 1].joints.leftShoulder;
+        if (!end || !shoulder) return false;
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(end) || !isLandmarkVisible(shoulder))) {
+            return true; // degrade gracefully
+        }
 
         // Wrist should end near opposite shoulder
         const distanceToShoulder = Math.sqrt(
-            Math.pow(end.x - shoulder.x, 2) + 
+            Math.pow(end.x - shoulder.x, 2) +
             Math.pow(end.y - shoulder.y, 2)
         );
 
@@ -519,7 +569,12 @@ class MotionSequenceAnalyzer {
     checkBalance(finalFrame) {
         const leftAnkle = finalFrame.joints.leftAnkle;
         const rightAnkle = finalFrame.joints.rightAnkle;
-        const nose = finalFrame.joints.nose || finalFrame.landmarks[0];
+        const nose = finalFrame.joints.nose || finalFrame.landmarks?.[0];
+        if (!leftAnkle || !rightAnkle || !nose) return true; // degrade gracefully
+        if (typeof isLandmarkVisible === 'function' &&
+            (!isLandmarkVisible(leftAnkle) || !isLandmarkVisible(rightAnkle) || !isLandmarkVisible(nose))) {
+            return true; // don't penalize when landmarks not visible
+        }
 
         // Center of mass should be between feet
         const feetCenter = (leftAnkle.x + rightAnkle.x) / 2;
@@ -830,6 +885,56 @@ class MotionSequenceAnalyzer {
     reset() {
         this.userSequenceHistory = [];
         console.log('Motion sequence analyzer reset');
+    }
+
+    /**
+     * Save adaptive state (reference library + compact history) for persistence
+     */
+    saveAdaptiveState() {
+        // Keep only userBaseline from referenceLibrary (not professional refs)
+        const refs = {};
+        for (const [type, data] of Object.entries(this.referenceLibrary)) {
+            if (data.userBaseline) refs[type] = { userBaseline: data.userBaseline };
+        }
+        // Compact history: keep last 20 per stroke type
+        const compactHistory = {};
+        for (const entry of this.userSequenceHistory) {
+            const t = entry.strokeType;
+            if (!compactHistory[t]) compactHistory[t] = [];
+            compactHistory[t].push({
+                quality: entry.quality?.overall ?? 0,
+                ts: entry.timestamp || Date.now()
+            });
+        }
+        for (const t of Object.keys(compactHistory)) {
+            compactHistory[t] = compactHistory[t].slice(-20);
+        }
+        return { referenceLibrary: refs, compactHistory };
+    }
+
+    /**
+     * Load persisted adaptive state
+     */
+    loadAdaptiveState(state) {
+        if (!state) return;
+        if (state.referenceLibrary) {
+            for (const [type, data] of Object.entries(state.referenceLibrary)) {
+                if (!this.referenceLibrary[type]) this.referenceLibrary[type] = {};
+                if (data.userBaseline) this.referenceLibrary[type].userBaseline = data.userBaseline;
+            }
+        }
+        if (state.compactHistory) {
+            // Rebuild minimal userSequenceHistory for trend calculations
+            for (const [type, entries] of Object.entries(state.compactHistory)) {
+                for (const e of entries) {
+                    this.userSequenceHistory.push({
+                        strokeType: type,
+                        quality: { overall: e.quality },
+                        timestamp: e.ts
+                    });
+                }
+            }
+        }
     }
 
     /**

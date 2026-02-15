@@ -23,7 +23,9 @@
 "refinement": ["collapsingElbowChickenWing", "closedStanceLimitingPower", "poorFollowThrough", "racketFaceOpen", "contactBehindBody"],
 "serve": ["poorServeTossArm", "noServeLegDrive", "noServeTrophyPosition", "lowServeContactPoint", "poorServeToss"],
 "visual": ["wrongGrip", "contactTooFarFront"],
-"positioning": ["lingeringNoMansLand", "poorRecoveryPosition", "noSplitStepAtNet"]
+"positioning": ["lingeringNoMansLand", "poorRecoveryPosition", "noSplitStepAtNet"],
+"volley": ["punchingNotSwinging", "volleyGripTooLow", "volleyTooDeep", "noSplitStepBeforeVolley"],
+"overhead": ["poorOverheadPositioning", "lowOverheadContactPoint"]
 },
 "issues": [
 {
@@ -757,6 +759,211 @@
 "expectedImprovement": {
 "positionScore": { "increase": 10 },
 "quality": { "increase": 8 }
+}
+},
+{
+"id": "punchingNotSwinging",
+"name": "Punching Not Swinging on Volley",
+"priority": 5,
+"category": "volley",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"volleyFollowThroughLength": { "min": 0.35 }
+},
+"confirming": {
+"courtZone": { "equals": "net" }
+}
+},
+"diagnosis": {
+"rootCause": "excessive_follow_through_on_volley",
+"symptoms": ["late_recovery", "loss_of_control", "overhitting_volleys"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["volley_control", "net_recovery"],
+"requires": ["continental_grip", "basic_volley_motion"]
+},
+"cueSelection": {
+"beginner": "Keep it short — just block the ball out in front. No big swing.",
+"intermediate": "Punch, don't swing. Short compact motion, firm wrist, catch the ball out front.",
+"advanced": "Absorb and redirect with a short, firm contact. Use the incoming pace — add angle, not power."
+},
+"keyMetrics": ["volleyFollowThroughLength", "courtZone"],
+"expectedImprovement": {
+"quality": { "increase": 10 },
+"consistency": { "increase": 12 }
+}
+},
+{
+"id": "volleyGripTooLow",
+"name": "Volley Contact Too Low (Wrist Below Shoulder)",
+"priority": 6,
+"category": "volley",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"volleyContactHeight": { "max": 0.40 }
+},
+"confirming": {
+"courtZone": { "equals": "net" }
+}
+},
+"diagnosis": {
+"rootCause": "racket_head_dropping_below_wrist",
+"symptoms": ["balls_into_net", "weak_volleys", "poor_reach"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["weak_volleys", "volley_errors"],
+"requires": ["continental_grip", "ready_position"]
+},
+"cueSelection": {
+"beginner": "Keep your hands up! Racket head above the wrist at all times at the net.",
+"intermediate": "Set the racket head above the net tape. Contact the ball at shoulder height with a firm wrist.",
+"advanced": "Maintain a high racket position between volleys. Step forward and across to keep contact in front and at shoulder level."
+},
+"keyMetrics": ["volleyContactHeight", "courtZone"],
+"expectedImprovement": {
+"quality": { "increase": 12 },
+"consistency": { "increase": 10 }
+}
+},
+{
+"id": "volleyTooDeep",
+"name": "Volley Contact Behind Front Foot",
+"priority": 6,
+"category": "volley",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"volleyContactDepth": { "min": 0.55 }
+},
+"confirming": {
+"courtZone": { "equals": "net" }
+}
+},
+"diagnosis": {
+"rootCause": "late_reaction_or_no_step",
+"symptoms": ["weak_volleys", "loss_of_angle", "defensive_volleys"]
+},
+"dependencies": {
+"mustFixFirst": ["noSplitStepAtNet"],
+"resolves": ["weak_volleys", "poor_angles"],
+"requires": ["split_step", "anticipation"]
+},
+"cueSelection": {
+"beginner": "Step forward to meet the ball — don't let it get behind you.",
+"intermediate": "Contact in front of your front foot. Step and catch it early for better angles.",
+"advanced": "Close the gap with a forward step. Contact well in front gives you control over angle and depth."
+},
+"keyMetrics": ["volleyContactDepth", "courtZone"],
+"expectedImprovement": {
+"quality": { "increase": 10 },
+"consistency": { "increase": 8 }
+}
+},
+{
+"id": "noSplitStepBeforeVolley",
+"name": "No Split Step Before Volley",
+"priority": 7,
+"category": "volley",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"volleySplitStepDetected": { "equals": false }
+},
+"confirming": {
+"courtZone": { "equals": "net" }
+}
+},
+"diagnosis": {
+"rootCause": "no_preparation_before_volley",
+"symptoms": ["flat_footed", "late_reaction", "reaching_for_volleys"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"blocksFixing": ["volleyTooDeep", "volleyGripTooLow"],
+"resolves": ["reaction_time", "volley_preparation"],
+"requires": ["footwork", "court_awareness"]
+},
+"cueSelection": {
+"beginner": "Do a small hop as your opponent hits — land on the balls of your feet, ready to move.",
+"intermediate": "Split step just before your opponent's contact. Land balanced, knees bent, racket up.",
+"advanced": "Time your split to load as you read the opponent's racket angle. Pre-load your first step direction during the hop."
+},
+"keyMetrics": ["volleySplitStepDetected", "courtZone"],
+"expectedImprovement": {
+"quality": { "increase": 10 },
+"positionScore": { "increase": 12 }
+}
+},
+{
+"id": "poorOverheadPositioning",
+"name": "Poor Overhead Positioning",
+"priority": 6,
+"category": "overhead",
+"impactLevel": "high",
+"detection": {
+"primary": {
+"overheadPositioningScore": { "max": 40 }
+},
+"confirming": {
+"overheadContactHeight": { "max": 0.65 }
+}
+},
+"diagnosis": {
+"rootCause": "late_setup_or_no_turn",
+"symptoms": ["off_balance_overhead", "weak_smash", "mishit_lob"]
+},
+"dependencies": {
+"mustFixFirst": [],
+"resolves": ["overhead_consistency", "smash_power"],
+"requires": ["footwork", "court_awareness"]
+},
+"cueSelection": {
+"beginner": "Turn sideways as soon as you see the lob. Take small steps back to get under the ball.",
+"intermediate": "Turn and shuffle: point at the ball with your non-hitting hand, take crossover steps to get behind it, set up under.",
+"advanced": "Early turn with a drop step. Track the ball with your off-hand, adjust with small steps so the ball comes to your hitting zone."
+},
+"keyMetrics": ["overheadPositioningScore", "overheadContactHeight"],
+"expectedImprovement": {
+"quality": { "increase": 15 },
+"consistency": { "increase": 12 }
+}
+},
+{
+"id": "lowOverheadContactPoint",
+"name": "Low Overhead Contact Point",
+"priority": 5,
+"category": "overhead",
+"impactLevel": "medium",
+"detection": {
+"primary": {
+"overheadContactHeight": { "max": 0.50 }
+},
+"confirming": {
+"overheadPositioningScore": { "max": 60 }
+}
+},
+"diagnosis": {
+"rootCause": "not_reaching_full_extension",
+"symptoms": ["weak_overhead", "lack_of_angle", "more_errors"]
+},
+"dependencies": {
+"mustFixFirst": ["poorOverheadPositioning"],
+"resolves": ["overhead_power", "overhead_angle"],
+"requires": ["positioning", "timing"]
+},
+"cueSelection": {
+"beginner": "Reach up as high as you can — hit the ball at the very top of your reach.",
+"intermediate": "Full arm extension at contact. Time your swing so you meet the ball at the peak — like a serve motion.",
+"advanced": "Use your legs to drive upward. Contact at full extension above your hitting shoulder. Think of it as a serve you don't toss."
+},
+"keyMetrics": ["overheadContactHeight", "overheadPositioningScore"],
+"expectedImprovement": {
+"overheadContactHeight": { "increase": 0.15 },
+"quality": { "increase": 10 }
 }
 }
 ],

@@ -388,3 +388,47 @@ create policy "Users can insert own confirmations"
 -- ============================================================
 ALTER TABLE public.improvement_tracker
   ADD COLUMN IF NOT EXISTS adaptive_thresholds jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- ============================================================
+-- 14. Subscription security: prevent client-side tier escalation
+-- ============================================================
+-- Check constraint: subscription_tier can only be one of the known values
+ALTER TABLE public.profiles
+  DROP CONSTRAINT IF EXISTS profiles_subscription_tier_check;
+ALTER TABLE public.profiles
+  ADD CONSTRAINT profiles_subscription_tier_check
+  CHECK (subscription_tier IN ('free', 'trial', 'pro'));
+
+-- Trigger: prevent users from setting subscription_tier to 'pro' directly.
+-- Only 'free' and 'trial' transitions are allowed via client RLS.
+-- 'pro' must be set by a service role (e.g., payment webhook).
+CREATE OR REPLACE FUNCTION public.protect_subscription_columns()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If subscription_tier is being changed to 'pro', only allow service role
+  IF NEW.subscription_tier = 'pro' AND OLD.subscription_tier != 'pro' THEN
+    -- Check if this is NOT a service role call (service role bypasses RLS entirely)
+    -- In RLS context, auth.uid() is set. Service role calls don't trigger RLS.
+    -- Since this trigger fires regardless, we check auth.role()
+    IF current_setting('request.jwt.claim.role', true) != 'service_role' THEN
+      RAISE EXCEPTION 'Cannot set subscription_tier to pro via client. Use payment flow.';
+    END IF;
+  END IF;
+
+  -- Prevent backdating trial_start_date (must be within last minute if being set)
+  IF NEW.trial_start_date IS DISTINCT FROM OLD.trial_start_date
+     AND NEW.trial_start_date IS NOT NULL THEN
+    IF NEW.trial_start_date < (now() - interval '1 minute') THEN
+      RAISE EXCEPTION 'Cannot backdate trial_start_date';
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS protect_subscription ON public.profiles;
+CREATE TRIGGER protect_subscription
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.protect_subscription_columns();

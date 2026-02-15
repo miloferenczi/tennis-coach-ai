@@ -45,19 +45,67 @@ class SceneAnalyzer {
     this.rollingFrameBuffer = [];
     this.maxRollingFrames = 60;
     this.isAnalyzingStroke = false;   // prevents overlapping stroke analysis calls
+
+    // Proxy mode: route Gemini calls through Edge Function (no raw key exposure)
+    this.useProxy = false;
   }
 
   /**
-   * Initialize with Gemini key from Supabase Edge Function.
-   * Call after auth is confirmed. Falls back gracefully if no key.
+   * Send a request to the Gemini API, routing through the proxy when available.
+   * Falls back to direct API call if a raw key is set and proxy is unavailable.
+   * @param {Object} requestBody - Gemini generateContent request body
+   * @param {AbortSignal} [signal] - optional abort signal
+   * @returns {Response|Object} fetch Response (direct) or parsed JSON (proxy), or null
+   */
+  async _callGemini(requestBody, signal) {
+    // Prefer proxy (no raw key exposure)
+    if (this.useProxy && typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
+      const data = await supabaseClient.callGeminiProxy(requestBody);
+      if (data) return { _proxyResult: true, data };
+      // If proxy fails, fall through to direct call if we have a key
+    }
+
+    // Direct call fallback (legacy — only when raw key is available)
+    if (this.geminiApiKey) {
+      return fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': this.geminiApiKey
+          },
+          body: JSON.stringify(requestBody),
+          signal: signal
+        }
+      );
+    }
+
+    return null;
+  }
+
+  /**
+   * Parse a Gemini response from either proxy or direct call.
+   * @returns {Object|null} parsed response data
+   */
+  _parseGeminiResponse(result) {
+    if (!result) return null;
+    if (result._proxyResult) return result.data;
+    return null; // fetch Responses are handled inline in legacy paths
+  }
+
+  /**
+   * Initialize with auth — enables proxy-based Gemini calls.
+   * No raw API key is exposed to the client.
+   * Call after auth is confirmed. Falls back gracefully if not authenticated.
    */
   async initializeWithAuth() {
     if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
-      const key = await supabaseClient.getGeminiKey();
-      if (key) {
-        this.setApiKey(key);
-        return true;
-      }
+      this.useProxy = true;
+      this.enabled = true;
+      this.consecutiveErrors = 0;
+      console.log('SceneAnalyzer: enabled via proxy');
+      return true;
     }
     return false;
   }
@@ -150,7 +198,7 @@ class SceneAnalyzer {
    * @returns {Promise<Object|null>} Visual analysis result or null on failure
    */
   async analyzeStroke(strokeType, detectedFaults, options = {}) {
-    if (!this.enabled || !this.geminiApiKey) return null;
+    if (!this.enabled || (!this.geminiApiKey && !this.useProxy)) return null;
     if (this.isAnalyzingStroke) return null;
     if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
     if (this.rollingFrameBuffer.length < 5) return null;
@@ -170,11 +218,16 @@ class SceneAnalyzer {
     ];
     const frames = indices.map(i => buf[i].base64);
 
+    // Phase labels for each of the 5 frames
+    const defaultPhaseNames = ['preparation', 'loading', 'acceleration', 'contact', 'follow-through'];
+    const perFrameLabels = options.phaseLabels?.length === 5
+      ? options.phaseLabels
+      : defaultPhaseNames;
+    const frameLabels = perFrameLabels.map((label, i) => `Frame ${i + 1} (${label})`);
+
     const faultList = (detectedFaults || []).map(f => f.name || f.id).join(', ') || 'none';
     const isServe = strokeType.toLowerCase().includes('serve');
 
-    // Build context additions
-    const phaseLabels = options.phaseLabels?.join(' → ') || 'preparation → loading → acceleration → contact → follow-through';
     const focusLine = options.focusAreas?.length
       ? `\nThis player is specifically working on: ${options.focusAreas.join(', ')}. Pay special attention to visual indicators of these focus areas.`
       : '';
@@ -183,8 +236,8 @@ class SceneAnalyzer {
     let promptText;
     if (isServe) {
       promptText = `You are an expert tennis coach analyzing a serve motion.
-These 5 frames show the serve from preparation to follow-through (chronological order).
-Frame phases: ${phaseLabels}
+These 5 frames show the serve from preparation to follow-through (chronological order):
+${frameLabels.join(', ')}
 
 The skeleton-based analysis already detected these faults: ${faultList}${focusLine}
 
@@ -199,8 +252,8 @@ Analyze this serve motion:
 Be specific and concise.`;
     } else {
       promptText = `You are an expert tennis coach analyzing a ${strokeType} stroke.
-These 5 frames show the stroke from preparation to follow-through (chronological order).
-Frame phases: ${phaseLabels}
+These 5 frames show the stroke from preparation to follow-through (chronological order):
+${frameLabels.join(', ')}
 
 The skeleton-based analysis already detected these faults: ${faultList}${focusLine}
 
@@ -280,17 +333,17 @@ Be specific and concise.`;
       };
     }
 
+    // Interleave frame labels with images for per-frame context
+    const labeledParts = [];
+    frames.forEach((base64, i) => {
+      labeledParts.push({ text: frameLabels[i] + ':' });
+      labeledParts.push({ inline_data: { mime_type: 'image/jpeg', data: base64 } });
+    });
+    labeledParts.push({ text: promptText });
+
     const requestBody = {
       contents: [{
-        parts: [
-          ...frames.map(base64 => ({
-            inline_data: {
-              mime_type: 'image/jpeg',
-              data: base64
-            }
-          })),
-          { text: promptText }
-        ]
+        parts: labeledParts
       }],
       generationConfig: {
         responseMimeType: 'application/json',
@@ -308,29 +361,27 @@ Be specific and concise.`;
     const timeout = setTimeout(() => controller.abort(), 6000);
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.geminiApiKey
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        }
-      );
-
+      const geminiResult = await this._callGemini(requestBody, controller.signal);
       clearTimeout(timeout);
 
-      if (!response.ok) {
-        console.warn(`SceneAnalyzer: stroke analysis API error ${response.status}`);
+      let data;
+      if (!geminiResult) {
         this.consecutiveErrors++;
         this.isAnalyzingStroke = false;
         return null;
+      } else if (geminiResult._proxyResult) {
+        data = geminiResult.data;
+      } else {
+        // Direct fetch response
+        if (!geminiResult.ok) {
+          console.warn(`SceneAnalyzer: stroke analysis API error ${geminiResult.status}`);
+          this.consecutiveErrors++;
+          this.isAnalyzingStroke = false;
+          return null;
+        }
+        data = await geminiResult.json();
       }
 
-      const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) {
         this.consecutiveErrors++;
@@ -376,15 +427,27 @@ Be specific and concise.`;
    * Called from RallyTracker.endRally() when Gemini enabled and rally had 3+ strokes.
    *
    * @param {Object} rallyData - Rally object from RallyTracker
+   * @param {Object} [timeWindow] - Optional { startTime, endTime } to filter frames
    * @returns {Promise<Object|null>} Tactical analysis result or null
    */
-  async analyzeRally(rallyData) {
-    if (!this.enabled || !this.geminiApiKey) return null;
+  async analyzeRally(rallyData, timeWindow) {
+    if (!this.enabled || (!this.geminiApiKey && !this.useProxy)) return null;
     if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
     if (this.rollingFrameBuffer.length < 5) return null;
 
-    // Extract up to 8 evenly-spaced keyframes (1/sec of rally duration)
-    const buf = this.rollingFrameBuffer;
+    // Filter frames to rally time window if provided
+    let buf;
+    if (timeWindow && timeWindow.startTime && timeWindow.endTime) {
+      buf = this.rollingFrameBuffer.filter(
+        f => f.timestamp >= timeWindow.startTime && f.timestamp <= timeWindow.endTime
+      );
+      // Fall back to full buffer if too few frames match the window
+      if (buf.length < 5) buf = this.rollingFrameBuffer;
+    } else {
+      buf = this.rollingFrameBuffer;
+    }
+
+    // Extract up to 8 evenly-spaced keyframes
     const frameCount = Math.min(8, buf.length);
     const step = Math.max(1, Math.floor(buf.length / frameCount));
     const frames = [];
@@ -441,32 +504,19 @@ Analyze these ${frames.length} keyframes from the rally and provide tactical ins
     const timeout = setTimeout(() => controller.abort(), 8000);
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.geminiApiKey
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        }
-      );
-
+      const geminiResult = await this._callGemini(requestBody, controller.signal);
       clearTimeout(timeout);
 
-      if (!response.ok) {
-        this.consecutiveErrors++;
-        return null;
+      let data;
+      if (!geminiResult) { this.consecutiveErrors++; return null; }
+      else if (geminiResult._proxyResult) { data = geminiResult.data; }
+      else {
+        if (!geminiResult.ok) { this.consecutiveErrors++; return null; }
+        data = await geminiResult.json();
       }
 
-      const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) {
-        this.consecutiveErrors++;
-        return null;
-      }
+      if (!text) { this.consecutiveErrors++; return null; }
 
       let result;
       try {
@@ -501,7 +551,7 @@ Analyze these ${frames.length} keyframes from the rally and provide tactical ins
    * Called at session end. Returns a short textual comparison or null.
    */
   async analyzeSessionProgress(context) {
-    if (!this.enabled || !this.geminiApiKey) return null;
+    if (!this.enabled || (!this.geminiApiKey && !this.useProxy)) return null;
     if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
 
     const requestBody = {
@@ -527,23 +577,17 @@ In 2-3 sentences: What visual difference explains the quality gap? What should t
     const timeout = setTimeout(() => controller.abort(), 6000);
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.geminiApiKey
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        }
-      );
-
+      const geminiResult = await this._callGemini(requestBody, controller.signal);
       clearTimeout(timeout);
-      if (!response.ok) { this.consecutiveErrors++; return null; }
 
-      const data = await response.json();
+      let data;
+      if (!geminiResult) { this.consecutiveErrors++; return null; }
+      else if (geminiResult._proxyResult) { data = geminiResult.data; }
+      else {
+        if (!geminiResult.ok) { this.consecutiveErrors++; return null; }
+        data = await geminiResult.json();
+      }
+
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) { this.consecutiveErrors++; return null; }
 
@@ -564,7 +608,7 @@ In 2-3 sentences: What visual difference explains the quality gap? What should t
    * @returns {Promise<string|null>} Text assessment or null
    */
   async analyzeDrill(drillFocus, repCount, totalReps, isComplete) {
-    if (!this.enabled || !this.geminiApiKey) return null;
+    if (!this.enabled || (!this.geminiApiKey && !this.useProxy)) return null;
     if (this.consecutiveErrors >= this.maxConsecutiveErrors) return null;
     if (this.rollingFrameBuffer.length < 3) return null;
 
@@ -597,23 +641,17 @@ Give one specific adjustment in 1-2 sentences. Be encouraging but precise.`;
     const timeout = setTimeout(() => controller.abort(), 4000);
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.geminiApiKey
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        }
-      );
-
+      const geminiResult = await this._callGemini(requestBody, controller.signal);
       clearTimeout(timeout);
-      if (!response.ok) { this.consecutiveErrors++; return null; }
 
-      const data = await response.json();
+      let data;
+      if (!geminiResult) { this.consecutiveErrors++; return null; }
+      else if (geminiResult._proxyResult) { data = geminiResult.data; }
+      else {
+        if (!geminiResult.ok) { this.consecutiveErrors++; return null; }
+        data = await geminiResult.json();
+      }
+
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!text) { this.consecutiveErrors++; return null; }
 
@@ -727,30 +765,26 @@ Analyze the frames (in chronological order, ~5 seconds apart) and determine:
     const timeout = setTimeout(() => controller.abort(), 8000);
 
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-goog-api-key': this.geminiApiKey
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        }
-      );
-
+      const geminiResult = await this._callGemini(requestBody, controller.signal);
       clearTimeout(timeout);
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'unknown');
-        console.warn(`SceneAnalyzer: Gemini API error ${response.status}`, errorText);
+      let data;
+      if (!geminiResult) {
         this.consecutiveErrors++;
         this.isAnalyzing = false;
         return;
+      } else if (geminiResult._proxyResult) {
+        data = geminiResult.data;
+      } else {
+        if (!geminiResult.ok) {
+          const errorText = await geminiResult.text().catch(() => 'unknown');
+          console.warn(`SceneAnalyzer: Gemini API error ${geminiResult.status}`, errorText);
+          this.consecutiveErrors++;
+          this.isAnalyzing = false;
+          return;
+        }
+        data = await geminiResult.json();
       }
-
-      const data = await response.json();
 
       // Parse Gemini response
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;

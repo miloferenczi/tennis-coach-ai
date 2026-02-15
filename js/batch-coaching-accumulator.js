@@ -24,6 +24,14 @@ class BatchCoachingAccumulator {
   }
 
   /**
+   * Set a callback for stroke-count-based batch flush (fallback when no SceneAnalyzer).
+   * @param {Function} callback - called with strokeType when threshold reached
+   */
+  setStrokeCountFlushCallback(callback) {
+    this._strokeCountFlushCallback = callback;
+  }
+
+  /**
    * Add a stroke to the accumulator.
    * @param {string} strokeType - e.g. 'forehand', 'backhand', 'serve'
    * @param {Object} data - extracted stroke analysis fields
@@ -62,6 +70,18 @@ class BatchCoachingAccumulator {
 
     this.buckets[strokeType].push(entry);
     this._lastEntry = entry;
+
+    // Stroke-count-based fallback flush: fire when threshold reached
+    // regardless of SceneAnalyzer state (covers no-Gemini case)
+    if (this._strokeCountFlushCallback) {
+      const threshold = this.isTrialMode ? this.trialThreshold : this.batchThreshold;
+      const watermark = this.watermarks[strokeType] || 0;
+      const undelivered = this.buckets[strokeType].length - watermark;
+      if (undelivered >= threshold) {
+        this._strokeCountFlushCallback(strokeType);
+      }
+    }
+
     return entry;
   }
 

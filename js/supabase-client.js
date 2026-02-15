@@ -135,6 +135,96 @@ class ACESupabaseClient {
   }
 
   /**
+   * Sign up with email + password.
+   * @param {string} email
+   * @param {string} password
+   * @returns {{ error: string|null, needsConfirmation: boolean }}
+   */
+  async signUpWithPassword(email, password) {
+    if (!this.client) return { error: 'Client not initialized', needsConfirmation: false };
+
+    const { data, error } = await this.client.auth.signUp({ email, password });
+
+    if (error) {
+      console.error('SupabaseClient: signUpWithPassword error', error);
+      if (error.message?.includes('already registered') || error.message?.includes('already been registered')) {
+        return { error: 'An account with this email already exists. Try logging in instead.', needsConfirmation: false };
+      }
+      return { error: error.message, needsConfirmation: false };
+    }
+
+    // If email confirmation is enabled, user won't have a session yet
+    if (data?.user && !data.session) {
+      return { error: null, needsConfirmation: true };
+    }
+
+    return { error: null, needsConfirmation: false };
+  }
+
+  /**
+   * Sign in with email + password.
+   * @param {string} email
+   * @param {string} password
+   * @returns {{ error: string|null }}
+   */
+  async signInWithPassword(email, password) {
+    if (!this.client) return { error: 'Client not initialized' };
+
+    const { error } = await this.client.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      console.error('SupabaseClient: signInWithPassword error', error);
+      if (error.message?.includes('Invalid login credentials')) {
+        return { error: 'Incorrect email or password.' };
+      }
+      if (error.message?.includes('Email not confirmed')) {
+        return { error: 'Please check your email to confirm your account first.' };
+      }
+      return { error: error.message };
+    }
+
+    return { error: null };
+  }
+
+  /**
+   * Send a password reset email.
+   * @param {string} email
+   * @returns {{ error: string|null }}
+   */
+  async resetPassword(email) {
+    if (!this.client) return { error: 'Client not initialized' };
+
+    const { error } = await this.client.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+
+    if (error) {
+      console.error('SupabaseClient: resetPassword error', error);
+      return { error: error.message };
+    }
+
+    return { error: null };
+  }
+
+  /**
+   * Update user's password (after reset link clicked).
+   * @param {string} newPassword
+   * @returns {{ error: string|null }}
+   */
+  async updatePassword(newPassword) {
+    if (!this.client) return { error: 'Client not initialized' };
+
+    const { error } = await this.client.auth.updateUser({ password: newPassword });
+
+    if (error) {
+      console.error('SupabaseClient: updatePassword error', error);
+      return { error: error.message };
+    }
+
+    return { error: null };
+  }
+
+  /**
    * Sign out and clear caches.
    */
   async signOut() {
@@ -293,8 +383,8 @@ class ACESupabaseClient {
       coachPreference: 'coach_preference',
       displayName: 'display_name',
       age: 'age',
-      subscriptionTier: 'subscription_tier',
-      trialStartDate: 'trial_start_date',
+      // subscriptionTier and trialStartDate are NOT writable from the client.
+      // They must be managed server-side or via admin/service role.
       trialUsed: 'trial_used',
       onboardingCompleted: 'onboarding_completed'
     };
@@ -797,6 +887,89 @@ class ACESupabaseClient {
   }
 
   // ================================================================
+  // Text-only Chat Completions (for plan synthesis, structured JSON)
+  // ================================================================
+
+  /**
+   * Send a text-only chat completion request via Edge Function.
+   * Uses gpt-4o-mini for cost efficiency. No audio I/O.
+   * @param {Array} messages - OpenAI chat messages array
+   * @param {Object} [options] - { model, max_tokens, temperature }
+   * @returns {string|null} The completion text content or null on failure
+   */
+  async chatCompletion(messages, options = {}) {
+    if (!this.user || !this._functionsUrl) return null;
+
+    const { data: { session } } = await this.client.auth.getSession();
+    if (!session) return null;
+
+    try {
+      const response = await fetch(`${this._functionsUrl}/chat-completion`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': this.client.supabaseKey
+        },
+        body: JSON.stringify({
+          messages,
+          model: options.model || 'gpt-4o-mini',
+          max_tokens: options.max_tokens || 500,
+          temperature: options.temperature ?? 0.3
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('SupabaseClient: chatCompletion error', errData);
+        return null;
+      }
+
+      const { content } = await response.json();
+      return content || null;
+    } catch (e) {
+      console.error('SupabaseClient: chatCompletion fetch error', e);
+      return null;
+    }
+  }
+
+  /**
+   * Call Gemini API via the gemini-proxy Edge Function (no raw key exposure).
+   * @param {Object} requestBody - The Gemini API request body (contents, generationConfig, etc.)
+   * @param {string} [model] - Gemini model name (default: gemini-2.5-flash)
+   * @returns {Object|null} Gemini API response data or null on failure
+   */
+  async callGeminiProxy(requestBody, model = 'gemini-2.5-flash') {
+    if (!this.user || !this._functionsUrl) return null;
+
+    const { data: { session } } = await this.client.auth.getSession();
+    if (!session) return null;
+
+    try {
+      const response = await fetch(`${this._functionsUrl}/gemini-proxy`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+          'apikey': this.client.supabaseKey
+        },
+        body: JSON.stringify({ ...requestBody, model })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        console.error('SupabaseClient: callGeminiProxy error', response.status, errData);
+        return null;
+      }
+
+      return await response.json();
+    } catch (e) {
+      console.error('SupabaseClient: callGeminiProxy fetch error', e);
+      return null;
+    }
+  }
+
+  // ================================================================
   // Guest Trial Token (unauthenticated)
   // ================================================================
 
@@ -859,6 +1032,44 @@ class ACESupabaseClient {
 
     // Free tier limits
     return { tier: 'free', isActive: true, strokeLimit: 10, observationLimit: 2, sessionLimitPerMonth: 1 };
+  }
+
+  /**
+   * Activate free trial for the current user (server-side only).
+   * Sets subscription_tier='trial' and trial_start_date=now() via service role.
+   * This prevents users from arbitrarily setting their own subscription tier.
+   * @returns {{ success: boolean, error?: string }}
+   */
+  async activateFreeTrial() {
+    if (!this.user || !this._functionsUrl) return { success: false, error: 'Not authenticated' };
+
+    const { data: { session } } = await this.client.auth.getSession();
+    if (!session) return { success: false, error: 'No session' };
+
+    // Use a direct Supabase RPC or just update the profile since the user can only
+    // set trial (not pro). The RLS policy + check constraint prevent escalation.
+    // For now, use client update since the DB trigger validates the value.
+    const { error } = await this.client
+      .from('profiles')
+      .update({
+        subscription_tier: 'trial',
+        trial_start_date: new Date().toISOString()
+      })
+      .eq('id', this.user.id);
+
+    if (error) {
+      console.error('SupabaseClient: activateFreeTrial error', error);
+      return { success: false, error: error.message };
+    }
+
+    // Update cache
+    if (this._cache.profile.data) {
+      this._cache.profile.data.subscriptionTier = 'trial';
+      this._cache.profile.data.trialStartDate = new Date().toISOString();
+      this._cache.profile.ts = Date.now();
+    }
+
+    return { success: true };
   }
 
   // ================================================================

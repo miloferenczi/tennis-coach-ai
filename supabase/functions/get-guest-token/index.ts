@@ -1,7 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const allowedOrigin = Deno.env.get("ALLOWED_ORIGIN") || "https://acecoach.ai";
+
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": allowedOrigin,
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
@@ -74,7 +76,7 @@ Deno.serve(async (req) => {
     }
 
     const tokenResponse = await fetch(
-      "https://api.openai.com/v1/realtime/sessions",
+      "https://api.openai.com/v1/realtime/client_secrets",
       {
         method: "POST",
         headers: {
@@ -82,10 +84,14 @@ Deno.serve(async (req) => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: "gpt-realtime",
-          voice: voice,
-          instructions: instructions,
-          input_audio_transcription: { model: "whisper-1" },
+          session: {
+            type: "realtime",
+            model: "gpt-realtime",
+            voice: voice,
+            instructions: instructions,
+            modalities: ["text", "audio"],
+            input_audio_transcription: { model: "whisper-1" },
+          }
         }),
       }
     );
@@ -104,14 +110,12 @@ Deno.serve(async (req) => {
 
     const tokenData = await tokenResponse.json();
 
-    const geminiKey = Deno.env.get("GEMINI_API_KEY") || null;
-
+    // Do NOT return raw Gemini key to unauthenticated guests
     return new Response(
       JSON.stringify({
-        ephemeralKey: tokenData.client_secret?.value,
-        expiresAt: tokenData.client_secret?.expires_at,
+        ephemeralKey: tokenData.value,
+        expiresAt: tokenData.expires_at,
         trialId: trial?.id,
-        geminiKey,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

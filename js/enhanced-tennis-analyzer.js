@@ -57,6 +57,79 @@ class EnhancedTennisAnalyzer {
     // Body-relative normalization
     this.landmarkFilter = null;  // Set externally via setLandmarkFilter()
     this.torsoLength = null;     // Cached once calibrated
+
+    // Skill-level hysteresis: prevent rapid reclassification
+    this._skillHysteresis = {
+      currentLevel: null,   // locked skill level
+      ntrpAnchor: null,     // NTRP self-report anchor (set externally)
+      consecutiveAtNew: 0,  // strokes at a different level
+      pendingLevel: null,   // candidate level
+      requiredConsecutive: 5, // strokes needed to reclassify
+      emaQuality: null,     // exponential moving average of quality
+      emaAlpha: 0.15        // EMA smoothing factor
+    };
+  }
+
+  /**
+   * Set NTRP self-report as anchor for skill-level hysteresis.
+   * Called during initialization after profile load.
+   */
+  setNtrpAnchor(ntrpLevel) {
+    if (!ntrpLevel) return;
+    this._skillHysteresis.ntrpAnchor = ntrpLevel;
+    // Map NTRP to initial skill level
+    const ntrp = parseFloat(ntrpLevel);
+    if (ntrp >= 5.0) this._skillHysteresis.currentLevel = 'elite';
+    else if (ntrp >= 4.0) this._skillHysteresis.currentLevel = 'advanced';
+    else if (ntrp >= 3.0) this._skillHysteresis.currentLevel = 'intermediate';
+    else this._skillHysteresis.currentLevel = 'beginner';
+  }
+
+  /**
+   * Get the hysteresis-stable skill level.
+   * Updates EMA and consecutive-stroke counter, only reclassifies after
+   * N consecutive strokes at a different level.
+   */
+  getStableSkillLevel(rawLevel, quality) {
+    const h = this._skillHysteresis;
+
+    // Update EMA of quality
+    if (h.emaQuality === null) {
+      h.emaQuality = quality;
+    } else {
+      h.emaQuality = h.emaAlpha * quality + (1 - h.emaAlpha) * h.emaQuality;
+    }
+
+    // Initialize current level from raw if not set (first stroke or no NTRP anchor)
+    if (!h.currentLevel) {
+      h.currentLevel = rawLevel;
+      return rawLevel;
+    }
+
+    // If raw level matches current, reset counter
+    if (rawLevel === h.currentLevel) {
+      h.consecutiveAtNew = 0;
+      h.pendingLevel = null;
+      return h.currentLevel;
+    }
+
+    // Raw level differs — track consecutive strokes at this new level
+    if (rawLevel === h.pendingLevel) {
+      h.consecutiveAtNew++;
+    } else {
+      h.pendingLevel = rawLevel;
+      h.consecutiveAtNew = 1;
+    }
+
+    // Only reclassify after N consecutive strokes at new level
+    if (h.consecutiveAtNew >= h.requiredConsecutive) {
+      h.currentLevel = rawLevel;
+      h.consecutiveAtNew = 0;
+      h.pendingLevel = null;
+      console.log('Skill level reclassified:', rawLevel, '(EMA quality:', Math.round(h.emaQuality), ')');
+    }
+
+    return h.currentLevel;
   }
 
   /**
@@ -64,6 +137,65 @@ class EnhancedTennisAnalyzer {
    */
   getLastStrokeData() {
     return this.lastStrokeData;
+  }
+
+  /**
+   * Save session-end state to localStorage for cross-session persistence.
+   * Called from index.html at session end.
+   */
+  saveAdaptiveState() {
+    try {
+      const state = {
+        skillLevel: this._skillHysteresis.currentLevel,
+        emaQuality: this._skillHysteresis.emaQuality,
+        ntrpAnchor: this._skillHysteresis.ntrpAnchor,
+        handedness: this.dominantHand,
+        motionSequence: this.motionSequenceAnalyzer?.saveAdaptiveState() || null,
+        savedAt: Date.now()
+      };
+      localStorage.setItem('ace_analyzer_state', JSON.stringify(state));
+    } catch (e) {
+      console.warn('Failed to save analyzer state:', e);
+    }
+  }
+
+  /**
+   * Load persisted adaptive state from localStorage.
+   * Called during initialization.
+   */
+  loadAdaptiveState() {
+    try {
+      const raw = localStorage.getItem('ace_analyzer_state');
+      if (!raw) return;
+      const state = JSON.parse(raw);
+      if (state.skillLevel) {
+        this._skillHysteresis.currentLevel = state.skillLevel;
+      }
+      if (state.emaQuality != null) {
+        this._skillHysteresis.emaQuality = state.emaQuality;
+      }
+      if (state.ntrpAnchor) {
+        this._skillHysteresis.ntrpAnchor = state.ntrpAnchor;
+      }
+      if (state.handedness) {
+        this.dominantHand = state.handedness;
+        this.handednessLocked = true;
+        // Propagate to subsystems
+        if (this.footworkAnalyzer) this.footworkAnalyzer.setDominantHand(state.handedness);
+        if (this.serveAnalyzer) this.serveAnalyzer.setDominantHand(state.handedness);
+        if (this.motionSequenceAnalyzer?.kineticChainAnalyzer) {
+          this.motionSequenceAnalyzer.kineticChainAnalyzer.setDominantHand(state.handedness);
+        }
+        if (this.physicsAnalyzer) this.physicsAnalyzer.setDominantHand(state.handedness);
+      }
+      // Restore per-stroke-type baselines and history
+      if (state.motionSequence && this.motionSequenceAnalyzer) {
+        this.motionSequenceAnalyzer.loadAdaptiveState(state.motionSequence);
+      }
+      console.log('Loaded analyzer state:', state.skillLevel, 'handedness:', state.handedness);
+    } catch (e) {
+      console.warn('Failed to load analyzer state:', e);
+    }
   }
 
   /**
@@ -88,6 +220,15 @@ class EnhancedTennisAnalyzer {
     this.activeFaults = [];
     this.lastDetectedPhase = null;
     this.torsoLength = null; // Re-calibrate on next session
+    // Reset hysteresis counters but preserve NTRP anchor
+    if (this._skillHysteresis) {
+      const anchor = this._skillHysteresis.ntrpAnchor;
+      this._skillHysteresis.consecutiveAtNew = 0;
+      this._skillHysteresis.pendingLevel = null;
+      this._skillHysteresis.emaQuality = null;
+      // Re-apply NTRP anchor if set
+      if (anchor) this.setNtrpAnchor(anchor);
+    }
     if (this.strokeClassifier) {
       this.strokeClassifier.setNormalized(false);
     }
@@ -199,15 +340,20 @@ class EnhancedTennisAnalyzer {
     // Detect handedness by comparing wrist speeds over time
     if (!this.handednessLocked && this.poseHistory.length > 1) {
       const prev = this.poseHistory[this.poseHistory.length - 2];
-      const rDx = landmarks[16].x - prev.landmarks[16].x;
-      const rDy = landmarks[16].y - prev.landmarks[16].y;
-      const lDx = landmarks[15].x - prev.landmarks[15].x;
-      const lDy = landmarks[15].y - prev.landmarks[15].y;
-      const rSpeed = Math.sqrt(rDx * rDx + rDy * rDy);
-      const lSpeed = Math.sqrt(lDx * lDx + lDy * lDy);
-      if (rSpeed > 0.01 || lSpeed > 0.01) {
-        if (rSpeed > lSpeed) this.handednessVotes.right++;
-        else this.handednessVotes.left++;
+      // Only vote when both wrists are visible
+      const rVisible = isLandmarkVisible(landmarks[16]) && isLandmarkVisible(prev.landmarks[16]);
+      const lVisible = isLandmarkVisible(landmarks[15]) && isLandmarkVisible(prev.landmarks[15]);
+      if (rVisible && lVisible) {
+        const rDx = landmarks[16].x - prev.landmarks[16].x;
+        const rDy = landmarks[16].y - prev.landmarks[16].y;
+        const lDx = landmarks[15].x - prev.landmarks[15].x;
+        const lDy = landmarks[15].y - prev.landmarks[15].y;
+        const rSpeed = Math.sqrt(rDx * rDx + rDy * rDy);
+        const lSpeed = Math.sqrt(lDx * lDx + lDy * lDy);
+        if (rSpeed > 0.01 || lSpeed > 0.01) {
+          if (rSpeed > lSpeed) this.handednessVotes.right++;
+          else this.handednessVotes.left++;
+        }
       }
       const totalVotes = this.handednessVotes.left + this.handednessVotes.right;
       if (totalVotes >= 30) {
@@ -218,6 +364,14 @@ class EnhancedTennisAnalyzer {
         }
         if (this.serveAnalyzer) {
           this.serveAnalyzer.setDominantHand(this.dominantHand);
+        }
+        // Propagate to kinetic chain analyzer (via motion sequence analyzer)
+        if (this.motionSequenceAnalyzer?.kineticChainAnalyzer) {
+          this.motionSequenceAnalyzer.kineticChainAnalyzer.setDominantHand(this.dominantHand);
+        }
+        // Propagate to physics analyzer
+        if (this.physicsAnalyzer) {
+          this.physicsAnalyzer.setDominantHand(this.dominantHand);
         }
         console.log('Handedness detected:', this.dominantHand);
       }
@@ -266,16 +420,32 @@ class EnhancedTennisAnalyzer {
   }
   
   calculateBasicAngles(landmarks) {
-    // Keep for UI compatibility
-    return {
-      elbowAngle: this.calculateAngle(landmarks[16], landmarks[14], landmarks[12]),
-      shoulderRotation: this.calculateRotation(landmarks[11], landmarks[12]),
-      hipShoulderSeparation: this.calculateSeparation(
-        landmarks[11], landmarks[12], 
-        landmarks[23], landmarks[24]
-      ),
-      kneeBend: this.calculateAngle(landmarks[26], landmarks[24], landmarks[28])
-    };
+    // Keep for UI compatibility — degrade to defaults when landmarks invisible
+    const isLeft = this.dominantHand === 'left';
+    const wristIdx = isLeft ? 15 : 16;
+    const elbowIdx = isLeft ? 13 : 14;
+    const shoulderIdx = isLeft ? 11 : 12;
+    const kneeIdx = isLeft ? 25 : 26;
+    const hipIdx = isLeft ? 23 : 24;
+    const ankleIdx = isLeft ? 27 : 28;
+
+    const elbowAngle = areLandmarksVisible(landmarks, [wristIdx, elbowIdx, shoulderIdx])
+      ? this.calculateAngle(landmarks[wristIdx], landmarks[elbowIdx], landmarks[shoulderIdx])
+      : 140; // safe default
+
+    const shoulderRotation = areLandmarksVisible(landmarks, [11, 12])
+      ? this.calculateRotation(landmarks[11], landmarks[12])
+      : 0;
+
+    const hipShoulderSeparation = areLandmarksVisible(landmarks, [11, 12, 23, 24])
+      ? this.calculateSeparation(landmarks[11], landmarks[12], landmarks[23], landmarks[24])
+      : 0;
+
+    const kneeBend = areLandmarksVisible(landmarks, [kneeIdx, hipIdx, ankleIdx])
+      ? this.calculateAngle(landmarks[kneeIdx], landmarks[hipIdx], landmarks[ankleIdx])
+      : 150; // safe default
+
+    return { elbowAngle, shoulderRotation, hipShoulderSeparation, kneeBend };
   }
   
   calculateAngle(p1, p2, p3) {
@@ -502,7 +672,10 @@ class EnhancedTennisAnalyzer {
       serveAnalysis: null,
 
       // Biomechanical checkpoint evaluation (populated below)
-      biomechanicalEvaluation: null
+      biomechanicalEvaluation: null,
+
+      // Contact frame landmarks for visibility gating in fault detectors
+      _contactLandmarks: contactFrame.landmarks || null
     };
 
     // Run footwork analysis using the new FootworkAnalyzer
@@ -690,9 +863,13 @@ class EnhancedTennisAnalyzer {
     this.sessionStats.strokeTypes[type] = 
       (this.sessionStats.strokeTypes[type] || 0) + 1;
     
-    // Track skill level per stroke type
+    // Track skill level per stroke type with hysteresis
     if (strokeData.proComparison) {
-      this.sessionStats.skillLevels[type] = strokeData.proComparison.skillLevel;
+      const rawLevel = strokeData.proComparison.skillLevel;
+      const stableLevel = this.getStableSkillLevel(rawLevel, strokeData.quality.overall);
+      this.sessionStats.skillLevels[type] = stableLevel;
+      // Expose stable level on stroke data for downstream consumers
+      strokeData.proComparison.stableSkillLevel = stableLevel;
     }
     
     // Build player metrics for coaching orchestrator
@@ -1049,10 +1226,16 @@ class EnhancedTennisAnalyzer {
    */
   estimateForwardMomentum() {
     if (this.poseHistory.length < 10) return 0.5;
-    
+
     const start = this.poseHistory[0].joints;
     const end = this.poseHistory[this.poseHistory.length - 1].joints;
-    
+    if (!start.rightHip || !end.rightHip) return 0.5;
+    // Skip if hips not visible
+    if (typeof isLandmarkVisible === 'function' &&
+        (!isLandmarkVisible(start.rightHip) || !isLandmarkVisible(end.rightHip))) {
+      return 0.5;
+    }
+
     // Check if center of mass moved forward
     const hipMovement = end.rightHip.x - start.rightHip.x;
     
@@ -1066,9 +1249,16 @@ class EnhancedTennisAnalyzer {
    */
   estimateBackFootWeight() {
     if (this.poseHistory.length < 5) return 0.5;
-    
+
     const contactFrame = this.poseHistory[this.poseHistory.length - 1];
-    
+    if (!contactFrame.joints.rightAnkle || !contactFrame.joints.leftAnkle) return 0.5;
+    // Skip if ankles not visible
+    if (typeof isLandmarkVisible === 'function' &&
+        (!isLandmarkVisible(contactFrame.joints.rightAnkle) ||
+         !isLandmarkVisible(contactFrame.joints.leftAnkle))) {
+      return 0.5;
+    }
+
     // Check ankle heights (higher back ankle = weight on back foot)
     const backAnkleHeight = contactFrame.joints.rightAnkle.y;
     const frontAnkleHeight = contactFrame.joints.leftAnkle.y;

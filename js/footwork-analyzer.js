@@ -69,6 +69,12 @@ class FootworkAnalyzer {
     if (!j.leftAnkle || !j.rightAnkle || !j.leftHip || !j.rightHip) {
       return { type: 'neutral', angle: 0 };
     }
+    // Skip when ankles or hips not visible
+    if (typeof isLandmarkVisible === 'function' &&
+        (!isLandmarkVisible(j.leftAnkle) || !isLandmarkVisible(j.rightAnkle) ||
+         !isLandmarkVisible(j.leftHip) || !isLandmarkVisible(j.rightHip))) {
+      return { type: 'neutral', angle: 0 };
+    }
 
     // Body-facing direction: hip midpoint → shoulder midpoint
     const hipMidX = (j.leftHip.x + j.rightHip.x) / 2;
@@ -113,6 +119,12 @@ class FootworkAnalyzer {
   calculateBaseWidth(contactFrame) {
     const j = contactFrame.joints;
     if (!j.leftAnkle || !j.rightAnkle || !j.leftShoulder || !j.rightShoulder) {
+      return { distance: 0, shoulderWidth: 0, ratio: 1.0, assessment: 'normal' };
+    }
+    // Skip when key landmarks not visible
+    if (typeof isLandmarkVisible === 'function' &&
+        (!isLandmarkVisible(j.leftAnkle) || !isLandmarkVisible(j.rightAnkle) ||
+         !isLandmarkVisible(j.leftShoulder) || !isLandmarkVisible(j.rightShoulder))) {
       return { distance: 0, shoulderWidth: 0, ratio: 1.0, assessment: 'normal' };
     }
 
