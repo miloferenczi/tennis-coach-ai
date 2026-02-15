@@ -49,8 +49,10 @@ class CalibrationTool {
       minTrackingConfidence: 0.5
     });
 
-    // Create a dedicated analyzer for calibration
+    // Create a dedicated analyzer and landmark filter for calibration
     this.analyzer = new EnhancedTennisAnalyzer();
+    this.landmarkFilter = new LandmarkFilter();
+    this._frameTimestamp = 0;
 
     return new Promise((resolve, reject) => {
       this.pose.onResults((results) => this.onPoseResults(results));
@@ -83,8 +85,9 @@ class CalibrationTool {
       startTime: Date.now()
     };
 
-    // Reset analyzer state
+    // Reset analyzer and landmark filter state
     this.analyzer.resetSession();
+    this.landmarkFilter = new LandmarkFilter();
 
     // Load video
     const videoInfo = await this.loadVideo(file);
@@ -106,6 +109,9 @@ class CalibrationTool {
 
       // Draw frame to canvas
       this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
+
+      // Set timestamp for onPoseResults callback (ms)
+      this._frameTimestamp = time * 1000;
 
       // Run pose detection
       await this.pose.send({ image: this.canvas });
@@ -189,48 +195,21 @@ class CalibrationTool {
   onPoseResults(results) {
     if (!results.poseLandmarks || !this.isCalibrating) return;
 
-    // Convert landmarks to the format our analyzer expects
-    const landmarks = results.poseLandmarks;
+    let landmarks = results.poseLandmarks;
 
-    // Build pose data structure matching what the main app uses
-    const poseData = this.buildPoseData(landmarks);
+    // Apply landmark filtering (body-relative normalization) — same as live app
+    if (this.landmarkFilter) {
+      landmarks = this.landmarkFilter.filterLandmarks(landmarks, this._frameTimestamp);
+    }
 
-    // Feed to analyzer (same as main app)
-    this.analyzer.analyze(poseData);
+    // Feed to analyzer using the correct API (same as main app)
+    this.analyzer.analyzePose(landmarks, this._frameTimestamp);
 
     // Check if a stroke was detected
     const strokeData = this.analyzer.getLastStrokeData();
     if (strokeData && !this.isStrokeAlreadyRecorded(strokeData)) {
       this.recordStroke(strokeData);
     }
-  }
-
-  /**
-   * Build pose data structure from landmarks
-   */
-  buildPoseData(landmarks) {
-    // Map MediaPipe landmarks to our joint structure
-    const joints = {
-      nose: landmarks[0],
-      leftShoulder: landmarks[11],
-      rightShoulder: landmarks[12],
-      leftElbow: landmarks[13],
-      rightElbow: landmarks[14],
-      leftWrist: landmarks[15],
-      rightWrist: landmarks[16],
-      leftHip: landmarks[23],
-      rightHip: landmarks[24],
-      leftKnee: landmarks[25],
-      rightKnee: landmarks[26],
-      leftAnkle: landmarks[27],
-      rightAnkle: landmarks[28]
-    };
-
-    return {
-      landmarks,
-      joints,
-      timestamp: Date.now()
-    };
   }
 
   /**
