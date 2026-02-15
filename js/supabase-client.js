@@ -264,6 +264,13 @@ class ACESupabaseClient {
   // ================================================================
 
   /**
+   * Clear the profile cache so the next loadProfile() fetches fresh data.
+   */
+  clearProfileCache() {
+    this._cache.profile = { data: null, ts: 0 };
+  }
+
+  /**
    * Load user profile from Supabase. Uses 5-min cache.
    * @returns {Object} profile data in camelCase
    */

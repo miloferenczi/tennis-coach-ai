@@ -6476,7 +6476,7 @@
             // Safety net: if authenticated user with completed onboarding reaches here, skip to app
             if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
                 const profile = (typeof playerProfile !== 'undefined') ? playerProfile.profile : null;
-                if (profile?.onboardingCompleted) {
+                if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
                     transitionScreens('obSportScreen', 'permissionScreen');
                     return;
                 }
@@ -7056,7 +7056,22 @@ This is a demo — make them feel excited about the coaching experience.`;
             }
 
             // onAuthChange may have already handled the transition
-            if (appFullyInitialized) return;
+            if (appFullyInitialized) {
+                // Already authenticated (e.g., re-login after being sent to onboarding).
+                // Still need to navigate away from login screen.
+                try {
+                    supabaseClient.clearProfileCache();
+                    const profile = await supabaseClient.loadProfile();
+                    if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
+                        showWelcomeScreenFrom('loginScreen');
+                    } else {
+                        transitionScreens('loginScreen', 'obSportScreen');
+                    }
+                } catch (e) {
+                    window.location.reload();
+                }
+                return;
+            }
 
             // Fallback: handle transition directly in case onAuthChange didn't fire or failed
             try {
@@ -7065,7 +7080,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 localStorage.setItem('ace_user_email', email);
                 const profile = await supabaseClient.loadProfile();
                 if (profile?.displayName) localStorage.setItem('ace_user_display_name', profile.displayName);
-                if (profile?.onboardingCompleted) {
+                if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
                     showWelcomeScreenFrom('loginScreen');
                 } else {
                     transitionScreens('loginScreen', 'obSportScreen');
@@ -7136,7 +7151,21 @@ This is a demo — make them feel excited about the coaching experience.`;
             }
 
             // onAuthChange may have already handled the transition
-            if (appFullyInitialized) return;
+            if (appFullyInitialized) {
+                // Already authenticated — still need to navigate away
+                try {
+                    supabaseClient.clearProfileCache();
+                    const profile = await supabaseClient.loadProfile();
+                    if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
+                        showWelcomeScreenFrom('welcomeBackScreen');
+                    } else {
+                        transitionScreens('welcomeBackScreen', 'obSportScreen');
+                    }
+                } catch (e) {
+                    window.location.reload();
+                }
+                return;
+            }
 
             // Fallback: handle transition directly in case onAuthChange didn't fire or failed
             try {
@@ -7145,7 +7174,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 localStorage.setItem('ace_user_email', email);
                 const profile = await supabaseClient.loadProfile();
                 if (profile?.displayName) localStorage.setItem('ace_user_display_name', profile.displayName);
-                if (profile?.onboardingCompleted) {
+                if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
                     showWelcomeScreenFrom('welcomeBackScreen');
                 } else {
                     transitionScreens('welcomeBackScreen', 'obSportScreen');
@@ -7220,7 +7249,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             statusEl.style.color = '#A0F0FF';
 
             const profile = await supabaseClient.loadProfile();
-            if (profile?.onboardingCompleted) {
+            if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
                 appFullyInitialized = true;
                 showWelcomeScreenFrom('resetPasswordScreen');
             } else {
@@ -7236,7 +7265,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             // If user is authenticated with completed onboarding, don't re-onboard — go to app
             if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
                 const profile = (typeof playerProfile !== 'undefined') ? playerProfile.profile : null;
-                if (profile?.onboardingCompleted) {
+                if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
                     transitionScreens('welcomeBackScreen', 'permissionScreen');
                     return;
                 }
@@ -10124,7 +10153,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                         if (loginVisible) fromScreen = 'loginScreen';
                         else if (welcomeBackVisible) fromScreen = 'welcomeBackScreen';
 
-                        if (profile?.onboardingCompleted) {
+                        if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
                             appFullyInitialized = true;
                             showWelcomeScreenFrom(fromScreen);
                         } else {
@@ -10141,7 +10170,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                     if (profile?.displayName) {
                         localStorage.setItem('ace_user_display_name', profile.displayName);
                     }
-                    if (profile?.onboardingCompleted) {
+                    if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
                         appFullyInitialized = true;
                         showWelcomeScreen();
                     } else {
@@ -10173,7 +10202,7 @@ This is a demo — make them feel excited about the coaching experience.`;
                 if (user.email) localStorage.setItem('ace_user_email', user.email);
                 if (profile?.displayName) localStorage.setItem('ace_user_display_name', profile.displayName);
 
-                if (profile?.onboardingCompleted) {
+                if (profile?.onboardingCompleted || profile?.totalSessions > 0) {
                     // Returning authenticated user — show welcome
                     appFullyInitialized = true;
                     showWelcomeScreen();
