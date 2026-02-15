@@ -431,11 +431,17 @@ DRILL MODE ACTIVE:
         const sessionConfig = {
           type: 'realtime',
           model: 'gpt-realtime',
-          voice: this.voice || 'alloy',
           instructions: this.getCoachingInstructions(),
-          modalities: ['text', 'audio'],
-          input_audio_transcription: { model: 'whisper-1' },
-          turn_detection: { type: 'server_vad' }
+          output_modalities: ['audio'],
+          audio: {
+            input: {
+              transcription: { model: 'whisper-1' },
+              turn_detection: { type: 'server_vad' }
+            },
+            output: {
+              voice: this.voice || 'alloy'
+            }
+          }
         };
 
         const form = new FormData();
