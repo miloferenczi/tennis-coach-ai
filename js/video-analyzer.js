@@ -164,12 +164,10 @@ class VideoAnalyzer {
           let landmarks = results.poseLandmarks;
 
           // Apply landmark filtering (body-relative normalization)
-          if (this.landmarkFilter) {
-            landmarks = this.landmarkFilter.filter(landmarks);
-          }
-
-          // Feed through the full analysis pipeline
           const timestamp = time * 1000; // ms
+          if (this.landmarkFilter) {
+            landmarks = this.landmarkFilter.filterLandmarks(landmarks, timestamp);
+          }
           this.analyzer.analyzePose(landmarks, timestamp);
 
           // Fire onFrame callback for live skeleton rendering
