@@ -818,6 +818,27 @@ class ACESupabaseClient {
   // ================================================================
 
   /**
+   * Get a valid (non-expired) access token, refreshing if needed.
+   * getSession() returns the cached session without network calls —
+   * if the token has expired before the background refresh fires,
+   * the Edge Function gateway rejects it with 401.
+   */
+  async _getValidAccessToken() {
+    const { data: { session } } = await this.client.auth.getSession();
+    if (!session) return null;
+
+    // expires_at is a Unix timestamp in seconds
+    const now = Math.floor(Date.now() / 1000);
+    if (session.expires_at && (session.expires_at - now) < 60) {
+      console.log('SupabaseClient: proactively refreshing token (expires in <60s)');
+      const { data: { session: fresh } } = await this.client.auth.refreshSession();
+      return fresh?.access_token || null;
+    }
+
+    return session.access_token;
+  }
+
+  /**
    * Get an OpenAI Realtime ephemeral token via Edge Function.
    * @param {string} instructions - GPT coaching instructions
    * @param {string} voice - voice ID (default: alloy)
@@ -826,23 +847,43 @@ class ACESupabaseClient {
   async getRealtimeToken(instructions, voice = 'alloy') {
     if (!this.user || !this._functionsUrl) return null;
 
-    const { data: { session } } = await this.client.auth.getSession();
-    if (!session) return null;
+    let accessToken = await this._getValidAccessToken();
+    if (!accessToken) return null;
+
+    const url = `${this._functionsUrl}/get-realtime-token`;
+    const body = JSON.stringify({ instructions, voice });
 
     try {
-      const response = await fetch(`${this._functionsUrl}/get-realtime-token`, {
+      let response = await fetch(url, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'apikey': this.client.supabaseKey
         },
-        body: JSON.stringify({ instructions, voice })
+        body
       });
+
+      // 401 = token rejected — force refresh and retry once
+      if (response.status === 401) {
+        console.warn('SupabaseClient: getRealtimeToken 401, refreshing token and retrying...');
+        const { data: { session: fresh } } = await this.client.auth.refreshSession();
+        if (fresh) {
+          response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${fresh.access_token}`,
+              'Content-Type': 'application/json',
+              'apikey': this.client.supabaseKey
+            },
+            body
+          });
+        }
+      }
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        console.error('SupabaseClient: getRealtimeToken error', errData);
+        console.error(`SupabaseClient: getRealtimeToken error (${response.status})`, errData);
         return null;
       }
 
@@ -866,14 +907,14 @@ class ACESupabaseClient {
       return cached.data;
     }
 
-    const { data: { session } } = await this.client.auth.getSession();
-    if (!session) return null;
+    const accessToken = await this._getValidAccessToken();
+    if (!accessToken) return null;
 
     try {
       const response = await fetch(`${this._functionsUrl}/get-gemini-key`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'apikey': this.client.supabaseKey
         }
@@ -907,14 +948,14 @@ class ACESupabaseClient {
   async chatCompletion(messages, options = {}) {
     if (!this.user || !this._functionsUrl) return null;
 
-    const { data: { session } } = await this.client.auth.getSession();
-    if (!session) return null;
+    const accessToken = await this._getValidAccessToken();
+    if (!accessToken) return null;
 
     try {
       const response = await fetch(`${this._functionsUrl}/chat-completion`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'apikey': this.client.supabaseKey
         },
@@ -949,14 +990,14 @@ class ACESupabaseClient {
   async callGeminiProxy(requestBody, model = 'gemini-2.5-flash') {
     if (!this.user || !this._functionsUrl) return null;
 
-    const { data: { session } } = await this.client.auth.getSession();
-    if (!session) return null;
+    const accessToken = await this._getValidAccessToken();
+    if (!accessToken) return null;
 
     try {
       const response = await fetch(`${this._functionsUrl}/gemini-proxy`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'apikey': this.client.supabaseKey
         },
@@ -1270,14 +1311,14 @@ class ACESupabaseClient {
   async submitTelemetry(payload) {
     if (!this.user || !this._functionsUrl || !payload) return;
 
-    const { data: { session } } = await this.client.auth.getSession();
-    if (!session) return;
+    const accessToken = await this._getValidAccessToken();
+    if (!accessToken) return;
 
     try {
       const response = await fetch(`${this._functionsUrl}/submit-telemetry`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${session.access_token}`,
+          'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json',
           'apikey': this.client.supabaseKey
         },
