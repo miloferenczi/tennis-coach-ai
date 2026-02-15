@@ -7052,8 +7052,28 @@ This is a demo — make them feel excited about the coaching experience.`;
                 statusEl.style.color = '#ff6b6b';
                 btn.disabled = false;
                 btn.innerHTML = 'LOG IN <span style="margin-left:4px;">&rarr;</span>';
+                return;
             }
-            // On success, onAuthChange fires SIGNED_IN → handles transition
+
+            // onAuthChange may have already handled the transition
+            if (appFullyInitialized) return;
+
+            // Fallback: handle transition directly in case onAuthChange didn't fire or failed
+            try {
+                appFullyInitialized = true;
+                await loadUserData();
+                localStorage.setItem('ace_user_email', email);
+                const profile = await supabaseClient.loadProfile();
+                if (profile?.displayName) localStorage.setItem('ace_user_display_name', profile.displayName);
+                if (profile?.onboardingCompleted) {
+                    showWelcomeScreenFrom('loginScreen');
+                } else {
+                    transitionScreens('loginScreen', 'obSportScreen');
+                }
+            } catch (e) {
+                console.error('loginWithPassword transition error:', e);
+                window.location.reload();
+            }
         }
 
         async function loginForgotPassword() {
@@ -7112,8 +7132,28 @@ This is a demo — make them feel excited about the coaching experience.`;
                 statusEl.style.color = '#ff6b6b';
                 btn.disabled = false;
                 btn.innerHTML = 'LOG IN <span style="margin-left:4px;">&rarr;</span>';
+                return;
             }
-            // On success, onAuthChange fires SIGNED_IN → handles transition
+
+            // onAuthChange may have already handled the transition
+            if (appFullyInitialized) return;
+
+            // Fallback: handle transition directly in case onAuthChange didn't fire or failed
+            try {
+                appFullyInitialized = true;
+                await loadUserData();
+                localStorage.setItem('ace_user_email', email);
+                const profile = await supabaseClient.loadProfile();
+                if (profile?.displayName) localStorage.setItem('ace_user_display_name', profile.displayName);
+                if (profile?.onboardingCompleted) {
+                    showWelcomeScreenFrom('welcomeBackScreen');
+                } else {
+                    transitionScreens('welcomeBackScreen', 'obSportScreen');
+                }
+            } catch (e) {
+                console.error('welcomeBackLoginWithPassword transition error:', e);
+                window.location.reload();
+            }
         }
 
         async function welcomeBackForgotPassword() {
@@ -8623,7 +8663,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             });
 
             // Lazy-populate content
-            if (tabName === 'upload' && !document.getElementById('uploadTabContent').hasChildNodes()) {
+            if (tabName === 'upload' && !document.getElementById('uploadTabContent').querySelector('#analysisModeContainer')) {
                 // Move analysis mode container into upload tab
                 const amc = document.getElementById('analysisModeContainer');
                 if (amc) {
@@ -9913,6 +9953,10 @@ This is a demo — make them feel excited about the coaching experience.`;
          * Show the welcome/permission screen with returning user context.
          */
         function showWelcomeScreenFrom(fromScreenId) {
+            // Ensure onboarding trial overlay is hidden for returning users
+            const trialOverlay = document.getElementById('obTrialOverlay');
+            if (trialOverlay) trialOverlay.style.display = 'none';
+
             // Update welcome for returning users
             if (typeof playerProfile !== 'undefined' && playerProfile.isLoaded) {
                 const profile = playerProfile.profile;
@@ -9993,7 +10037,11 @@ This is a demo — make them feel excited about the coaching experience.`;
 
                 if (event === 'SIGNED_IN' && user) {
                     // Skip if app is already running (token refresh, not a new sign-in)
-                    if (appFullyInitialized) return;
+                    // Also skip if the direct login handler already handled the transition
+                    if (appFullyInitialized || window._signInHandlerRunning) return;
+                    window._signInHandlerRunning = true;
+
+                    try {
                     // Migrate old localStorage data if exists
                     if (supabaseClient.hasLocalStorageData()) {
                         showToast('Migrating your data...');
@@ -10001,7 +10049,12 @@ This is a demo — make them feel excited about the coaching experience.`;
                         showToast('Data migrated successfully!');
                     }
 
+                    // Re-check after async — direct login handler may have completed
+                    if (appFullyInitialized) return;
+
                     await loadUserData();
+
+                    if (appFullyInitialized) return;
 
                     // Store email for returning user detection
                     if (user.email) {
@@ -10095,6 +10148,10 @@ This is a demo — make them feel excited about the coaching experience.`;
                         // Signed in but never completed onboarding
                         appFullyInitialized = true;
                         transitionScreens('checkingAuthScreen', 'obSportScreen');
+                    }
+
+                    } finally {
+                        window._signInHandlerRunning = false;
                     }
                 }
             });
