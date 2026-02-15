@@ -845,13 +845,29 @@ class ACESupabaseClient {
    * @returns {{ ephemeralKey: string, expiresAt: number }|null}
    */
   async getRealtimeToken(instructions, voice = 'alloy') {
-    if (!this.user || !this._functionsUrl) return null;
+    if (!this.user || !this._functionsUrl) {
+      console.warn(`SupabaseClient: getRealtimeToken skipped — user: ${!!this.user}, functionsUrl: ${!!this._functionsUrl}`);
+      return null;
+    }
 
     let accessToken = await this._getValidAccessToken();
-    if (!accessToken) return null;
+    if (!accessToken) {
+      console.warn('SupabaseClient: getRealtimeToken — no valid access token available');
+      return null;
+    }
+
+    // Decode JWT to check expiry (don't log sensitive claims)
+    try {
+      const payload = JSON.parse(atob(accessToken.split('.')[1]));
+      const expiresIn = payload.exp - Math.floor(Date.now() / 1000);
+      console.log(`SupabaseClient: getRealtimeToken — token expires in ${expiresIn}s, sub: ${payload.sub}, iss: ${payload.iss}`);
+    } catch (e) {
+      console.warn('SupabaseClient: getRealtimeToken — could not decode token', e.message);
+    }
 
     const url = `${this._functionsUrl}/get-realtime-token`;
     const body = JSON.stringify({ instructions, voice });
+    console.log(`SupabaseClient: getRealtimeToken — calling ${url}`);
 
     try {
       let response = await fetch(url, {
@@ -866,9 +882,15 @@ class ACESupabaseClient {
 
       // 401 = token rejected — force refresh and retry once
       if (response.status === 401) {
-        console.warn('SupabaseClient: getRealtimeToken 401, refreshing token and retrying...');
-        const { data: { session: fresh } } = await this.client.auth.refreshSession();
+        const firstErrData = await response.json().catch(() => ({}));
+        console.warn('SupabaseClient: getRealtimeToken 401 on first attempt. Server debug:', JSON.stringify(firstErrData));
+        console.warn('SupabaseClient: refreshing token and retrying...');
+        const { data: { session: fresh }, error: refreshError } = await this.client.auth.refreshSession();
+        if (refreshError) {
+          console.error('SupabaseClient: token refresh failed:', refreshError.message);
+        }
         if (fresh) {
+          console.log(`SupabaseClient: getRealtimeToken — retrying with refreshed token (expires in ${fresh.expires_at - Math.floor(Date.now() / 1000)}s)`);
           response = await fetch(url, {
             method: 'POST',
             headers: {
@@ -878,12 +900,14 @@ class ACESupabaseClient {
             },
             body
           });
+        } else {
+          console.error('SupabaseClient: getRealtimeToken — refresh returned no session');
         }
       }
 
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        console.error(`SupabaseClient: getRealtimeToken error (${response.status})`, errData);
+        console.error(`SupabaseClient: getRealtimeToken FINAL error (${response.status})`, JSON.stringify(errData, null, 2));
         return null;
       }
 
