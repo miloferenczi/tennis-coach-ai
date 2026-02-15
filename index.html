@@ -10117,13 +10117,47 @@ This is a demo — make them feel excited about the coaching experience.`;
             }
             cards.push({ html: breakdownHtml, cls: 'recap-card', delay: cardIndex++ });
 
-            // Card 5: Actions
+            // Card 5: Drill Recommendation (2D)
+            const drillInfo = getTopFaultDrill(strokes);
+            if (drillInfo && drillInfo.drillSuggestion) {
+                const pct = Math.round((drillInfo.faultCount / drillInfo.totalStrokes) * 100);
+                cards.push({ html: `
+                    <div class="recap-label">RECOMMENDED DRILL</div>
+                    <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;">${escapeHtml(drillInfo.drillSuggestion)}</div>
+                    <div style="font-size:13px;color:rgba(255,255,255,0.6);line-height:1.5;margin-bottom:12px;">
+                        "${escapeHtml(drillInfo.faultName)}" appeared in ${pct}% of your strokes. This drill targets that specific issue.
+                    </div>
+                    <button class="upload-play-all-btn" onclick="closeUploadReview(); setTimeout(() => startDrillFromTab('auto'), 400);" style="width:100%;justify-content:center;padding:12px;">
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16"/></svg>
+                        Start Drill
+                    </button>
+                `, cls: 'recap-card', delay: cardIndex++ });
+            }
+
+            // Card 6: Gemini visual analysis placeholder (filled async)
+            const geminiCardId = 'uploadGeminiCard';
+            cards.push({ html: `<div id="${geminiCardId}" style="display:none;"></div>`, cls: 'recap-card-transparent', delay: cardIndex++ });
+
+            // Card 7: Actions
+            const saveBtn = typeof improvementTracker !== 'undefined'
+                ? `<button class="btn btn-secondary" onclick="saveUploadToImprovementPlan(videoAnalyzer.detectedStrokes)" style="width:100%;padding:12px;font-size:14px;">
+                    Save to Improvement Plan
+                  </button>`
+                : '';
+            const shareBtn = typeof ShareCardGenerator !== 'undefined'
+                ? `<button class="btn btn-secondary" onclick="shareUploadAnalysis(videoAnalyzer.detectedStrokes)" style="width:100%;padding:12px;font-size:14px;">
+                    Share Analysis
+                  </button>`
+                : '';
+
             cards.push({ html: `
                 <div style="display:flex;flex-direction:column;gap:12px;align-items:center;padding:10px 0 40px;">
                     <button class="upload-play-all-btn" onclick="closeUploadReview(); setTimeout(playAllStrokes, 400);" style="width:100%;justify-content:center;padding:14px;">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
                         Review Your Strokes
                     </button>
+                    ${saveBtn}
+                    ${shareBtn}
                     <button class="btn btn-secondary" onclick="closeUploadReview()" style="width:100%;padding:12px;font-size:14px;">
                         Done
                     </button>
@@ -10137,6 +10171,33 @@ This is a demo — make them feel excited about the coaching experience.`;
             }).join('');
 
             review.classList.add('visible');
+
+            // 2B: Fire Gemini visual analysis async (don't block review)
+            runGeminiOnUploadStrokes(strokes).then(geminiResults => {
+                if (!geminiResults) return;
+                const container = document.getElementById(geminiCardId);
+                if (!container) return;
+
+                let html = '<div class="recap-label">WHAT THE CAMERA SEES</div>';
+                for (const [idx, result] of Object.entries(geminiResults)) {
+                    const qColor = result.quality >= 80 ? 'var(--accent-ozone)' : result.quality >= 60 ? 'var(--warning)' : 'var(--danger)';
+                    html += `
+                        <div style="margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06);">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                <span style="font-size:13px;font-weight:600;text-transform:uppercase;color:rgba(255,255,255,0.5);">${escapeHtml(result.type)} #${parseInt(idx) + 1}</span>
+                                <span style="font-size:16px;font-weight:700;color:${qColor}">${Math.round(result.quality)}</span>
+                            </div>
+                            <div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.6;">${escapeHtml(result.analysis)}</div>
+                        </div>`;
+                }
+                container.innerHTML = html;
+                container.style.display = '';
+                container.parentElement.classList.add('recap-card');
+                container.parentElement.style.animation = 'fadeSlideUp 0.5s ease forwards';
+            }).catch(() => { /* Gemini unavailable — card stays hidden */ });
+
+            // 2C: Auto-save to improvement plan
+            saveUploadToImprovementPlan(strokes).catch(() => {});
         }
 
         function closeUploadReview() {
@@ -10151,13 +10212,6 @@ This is a demo — make them feel excited about the coaching experience.`;
             utterance.rate = 0.95;
             utterance.pitch = 1;
             window.speechSynthesis.speak(utterance);
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
         }
 
         // ========== Skeleton Overlay on Video Playback ==========
@@ -10191,13 +10245,35 @@ This is a demo — make them feel excited about the coaching experience.`;
             const faults = stroke?.biomechanicalEvaluation?.detectedFaults || [];
             const faultMap = typeof tennisAI !== 'undefined' ? tennisAI.faultLandmarkMap : null;
 
+            // 2A: Coach's Eye ghost skeleton when paused on a stroke with faults
+            if (video.paused && stroke && faults.length > 0 && typeof CorrectedPoseEngine !== 'undefined') {
+                try {
+                    const engine = new CorrectedPoseEngine();
+                    const dominantHand = typeof tennisAI !== 'undefined' ? (tennisAI.dominantHand || 'right') : 'right';
+                    const skillLevel = stroke.proComparison?.skillLevel || 'intermediate';
+                    const phases = ['contact', 'acceleration', 'loading', 'followThrough'];
+                    let ghost = null;
+                    for (const phase of phases) {
+                        ghost = engine.computeCorrected(frame.landmarks, faults, stroke.type || 'forehand', phase, skillLevel, dominantHand);
+                        if (ghost) break;
+                    }
+                    if (ghost) {
+                        const replayMgr = typeof strokeReplayManager !== 'undefined' ? strokeReplayManager : new StrokeReplayManager();
+                        replayMgr.drawGhostSkeleton(ctx, ghost, frame.landmarks, canvas.width, canvas.height, Date.now() * 0.001);
+                        replayMgr.drawAngleAnnotations(ctx, ghost.annotations, frame.landmarks, canvas.width, canvas.height, true);
+                    }
+                } catch (e) { /* CorrectedPoseEngine may not be loaded */ }
+            }
+
             StrokeReplayManager.drawSkeletonOnCanvas(
                 ctx, frame.landmarks, canvas.width, canvas.height,
                 { alpha: 0.8, faults, faultLandmarkMap: faultMap }
             );
         }
 
-        // ========== Enhanced Stroke Selection ==========
+        // ========== Timeline Display ==========
+
+        function updateTimelineDisplay() {
             const video = document.getElementById('analysisVideo');
             if (!video || !video.duration) return;
 
@@ -10613,6 +10689,198 @@ This is a demo — make them feel excited about the coaching experience.`;
             if (playAllBtn) {
                 playAllBtn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg> Play All';
             }
+        }
+
+        // ========== Sprint 2: Gemini Visual Analysis on Key Strokes (2B) ==========
+
+        async function runGeminiOnUploadStrokes(strokes) {
+            if (!strokes || strokes.length === 0) return null;
+            if (typeof SceneAnalyzer === 'undefined') return null;
+            if (!supabaseClient?.user) return null;
+
+            try {
+                // Pick best, worst, and median strokes
+                const sorted = [...strokes].map((s, i) => ({ s, i, q: s.quality?.overall ?? s.quality ?? 0 }))
+                    .sort((a, b) => b.q - a.q);
+                const picks = [];
+                if (sorted.length >= 1) picks.push(sorted[0]); // best
+                if (sorted.length >= 2) picks.push(sorted[sorted.length - 1]); // worst
+                if (sorted.length >= 3) picks.push(sorted[Math.floor(sorted.length / 2)]); // median
+
+                const video = document.getElementById('analysisVideo');
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = 640;
+                tempCanvas.height = 360;
+                const tempCtx = tempCanvas.getContext('2d');
+
+                const results = {};
+
+                for (const pick of picks) {
+                    const stroke = pick.s;
+                    const strokeTime = stroke.time;
+
+                    // Capture 5 frames around stroke time
+                    const frameTimes = [
+                        Math.max(0, strokeTime - 0.6),
+                        Math.max(0, strokeTime - 0.3),
+                        strokeTime,
+                        Math.min(video.duration, strokeTime + 0.3),
+                        Math.min(video.duration, strokeTime + 0.6)
+                    ];
+
+                    const frames = [];
+                    for (const t of frameTimes) {
+                        video.currentTime = t;
+                        await new Promise(r => { video.onseeked = r; setTimeout(r, 2000); });
+                        tempCtx.drawImage(video, 0, 0, 640, 360);
+                        const base64 = tempCanvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+                        frames.push(base64);
+                    }
+
+                    // Build Gemini request
+                    const faultList = (stroke.biomechanicalEvaluation?.detectedFaults || [])
+                        .map(f => f.name || f.id).join(', ') || 'none';
+                    const type = stroke.type || 'forehand';
+                    const isServe = type.toLowerCase().includes('serve');
+
+                    const promptText = isServe
+                        ? `Expert tennis coach analyzing a serve from video. Detected faults: ${faultList}. Analyze: toss placement, trophy position, leg drive, pronation, contact height, racket face angle. Be concise.`
+                        : `Expert tennis coach analyzing a ${type} from video. Detected faults: ${faultList}. Analyze: racket face angle, grip, contact point relative to body, visual faults, positives. Be concise.`;
+
+                    const parts = [];
+                    frames.forEach((b64, j) => {
+                        parts.push({ text: `Frame ${j + 1}:` });
+                        parts.push({ inline_data: { mime_type: 'image/jpeg', data: b64 } });
+                    });
+                    parts.push({ text: promptText });
+
+                    const requestBody = {
+                        contents: [{ parts }],
+                        generationConfig: { temperature: 0.2, maxOutputTokens: 400 }
+                    };
+
+                    const geminiResult = await supabaseClient.callGeminiProxy(requestBody);
+                    if (geminiResult?.candidates?.[0]?.content?.parts?.[0]?.text) {
+                        results[pick.i] = {
+                            strokeIndex: pick.i,
+                            analysis: geminiResult.candidates[0].content.parts[0].text,
+                            quality: pick.q,
+                            type
+                        };
+                    }
+                }
+
+                return Object.keys(results).length > 0 ? results : null;
+            } catch (e) {
+                console.warn('Gemini upload analysis failed:', e);
+                return null;
+            }
+        }
+
+        // ========== Sprint 2: Save to Improvement Plan (2C) ==========
+
+        async function saveUploadToImprovementPlan(strokes) {
+            if (typeof improvementTracker === 'undefined' || !improvementTracker) return;
+            if (!strokes || strokes.length === 0) return;
+
+            try {
+                // Format strokes to match what recordSession expects
+                const formatted = strokes.map(s => ({
+                    type: s.type || s.strokeType || 'unknown',
+                    quality: s.quality?.overall ?? s.quality ?? 0,
+                    qualityBreakdown: s.quality?.breakdown || null,
+                    biomechanical: {
+                        overall: s.biomechanicalEvaluation?.overallScore ?? s.quality?.overall ?? 0,
+                        faults: (s.biomechanicalEvaluation?.detectedFaults || []).map(f => f.id || f.name)
+                    },
+                    physics: {
+                        rotation: s.metrics?.rotation ?? 0,
+                        smoothness: s.smoothness ?? 0
+                    },
+                    technique: {
+                        hipShoulderSeparation: s.metrics?.hipSep ?? null,
+                        elbowAngle: s.metrics?.elbowAngle ?? null
+                    },
+                    strengths: s.strengths || []
+                }));
+
+                await improvementTracker.recordSession(formatted, {
+                    totalStrokes: strokes.length,
+                    averageScore: Math.round(strokes.reduce((a, s) => a + (s.quality?.overall ?? s.quality ?? 0), 0) / strokes.length),
+                    duration: (videoAnalyzer?.duration || 0) * 1000
+                });
+
+                showToast('Saved to your improvement plan');
+            } catch (e) {
+                console.warn('Failed to save to improvement plan:', e);
+            }
+        }
+
+        // ========== Sprint 2: Drill Recommendation (2D) ==========
+
+        function getTopFaultDrill(strokes) {
+            // Count fault frequencies across all strokes
+            const faultCounts = {};
+            for (const s of strokes) {
+                const faults = s.biomechanicalEvaluation?.detectedFaults || [];
+                for (const f of faults) {
+                    const id = f.id || f.name;
+                    if (!faultCounts[id]) faultCounts[id] = { id, name: f.name || id, count: 0, drills: f.drills || [] };
+                    faultCounts[id].count++;
+                    if (f.drills?.length && faultCounts[id].drills.length === 0) {
+                        faultCounts[id].drills = f.drills;
+                    }
+                }
+            }
+
+            const sorted = Object.values(faultCounts).sort((a, b) => b.count - a.count);
+            if (sorted.length === 0) return null;
+
+            const topFault = sorted[0];
+            return {
+                faultId: topFault.id,
+                faultName: topFault.name,
+                faultCount: topFault.count,
+                totalStrokes: strokes.length,
+                drills: topFault.drills,
+                drillSuggestion: topFault.drills[0] || null
+            };
+        }
+
+        // ========== Sprint 2: Share Card (2E) ==========
+
+        async function shareUploadAnalysis(strokes) {
+            if (typeof ShareCardGenerator === 'undefined') {
+                showToast('Share not available');
+                return;
+            }
+
+            const qualities = strokes.map(s => s.quality?.overall ?? s.quality ?? 0);
+            const avg = Math.round(qualities.reduce((a, b) => a + b, 0) / qualities.length);
+            const best = Math.round(Math.max(...qualities));
+
+            const summary = {
+                averageScore: avg,
+                totalStrokes: strokes.length,
+                bestScore: best,
+                consistency: strokes.length >= 3
+                    ? Math.round(100 - (Math.max(...qualities) - Math.min(...qualities)))
+                    : '--',
+                improvement: 0,
+                duration: (videoAnalyzer?.duration || 0) * 1000
+            };
+
+            // Build a simple insight from coaching data
+            const insights = [];
+            if (uploadCoachingData?.headline && uploadCoachingData.headline !== 'YOUR ANALYSIS') {
+                insights.push({
+                    headline: uploadCoachingData.headline,
+                    actionable: uploadCoachingData.topCorrection || 'Keep practicing!'
+                });
+            }
+
+            const generator = new ShareCardGenerator();
+            await generator.share(summary, insights);
         }
 
         function clearAnalysisVideo() {
