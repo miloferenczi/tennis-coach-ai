@@ -1,5 +1,5 @@
 // Service Worker for Tennis Ace AI PWA
-const CACHE_NAME = 'tennis-ace-v2'; // INCREMENTED CACHE VERSION
+const CACHE_NAME = 'tennis-ace-v3'; // INCREMENTED — GA Realtime API fix
 const OFFLINE_URL = '/';
 
 // Resources to cache

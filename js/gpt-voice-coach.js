@@ -404,22 +404,12 @@ DRILL MODE ACTIVE:
         this.dataChannel.onopen = () => {
           console.log('WebRTC Data Channel ready');
           if (!options.skipGreeting) {
-            this.dataChannel.send(JSON.stringify({
-              type: 'session.update',
-              session: {
-                voice: this.voice || 'alloy',
-                instructions: this.getCoachingInstructions(),
-                modalities: ['text', 'audio'],
-                input_audio_transcription: { model: 'whisper-1' },
-                turn_detection: { type: 'server_vad' }
-              }
-            }));
             // Send greeting from inside onopen to guarantee channel is ready
             setTimeout(() => this.sendCoachGreeting(), 500);
           }
           resolve();
         };
-        
+
         this.dataChannel.onerror = (error) => {
           console.error('Data Channel error:', error);
           reject(error);
@@ -437,13 +427,27 @@ DRILL MODE ACTIVE:
         const offer = await this.pc.createOffer();
         await this.pc.setLocalDescription(offer);
 
-        const sdpResponse = await fetch("https://api.openai.com/v1/realtime?model=gpt-realtime", {
-          method: "POST",
-          body: offer.sdp,
+        // GA Realtime API: POST to /v1/realtime/calls with multipart FormData
+        const sessionConfig = {
+          type: 'realtime',
+          model: 'gpt-realtime',
+          voice: this.voice || 'alloy',
+          instructions: this.getCoachingInstructions(),
+          modalities: ['text', 'audio'],
+          input_audio_transcription: { model: 'whisper-1' },
+          turn_detection: { type: 'server_vad' }
+        };
+
+        const form = new FormData();
+        form.append('sdp', new Blob([offer.sdp], { type: 'application/sdp' }));
+        form.append('session', new Blob([JSON.stringify(sessionConfig)], { type: 'application/json' }));
+
+        const sdpResponse = await fetch('https://api.openai.com/v1/realtime/calls', {
+          method: 'POST',
           headers: {
             Authorization: `Bearer ${ephemeralKey}`,
-            "Content-Type": "application/sdp",
           },
+          body: form,
         });
 
         if (!sdpResponse.ok) {
@@ -453,7 +457,7 @@ DRILL MODE ACTIVE:
         }
 
         const answer = {
-          type: "answer",
+          type: 'answer',
           sdp: await sdpResponse.text(),
         };
         await this.pc.setRemoteDescription(answer);
