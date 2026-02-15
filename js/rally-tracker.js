@@ -17,6 +17,9 @@ class RallyTracker {
     };
     this.rallyCounter = 0;
     this.lastRallyAnalysis = null;   // most recent Gemini rally analysis
+    this._sessionStartTime = Date.now(); // for video timestamp calculation
+    this._idleTimeout = null;        // fallback idle timeout for ending rallies without SceneAnalyzer
+    this._idleGapMs = 8000;          // 8 seconds of no strokes → end rally
   }
 
   /**
@@ -50,11 +53,15 @@ class RallyTracker {
     }
 
     this.rallyCounter++;
+    const now = Date.now();
     this.currentRally = {
       number: this.rallyCounter,
       strokes: [],
-      startTime: Date.now(),
+      startTime: now,
+      startTimestamp: now,
+      videoTimestamp: (now - this._sessionStartTime) / 1000, // elapsed seconds from session start
       endTime: null,
+      endTimestamp: null,
       origin: origin,           // 'serve' or 'feed'
       courtSide: courtSide,
       duration: 0,
@@ -74,12 +81,33 @@ class RallyTracker {
       this.startRally('feed', 'unknown');
     }
 
+    const now = Date.now();
     this.currentRally.strokes.push({
       type: strokeData.type || strokeData.strokeType,
       quality: strokeData.quality?.overall ?? strokeData.quality ?? 0,
-      timestamp: Date.now(),
+      timestamp: now,
+      videoTimestamp: (now - this._sessionStartTime) / 1000,
       strokeInRally: this.currentRally.strokes.length + 1
     });
+
+    // Reset idle timeout — end rally if no new stroke for _idleGapMs
+    this._resetIdleTimeout();
+  }
+
+  /**
+   * Reset the idle timeout that auto-ends rallies without SceneAnalyzer.
+   * Every stroke pushes the timeout forward.
+   */
+  _resetIdleTimeout() {
+    if (this._idleTimeout) {
+      clearTimeout(this._idleTimeout);
+    }
+    this._idleTimeout = setTimeout(() => {
+      if (this.currentRally && this.currentRally.strokes.length > 0) {
+        console.log('RallyTracker: idle timeout — ending rally after ' + this._idleGapMs + 'ms with no stroke');
+        this.endRally();
+      }
+    }, this._idleGapMs);
   }
 
   /**
@@ -89,8 +117,16 @@ class RallyTracker {
   endRally() {
     if (!this.currentRally) return;
 
+    // Clear idle timeout
+    if (this._idleTimeout) {
+      clearTimeout(this._idleTimeout);
+      this._idleTimeout = null;
+    }
+
     const rally = this.currentRally;
-    rally.endTime = Date.now();
+    const now = Date.now();
+    rally.endTime = now;
+    rally.endTimestamp = now;
     rally.duration = rally.endTime - rally.startTime;
 
     // Compute average quality
@@ -267,9 +303,32 @@ class RallyTracker {
   }
 
   /**
+   * Get all completed rallies with timestamps for video scrubbing.
+   * @returns {Array} completed rally objects with startTimestamp, endTimestamp, videoTimestamp, strokes, etc.
+   */
+  getCompletedRallies() {
+    return this.completedRallies;
+  }
+
+  /**
+   * Get the percentage of session time spent actively playing (in rallies).
+   * @returns {number} 0–100
+   */
+  getActivePlayPercentage() {
+    const totalSessionMs = Date.now() - this._sessionStartTime;
+    if (totalSessionMs <= 0) return 0;
+    const activeMs = this.completedRallies.reduce((sum, r) => sum + (r.duration || 0), 0);
+    return Math.round((activeMs / totalSessionMs) * 100);
+  }
+
+  /**
    * Clear all rally data.
    */
   reset() {
+    if (this._idleTimeout) {
+      clearTimeout(this._idleTimeout);
+      this._idleTimeout = null;
+    }
     if (this.currentRally) {
       this.endRally();
     }
@@ -283,5 +342,6 @@ class RallyTracker {
     };
     this.rallyCounter = 0;
     this.lastRallyAnalysis = null;
+    this._sessionStartTime = Date.now();
   }
 }

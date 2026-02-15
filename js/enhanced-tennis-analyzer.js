@@ -44,6 +44,10 @@ class EnhancedTennisAnalyzer {
     // Last detected stroke (for calibration tool access)
     this.lastStrokeData = null;
 
+    // Idle detection: track when last stroke was detected and when person was last visible
+    this._lastStrokeDetectedAt = 0;
+    this._idleTriggered = false; // prevent repeated idle triggers
+
     // Handedness detection
     this.dominantHand = null; // 'right' or 'left', null = assume right
     this.handednessVotes = { left: 0, right: 0 };
@@ -385,9 +389,36 @@ class EnhancedTennisAnalyzer {
     // Detect stroke completion
     const stroke = this.detectStrokePattern(wristVelocity, acceleration);
     if (stroke) {
-      this.onStrokeDetected(stroke, poseData);
+      // Gate on confidence: reject low-confidence detections (likely non-tennis motion)
+      if (stroke.confidence < 0.4) {
+        console.log(`Stroke rejected (low confidence ${stroke.confidence.toFixed(2)}): ${stroke.type}`);
+      } else {
+        this._lastStrokeDetectedAt = Date.now();
+        this._idleTriggered = false;
+        this.onStrokeDetected(stroke, poseData);
+      }
     }
-    
+
+    // Idle detection: person visible but no strokes for 60+ seconds
+    if (this._lastStrokeDetectedAt > 0 && !this._idleTriggered) {
+      const idleSeconds = (Date.now() - this._lastStrokeDetectedAt) / 1000;
+      if (idleSeconds >= 60) {
+        this._idleTriggered = true;
+        if (typeof tennisAI !== 'undefined' && tennisAI.proactiveTriggers) {
+          const trigger = {
+            type: 'idle_with_presence',
+            message: `The player has been visible but hasn't hit a stroke in ${Math.round(idleSeconds)} seconds. They may be resting or doing something other than tennis. Give a brief, encouraging "ready when you are" type message.`
+          };
+          const batchAccumulator = tennisAI.batchAccumulator;
+          if (batchAccumulator) {
+            batchAccumulator.addProactiveTrigger(trigger);
+          } else if (typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected) {
+            gptVoiceCoach.analyzeStroke({ type: 'proactive_trigger', trigger });
+          }
+        }
+      }
+    }
+
     return poseData;
   }
   
@@ -745,6 +776,20 @@ class EnhancedTennisAnalyzer {
       if (strokeData.sequenceAnalysis?.phases) {
         this.lastDetectedPhase = strokeData.sequenceAnalysis.phases;
       }
+    }
+
+    // Compute stroke confidence score (0.0–1.0)
+    const phaseDurations = strokeData.sequenceAnalysis?.phases?.durations || null;
+    strokeData.confidence = this.strokeClassifier.getStrokeConfidence(
+      contactFrame.velocity.magnitude,
+      contactFrame.acceleration.magnitude,
+      contactFrame.rotation,
+      contactFrame.verticalMotion,
+      phaseDurations ? { durations: phaseDurations } : null,
+      strokeData.type
+    );
+    if (strokeData.confidence < 0.6) {
+      strokeData.lowConfidence = true;
     }
 
     return strokeData;

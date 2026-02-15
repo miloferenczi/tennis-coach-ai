@@ -535,6 +535,80 @@ class StrokeClassifier {
         return velocity.magnitude > this.strokeThresholds.minVelocity &&
                acceleration.magnitude > this.strokeThresholds.minAcceleration;
     }
+
+    /**
+     * Compute a confidence score (0.0–1.0) that a detected motion is a real tennis stroke.
+     * @param {number} velocityMag - wrist velocity magnitude
+     * @param {number} accelerationMag - wrist acceleration magnitude
+     * @param {number} rotation - body rotation in degrees
+     * @param {number} verticalMotion - vertical displacement
+     * @param {Object|null} phases - phase durations from validateStrokeWithPhases (optional)
+     * @param {string} strokeType - classified stroke type
+     * @returns {number} 0.0–1.0
+     */
+    getStrokeConfidence(velocityMag, accelerationMag, rotation, verticalMotion, phases, strokeType) {
+        let score = 0;
+
+        // --- 1. Velocity sanity (0–0.25) ---
+        // Is velocity in a plausible tennis range? Too low = not a stroke, too high = noise.
+        const velThresholds = this.normalized ? this.bodyRelativeVelocityThresholds : this.velocityThresholds;
+        const ref = velThresholds[strokeType] || velThresholds['Groundstroke'];
+        const minPlausible = ref.good * 0.3;  // 30% of beginner threshold
+        const maxPlausible = ref.excellent * 5; // 5x pro reference = impossible
+        if (velocityMag >= minPlausible && velocityMag <= maxPlausible) {
+            // Score peaks around the average, tapers toward extremes
+            const idealCenter = ref.average;
+            const dist = Math.abs(velocityMag - idealCenter) / idealCenter;
+            score += 0.25 * Math.max(0, 1 - dist * 0.5);
+        }
+        // else: 0 contribution
+
+        // --- 2. Phase quality (0–0.25) ---
+        if (phases && phases.durations) {
+            const d = phases.durations;
+            // Acceleration should have reasonable duration (2–15 frames)
+            const accelScore = (d.acceleration >= 2 && d.acceleration <= 15) ? 1.0 :
+                               (d.acceleration >= 1) ? 0.4 : 0;
+            // Follow-through should exist (3–20 frames)
+            const ftScore = (d.followThrough >= 3 && d.followThrough <= 20) ? 1.0 :
+                            (d.followThrough >= 1) ? 0.3 : 0;
+            // Preparation suggests intentional motion
+            const prepScore = (d.preparation >= 3) ? 1.0 : (d.preparation >= 1) ? 0.5 : 0.2;
+            score += 0.25 * (accelScore * 0.4 + ftScore * 0.4 + prepScore * 0.2);
+        } else {
+            // No phase data — give partial credit (phase detector might be unavailable)
+            score += 0.10;
+        }
+
+        // --- 3. Rotation / vertical presence (0–0.25) ---
+        const isServeType = strokeType === 'Serve' || strokeType === 'Overhead';
+        if (isServeType) {
+            // Serves should show vertical motion
+            const vertScore = Math.min(1, Math.abs(verticalMotion) / 0.25);
+            score += 0.25 * vertScore;
+        } else {
+            // Groundstrokes should show meaningful body rotation (>5°)
+            const absRot = Math.abs(rotation);
+            if (absRot >= 15) {
+                score += 0.25;
+            } else if (absRot >= 5) {
+                score += 0.25 * ((absRot - 5) / 10);
+            }
+            // else: 0
+        }
+
+        // --- 4. Acceleration consistency (0–0.25) ---
+        // Tennis strokes have sharp acceleration peaks vs random motion
+        const accelThresholds = this.normalized ? this.bodyRelativeAccelerationThresholds : this.accelerationThresholds;
+        const accelRef = accelThresholds[strokeType] || accelThresholds['Groundstroke'];
+        if (accelerationMag >= accelRef.good * 0.3) {
+            // Ratio of actual to reference average — closer to or above average = more confident
+            const ratio = Math.min(accelerationMag / accelRef.average, 2.0);
+            score += 0.25 * Math.min(1, ratio);
+        }
+
+        return Math.min(1.0, Math.max(0, score));
+    }
 }
 
 // Export for browser and Node.js environments

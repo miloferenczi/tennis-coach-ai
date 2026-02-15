@@ -4731,6 +4731,17 @@
                     </div>
                 </div>
 
+                <!-- Set Password (only visible when authenticated) -->
+                <div class="profile-row" id="settingsSetPassword" style="display:none;" onclick="openSetPasswordModal(); closeSettings();">
+                    <div class="profile-row-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <div class="profile-row-text">Set Password</div>
+                    <div class="profile-row-chevron">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </div>
+                </div>
+
                 <!-- Sign Out (only visible when authenticated) -->
                 <div class="profile-row danger" id="settingsSignOut" style="display:none;" onclick="handleSignOut()">
                     <div class="profile-row-icon">
@@ -4762,6 +4773,28 @@
                     <button class="modal-close" onclick="document.getElementById('exportModal').classList.remove('visible')">&times;</button>
                 </div>
                 <div id="exportModalContent">
+                </div>
+            </div>
+        </div>
+
+        <!-- Set Password Modal -->
+        <div id="setPasswordModal" class="modal-overlay">
+            <div class="modal" style="max-width: 400px;">
+                <div class="modal-header">
+                    <div class="modal-title">Set Password</div>
+                    <button class="modal-close" onclick="closeSetPasswordModal()">&times;</button>
+                </div>
+                <div style="padding: 20px;">
+                    <p style="color: rgba(255,255,255,0.6); font-size: 14px; margin: 0 0 16px;">Set a password so you can log in with email and password.</p>
+                    <input type="password" id="setPasswordNew" placeholder="New password (min 8 characters)" autocomplete="new-password"
+                        style="width:100%;padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;margin-bottom:10px;box-sizing:border-box;">
+                    <input type="password" id="setPasswordConfirm" placeholder="Confirm password" autocomplete="new-password"
+                        style="width:100%;padding:14px;border-radius:10px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.06);color:#fff;font-size:15px;margin-bottom:16px;box-sizing:border-box;">
+                    <div id="setPasswordStatus" style="font-size:13px;min-height:18px;margin-bottom:12px;"></div>
+                    <button id="setPasswordBtn" onclick="submitSetPassword()"
+                        style="width:100%;padding:14px;border-radius:12px;border:none;background:var(--accent-volt);color:#000;font-weight:700;font-size:15px;cursor:pointer;">
+                        SET PASSWORD
+                    </button>
                 </div>
             </div>
         </div>
@@ -7558,6 +7591,36 @@ This is a demo — make them feel excited about the coaching experience.`;
                 cards.push({ html: breakdownHtml });
             }
 
+            // --- Card 4B: Point-by-Point Timeline ---
+            if (typeof tennisAI !== 'undefined' && tennisAI.rallyTracker) {
+                const rallies = tennisAI.rallyTracker.getCompletedRallies();
+                if (rallies.length > 0) {
+                    const activePlayPct = tennisAI.rallyTracker.getActivePlayPercentage();
+                    let timelineHtml = `<div class="recap-label">POINTS</div>`;
+                    timelineHtml += `<div style="color:rgba(255,255,255,0.5);font-size:12px;margin-bottom:10px;">Active play: ${activePlayPct}% of session</div>`;
+                    for (const rally of rallies) {
+                        const dur = rally.duration ? (rally.duration / 1000).toFixed(0) : '?';
+                        const avg = rally.avgQuality || 0;
+                        const qColor = avg >= 75 ? '#32D74B' : avg >= 60 ? 'var(--accent-ozone)' : avg > 0 ? '#FF3B30' : 'rgba(255,255,255,0.3)';
+                        const strokeCount = rally.strokes.length;
+                        timelineHtml += `
+                            <div class="recap-breakdown-row" onclick="this.classList.toggle('expanded')">
+                                <div class="recap-breakdown-header">
+                                    <span class="recap-breakdown-type">Point ${rally.number}</span>
+                                    <span class="recap-breakdown-score" style="color:${qColor}">${avg > 0 ? Math.round(avg) : '-'}</span>
+                                </div>
+                                <div class="recap-breakdown-count">${strokeCount} stroke${strokeCount !== 1 ? 's' : ''} · ${dur}s · ${rally.origin}</div>
+                                <div class="recap-breakdown-detail">
+                                    <div class="recap-breakdown-detail-inner">
+                                        ${rally.strokes.map(s => `<span class="recap-detail-chip" style="color:${s.quality >= 75 ? '#32D74B' : s.quality >= 60 ? 'var(--accent-ozone)' : '#FF3B30'}">${s.type} ${s.quality}</span>`).join('')}
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+                    cards.push({ html: timelineHtml });
+                }
+            }
+
             // --- Card 5: Coach's Notes ---
             const coachPref = (typeof onboardingState !== 'undefined' && onboardingState.coachPreference) || 'alex';
             const coachConfigs = { alex: { name: 'Coach Alex', icon: 'star' }, jordan: { name: 'Coach Jordan', icon: 'target' }, sam: { name: 'Coach Sam', icon: 'lightning' } };
@@ -9331,15 +9394,66 @@ This is a demo — make them feel excited about the coaching experience.`;
             const ghostStatus = typeof ghostOverlay !== 'undefined' && ghostOverlay.enabled ? 'On' : 'Off';
             const el = document.getElementById('settingsGhostStatus');
             if (el) el.textContent = ghostStatus;
-            // Show sign out if authenticated
+            // Show auth-only rows if authenticated
             if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
                 const so = document.getElementById('settingsSignOut');
                 if (so) so.style.display = '';
+                const sp = document.getElementById('settingsSetPassword');
+                if (sp) sp.style.display = '';
             }
         }
 
         function closeSettings() {
             document.getElementById('settingsSheet').classList.remove('active');
+        }
+
+        function openSetPasswordModal() {
+            document.getElementById('setPasswordNew').value = '';
+            document.getElementById('setPasswordConfirm').value = '';
+            document.getElementById('setPasswordStatus').textContent = '';
+            document.getElementById('setPasswordBtn').disabled = false;
+            document.getElementById('setPasswordBtn').textContent = 'SET PASSWORD';
+            document.getElementById('setPasswordModal').classList.add('visible');
+        }
+
+        function closeSetPasswordModal() {
+            document.getElementById('setPasswordModal').classList.remove('visible');
+        }
+
+        async function submitSetPassword() {
+            const newPw = document.getElementById('setPasswordNew').value;
+            const confirmPw = document.getElementById('setPasswordConfirm').value;
+            const statusEl = document.getElementById('setPasswordStatus');
+            const btn = document.getElementById('setPasswordBtn');
+
+            const pwError = validatePassword(newPw);
+            if (pwError) {
+                statusEl.textContent = pwError;
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            if (newPw !== confirmPw) {
+                statusEl.textContent = 'Passwords do not match.';
+                statusEl.style.color = '#ff6b6b';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'SETTING PASSWORD...';
+            statusEl.textContent = '';
+
+            const { error } = await supabaseClient.updatePassword(newPw);
+            if (error) {
+                statusEl.textContent = error;
+                statusEl.style.color = '#ff6b6b';
+                btn.disabled = false;
+                btn.textContent = 'SET PASSWORD';
+                return;
+            }
+
+            closeSetPasswordModal();
+            showToast('Password set — you can now log in with email and password');
         }
 
         // Legacy switchMode stub for any external references
