@@ -390,6 +390,12 @@ ALTER TABLE public.improvement_tracker
   ADD COLUMN IF NOT EXISTS adaptive_thresholds jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 -- ============================================================
+-- 13b. drill_history column on improvement_tracker
+-- ============================================================
+ALTER TABLE public.improvement_tracker
+  ADD COLUMN IF NOT EXISTS drill_history jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- ============================================================
 -- 14. Subscription security: prevent client-side tier escalation
 -- ============================================================
 -- Check constraint: subscription_tier can only be one of the known values

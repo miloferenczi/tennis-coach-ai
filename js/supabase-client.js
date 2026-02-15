@@ -557,7 +557,7 @@ class ACESupabaseClient {
 
   /**
    * Load improvement tracker data. Auto-creates row if missing.
-   * @returns {Object} { strokeMetrics, faultHistory, coachingPlan }
+   * @returns {Object} { strokeMetrics, faultHistory, coachingPlan, adaptiveThresholds, drillHistory }
    */
   async loadImprovementTracker() {
     if (!this.user) return null;
@@ -595,7 +595,8 @@ class ACESupabaseClient {
       strokeMetrics: data.stroke_metrics || {},
       faultHistory: data.fault_history || {},
       coachingPlan: data.coaching_plan || null,
-      adaptiveThresholds: data.adaptive_thresholds || {}
+      adaptiveThresholds: data.adaptive_thresholds || {},
+      drillHistory: data.drill_history || {}
     };
 
     this._cache.tracker = { data: result, ts: Date.now() };
@@ -604,7 +605,7 @@ class ACESupabaseClient {
 
   /**
    * Update improvement tracker data.
-   * @param {Object} updates - { strokeMetrics, faultHistory, coachingPlan }
+   * @param {Object} updates - { strokeMetrics, faultHistory, coachingPlan, adaptiveThresholds, drillHistory }
    */
   async updateImprovementTracker(updates) {
     if (!this.user) return;
@@ -614,6 +615,7 @@ class ACESupabaseClient {
     if ('faultHistory' in updates) dbUpdates.fault_history = updates.faultHistory;
     if ('coachingPlan' in updates) dbUpdates.coaching_plan = updates.coachingPlan;
     if ('adaptiveThresholds' in updates) dbUpdates.adaptive_thresholds = updates.adaptiveThresholds;
+    if ('drillHistory' in updates) dbUpdates.drill_history = updates.drillHistory;
 
     const { error } = await this.client
       .from('improvement_tracker')
