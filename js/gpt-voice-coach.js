@@ -439,8 +439,8 @@ DRILL MODE ACTIVE:
         };
 
         const form = new FormData();
-        form.append('sdp', new Blob([offer.sdp], { type: 'application/sdp' }));
-        form.append('session', new Blob([JSON.stringify(sessionConfig)], { type: 'application/json' }));
+        form.set('sdp', offer.sdp);
+        form.set('session', JSON.stringify(sessionConfig));
 
         const sdpResponse = await fetch('https://api.openai.com/v1/realtime/calls', {
           method: 'POST',
