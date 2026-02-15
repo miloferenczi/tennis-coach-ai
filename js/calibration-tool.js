@@ -52,6 +52,7 @@ class CalibrationTool {
     // Create a dedicated analyzer and landmark filter for calibration
     this.analyzer = new EnhancedTennisAnalyzer();
     this.landmarkFilter = new LandmarkFilter();
+    this.analyzer.setLandmarkFilter(this.landmarkFilter);
     this._frameTimestamp = 0;
 
     return new Promise((resolve, reject) => {

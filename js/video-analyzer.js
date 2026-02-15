@@ -54,6 +54,9 @@ class VideoAnalyzer {
     if (typeof LandmarkFilter !== 'undefined') {
       this.landmarkFilter = new LandmarkFilter();
     }
+    if (this.landmarkFilter) {
+      this.analyzer.setLandmarkFilter(this.landmarkFilter);
+    }
   }
 
   /**
