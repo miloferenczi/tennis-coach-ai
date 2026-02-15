@@ -89,6 +89,7 @@ class CalibrationTool {
     // Reset analyzer and landmark filter state
     this.analyzer.resetSession();
     this.landmarkFilter = new LandmarkFilter();
+    this.analyzer.setLandmarkFilter(this.landmarkFilter);
 
     // Load video
     const videoInfo = await this.loadVideo(file);
@@ -252,20 +253,52 @@ class CalibrationTool {
       contactHeight: strokeData.contactPoint?.height || 0,
       contactDistance: strokeData.contactPoint?.distance || 0,
 
-      // Quality scores
+      // Quality scores (60% form / 40% power)
       qualityOverall: strokeData.quality?.overall || 0,
       qualityVelocity: strokeData.quality?.breakdown?.velocity || 0,
       qualityAcceleration: strokeData.quality?.breakdown?.acceleration || 0,
       qualityRotation: strokeData.quality?.breakdown?.rotation || 0,
       qualitySmoothness: strokeData.quality?.breakdown?.smoothness || 0,
+      qualityPower: strokeData.quality?.breakdown?.power || null,
+      qualityBiomechanical: strokeData.quality?.breakdown?.biomechanical || null,
+      usedBiomechanics: strokeData.quality?.breakdown?.usedBiomechanics || false,
+
+      // Confidence score (0.0–1.0)
+      confidence: strokeData.confidence ?? null,
+      lowConfidence: strokeData.lowConfidence || false,
+
+      // Normalization state
+      normalizedToTorso: !!(strokeData.velocity?.normalizedToTorso),
 
       // Sequence analysis (if available)
       sequenceQuality: strokeData.sequenceAnalysis?.sequenceQuality?.overall || null,
       kineticChainQuality: strokeData.sequenceAnalysis?.kineticChain?.chainQuality || null,
 
+      // Phase durations (ms)
+      phaseDurations: strokeData.sequenceAnalysis?.phases?.durations || null,
+
       // Biomechanical (if available)
       biomechanicalScore: strokeData.biomechanicalEvaluation?.overall || null,
-      detectedFaults: strokeData.biomechanicalEvaluation?.detectedFaults?.map(f => f.name) || []
+      detectedFaults: strokeData.biomechanicalEvaluation?.detectedFaults?.map(f => f.name) || [],
+
+      // Footwork analysis
+      footworkScore: strokeData.footwork?.score ?? null,
+      footworkStance: strokeData.footwork?.stance?.type || null,
+      footworkBaseWidth: strokeData.footwork?.stance?.baseWidthRatio ?? null,
+      footworkWeightTransferDir: strokeData.footwork?.weightTransfer?.direction || null,
+      footworkStepCount: strokeData.footwork?.steps?.count ?? null,
+      footworkRecovery: strokeData.footwork?.recovery?.score ?? null,
+
+      // Serve analysis (serves only)
+      serveScore: strokeData.serveAnalysis?.serveScore ?? null,
+      serveTrophyScore: strokeData.serveAnalysis?.trophy?.score ?? null,
+      serveTrophyDetected: strokeData.serveAnalysis?.trophy?.detected || false,
+      serveLegDriveScore: strokeData.serveAnalysis?.legDrive?.score ?? null,
+      serveShoulderTilt: strokeData.serveAnalysis?.shoulderTilt?.angle ?? null,
+      serveContactHeight: strokeData.serveAnalysis?.contactHeight?.score ?? null,
+      serveTossArmScore: strokeData.serveAnalysis?.tossArm?.score ?? null,
+      serveTrunkRotation: strokeData.serveAnalysis?.trunkRotation?.score ?? null,
+      serveFollowThrough: strokeData.serveAnalysis?.followThrough?.score ?? null
     };
 
     this.calibrationData.strokes.push(strokeRecord);
@@ -273,7 +306,11 @@ class CalibrationTool {
     console.log(`Calibration: Recorded ${strokeRecord.type} stroke #${this.calibrationData.strokes.length}`, {
       velocity: strokeRecord.velocity.toFixed(4),
       rotation: strokeRecord.rotation.toFixed(1),
-      quality: strokeRecord.qualityOverall
+      quality: strokeRecord.qualityOverall,
+      confidence: strokeRecord.confidence?.toFixed(2) || 'N/A',
+      normalized: strokeRecord.normalizedToTorso,
+      footwork: strokeRecord.footworkScore,
+      serve: strokeRecord.serveScore
     });
   }
 
@@ -296,7 +333,12 @@ class CalibrationTool {
       'velocity', 'acceleration', 'rotation', 'smoothness',
       'elbowAngle', 'hipShoulderSeparation', 'kneeBend',
       'contactHeight', 'contactDistance',
-      'qualityOverall', 'sequenceQuality', 'kineticChainQuality', 'biomechanicalScore'
+      'qualityOverall', 'qualityPower', 'qualityBiomechanical',
+      'confidence',
+      'sequenceQuality', 'kineticChainQuality', 'biomechanicalScore',
+      'footworkScore', 'footworkBaseWidth', 'footworkRecovery',
+      'serveScore', 'serveTrophyScore', 'serveLegDriveScore',
+      'serveContactHeight', 'serveShoulderTilt'
     ];
 
     const stats = {};
@@ -337,11 +379,33 @@ class CalibrationTool {
       });
     });
 
+    // Footwork stance distribution (from FootworkAnalyzer)
+    const footworkStances = {};
+    strokes.forEach(s => {
+      if (s.footworkStance) {
+        footworkStances[s.footworkStance] = (footworkStances[s.footworkStance] || 0) + 1;
+      }
+    });
+
+    // Normalization state
+    const normalizedCount = strokes.filter(s => s.normalizedToTorso).length;
+
+    // Confidence distribution
+    const confidenceBuckets = { high: 0, medium: 0, low: 0 };
+    strokes.forEach(s => {
+      if (s.confidence != null) {
+        if (s.confidence >= 0.6) confidenceBuckets.high++;
+        else if (s.confidence >= 0.4) confidenceBuckets.medium++;
+        else confidenceBuckets.low++;
+      }
+    });
+
     const results = {
       label: this.calibrationData.label,
       player: this.calibrationData.player,
       strokeType: this.calibrationData.strokeType,
       totalStrokes: strokes.length,
+      normalizedStrokes: normalizedCount,
       duration: (Date.now() - this.calibrationData.startTime) / 1000,
 
       metrics: stats,
@@ -349,7 +413,9 @@ class CalibrationTool {
         strokeTypes,
         stances,
         weightTransfers,
-        faultFrequency
+        faultFrequency,
+        footworkStances,
+        confidenceBuckets
       },
 
       // Generate recommended thresholds
@@ -458,6 +524,52 @@ class CalibrationTool {
       };
     }
 
+    // Footwork score
+    if (stats.footworkScore) {
+      recommendations.footworkScore = {
+        recommended: {
+          average: stats.footworkScore.avg,
+          good: stats.footworkScore.p25,
+          excellent: stats.footworkScore.p75
+        },
+        note: `Based on ${stats.footworkScore.count} strokes, range ${stats.footworkScore.min.toFixed(0)} - ${stats.footworkScore.max.toFixed(0)}`
+      };
+    }
+
+    // Serve metrics
+    if (stats.serveScore) {
+      recommendations.serveScore = {
+        recommended: {
+          average: stats.serveScore.avg,
+          good: stats.serveScore.p25,
+          excellent: stats.serveScore.p75
+        },
+        note: `Based on ${stats.serveScore.count} serves`
+      };
+    }
+
+    if (stats.serveTrophyScore) {
+      recommendations.serveTrophyScore = {
+        recommended: {
+          average: stats.serveTrophyScore.avg,
+          good: stats.serveTrophyScore.p25,
+          excellent: stats.serveTrophyScore.p75
+        },
+        note: `Based on ${stats.serveTrophyScore.count} serves`
+      };
+    }
+
+    if (stats.serveLegDriveScore) {
+      recommendations.serveLegDriveScore = {
+        recommended: {
+          average: stats.serveLegDriveScore.avg,
+          good: stats.serveLegDriveScore.p25,
+          excellent: stats.serveLegDriveScore.p75
+        },
+        note: `Based on ${stats.serveLegDriveScore.count} serves`
+      };
+    }
+
     return recommendations;
   }
 
@@ -543,7 +655,14 @@ class CalibrationTool {
     const allStrokes = runs.flatMap(r => r.strokes || []);
 
     // Recalculate stats
-    const metricsToAnalyze = ['velocity', 'acceleration', 'rotation', 'smoothness', 'elbowAngle', 'hipShoulderSeparation'];
+    const metricsToAnalyze = [
+      'velocity', 'acceleration', 'rotation', 'smoothness',
+      'elbowAngle', 'hipShoulderSeparation', 'kneeBend',
+      'qualityOverall', 'qualityPower', 'qualityBiomechanical',
+      'confidence', 'biomechanicalScore',
+      'footworkScore', 'footworkBaseWidth', 'footworkRecovery',
+      'serveScore', 'serveTrophyScore', 'serveLegDriveScore'
+    ];
     const stats = {};
 
     for (const metric of metricsToAnalyze) {
@@ -634,6 +753,50 @@ class CalibrationTool {
       console.log(`Calibrated from ${e.count} pro strokes:`);
       console.log(`  Range: ${e.min.toFixed(0)}° - ${e.max.toFixed(0)}°`);
       console.log(`  Avg: ${e.avg.toFixed(0)}°`);
+    }
+
+    console.log('\n=== QUALITY (Form/Power) ===');
+    if (proStats.metrics.qualityOverall) {
+      const q = proStats.metrics.qualityOverall;
+      console.log(`Overall quality from ${q.count} strokes: avg=${q.avg.toFixed(0)}, median=${q.median.toFixed(0)}`);
+    }
+    if (proStats.metrics.qualityBiomechanical) {
+      const b = proStats.metrics.qualityBiomechanical;
+      console.log(`Biomechanical (form) from ${b.count} strokes: avg=${b.avg.toFixed(0)}`);
+    }
+    if (proStats.metrics.qualityPower) {
+      const p = proStats.metrics.qualityPower;
+      console.log(`Power from ${p.count} strokes: avg=${p.avg.toFixed(0)}`);
+    }
+
+    console.log('\n=== CONFIDENCE ===');
+    if (proStats.metrics.confidence) {
+      const c = proStats.metrics.confidence;
+      console.log(`Confidence from ${c.count} strokes: avg=${c.avg.toFixed(2)}, min=${c.min.toFixed(2)}, max=${c.max.toFixed(2)}`);
+    }
+
+    console.log('\n=== FOOTWORK ===');
+    if (proStats.metrics.footworkScore) {
+      const f = proStats.metrics.footworkScore;
+      console.log(`Footwork score from ${f.count} strokes: avg=${f.avg.toFixed(0)}, range ${f.min.toFixed(0)}-${f.max.toFixed(0)}`);
+    }
+    if (proStats.metrics.footworkBaseWidth) {
+      const bw = proStats.metrics.footworkBaseWidth;
+      console.log(`Base width ratio from ${bw.count} strokes: avg=${bw.avg.toFixed(2)}`);
+    }
+
+    console.log('\n=== SERVE ===');
+    if (proStats.metrics.serveScore) {
+      const s = proStats.metrics.serveScore;
+      console.log(`Serve score from ${s.count} serves: avg=${s.avg.toFixed(0)}, range ${s.min.toFixed(0)}-${s.max.toFixed(0)}`);
+    }
+    if (proStats.metrics.serveTrophyScore) {
+      const t = proStats.metrics.serveTrophyScore;
+      console.log(`Trophy position from ${t.count} serves: avg=${t.avg.toFixed(0)}`);
+    }
+    if (proStats.metrics.serveLegDriveScore) {
+      const l = proStats.metrics.serveLegDriveScore;
+      console.log(`Leg drive from ${l.count} serves: avg=${l.avg.toFixed(0)}`);
     }
 
     console.groupEnd();
