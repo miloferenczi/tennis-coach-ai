@@ -3547,6 +3547,10 @@
             height: 20px;
         }
 
+        .live-ctrl-sm.mic-muted {
+            background: rgba(220, 38, 38, 0.7);
+        }
+
         #liveRecBtn {
             width: 72px;
             height: 72px;
@@ -4892,6 +4896,10 @@
             </button>
             <button class="live-ctrl live-ctrl-sm" onclick="flipCamera()" title="Flip Camera">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><polyline points="16 3 19 1 22 3"/><polyline points="8 21 5 23 2 21"/></svg>
+            </button>
+            <button class="live-ctrl live-ctrl-sm" id="liveMicBtn" onclick="toggleMic()" title="Mute Coach">
+                <svg id="micOnIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                <svg id="micOffIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             </button>
         </div>
 
@@ -7642,6 +7650,17 @@ This is a demo — make them feel excited about the coaching experience.`;
             tennisAI.ballTracker.startCapture(tennisAI.video);
 
             if (wasAnalyzing) tennisAI.startAnalysis();
+        }
+
+        // Mic/Coach Toggle
+        function toggleMic() {
+            if (typeof gptVoiceCoach === 'undefined') return;
+            const muted = !gptVoiceCoach.micMuted;
+            gptVoiceCoach.setMicMuted(muted);
+            document.getElementById('micOnIcon').style.display = muted ? 'none' : '';
+            document.getElementById('micOffIcon').style.display = muted ? '' : 'none';
+            document.getElementById('liveMicBtn').classList.toggle('mic-muted', muted);
+            showToast(muted ? 'Coach mic off' : 'Coach mic on');
         }
 
         // Ghost Overlay Toggle

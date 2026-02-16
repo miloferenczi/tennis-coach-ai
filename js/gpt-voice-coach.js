@@ -393,7 +393,8 @@ DRILL MODE ACTIVE:
         };
 
         const ms = options.micStream || await navigator.mediaDevices.getUserMedia({ audio: true });
-        this.pc.addTrack(ms.getTracks()[0]);
+        this._micTrack = ms.getTracks()[0];
+        this.pc.addTrack(this._micTrack);
 
         this.dataChannel = this.pc.createDataChannel("oai-events");
 
@@ -1447,6 +1448,17 @@ Output ONLY a JSON object:
     } catch (e) {
       // Ignore errors — best effort interruption
     }
+  }
+
+  /**
+   * Mute or unmute the microphone track. When muted, no audio is sent
+   * to the Realtime API so no VAD / transcription / responses occur.
+   */
+  setMicMuted(muted) {
+    if (this._micTrack) {
+      this._micTrack.enabled = !muted;
+    }
+    this.micMuted = !!muted;
   }
 
   resetSession() {
