@@ -3551,6 +3551,31 @@
             background: rgba(220, 38, 38, 0.7);
         }
 
+        /* ── Global Mic Toggle (floating, always accessible) ── */
+        #globalMicBtn {
+            position: fixed;
+            bottom: calc(70px + env(safe-area-inset-bottom));
+            right: 16px;
+            z-index: 510;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(10, 10, 10, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            transition: background 0.15s, transform 0.12s;
+        }
+        #globalMicBtn:active { transform: scale(0.9); }
+        #globalMicBtn.mic-muted { background: rgba(220, 38, 38, 0.7); }
+        #globalMicBtn svg { width: 18px; height: 18px; }
+
         #liveRecBtn {
             width: 72px;
             height: 72px;
@@ -4902,6 +4927,12 @@
                 <svg id="micOffIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
             </button>
         </div>
+
+        <!-- Global mic toggle (visible in browse mode when coach is connected) -->
+        <button id="globalMicBtn" onclick="toggleMic()" title="Mute Coach">
+            <svg class="gmic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <svg class="gmic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.49-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+        </button>
 
         <!-- ============================================
              SETTINGS BOTTOM SHEET
@@ -7652,14 +7683,33 @@ This is a demo — make them feel excited about the coaching experience.`;
             if (wasAnalyzing) tennisAI.startAnalysis();
         }
 
-        // Mic/Coach Toggle
+        // Show/hide global mic FAB based on coach connection + app mode
+        function updateGlobalMicBtn() {
+            const btn = document.getElementById('globalMicBtn');
+            const coachConnected = typeof gptVoiceCoach !== 'undefined' && gptVoiceCoach.isConnected;
+            const liveActive = document.getElementById('liveSessionControls').classList.contains('active');
+            btn.style.display = (coachConnected && !liveActive) ? 'flex' : 'none';
+        }
+        // Poll every 2s so button appears when coach connects/disconnects
+        setInterval(updateGlobalMicBtn, 2000);
+
+        // Mic/Coach Toggle (syncs live + global buttons)
         function toggleMic() {
             if (typeof gptVoiceCoach === 'undefined') return;
             const muted = !gptVoiceCoach.micMuted;
             gptVoiceCoach.setMicMuted(muted);
+
+            // Sync live session button
             document.getElementById('micOnIcon').style.display = muted ? 'none' : '';
             document.getElementById('micOffIcon').style.display = muted ? '' : 'none';
             document.getElementById('liveMicBtn').classList.toggle('mic-muted', muted);
+
+            // Sync global floating button
+            const gb = document.getElementById('globalMicBtn');
+            gb.querySelector('.gmic-on').style.display = muted ? 'none' : '';
+            gb.querySelector('.gmic-off').style.display = muted ? '' : 'none';
+            gb.classList.toggle('mic-muted', muted);
+
             showToast(muted ? 'Coach mic off' : 'Coach mic on');
         }
 
@@ -8939,6 +8989,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             cam.style.display = 'block';
             cam.style.opacity = '1';
             document.getElementById('liveSessionControls').classList.add('active');
+            updateGlobalMicBtn();
 
             // Show live-mode overlays
             document.querySelector('.status-bar').style.display = '';
@@ -9008,6 +9059,7 @@ This is a demo — make them feel excited about the coaching experience.`;
             document.getElementById('cameraContainer').style.display = 'none';
             document.getElementById('bottomTabBar').style.display = 'flex';
             document.getElementById('tabContent').classList.add('active');
+            updateGlobalMicBtn();
             switchTab('home');
         }
 
