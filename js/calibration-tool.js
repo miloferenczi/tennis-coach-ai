@@ -72,6 +72,11 @@ class CalibrationTool {
       label = 'professional',
       player = 'unknown',
       strokeType = 'all',
+      ntrpLevel = null,
+      cameraAngle = null,
+      handedness = null,
+      videoSpeed = 1,
+      notes = '',
       onProgress = null,
       onStrokeDetected = null
     } = options;
@@ -81,6 +86,11 @@ class CalibrationTool {
       label,
       player,
       strokeType,
+      ntrpLevel,
+      cameraAngle,
+      handedness,
+      videoSpeed,
+      notes,
       strokes: [],
       metrics: {},
       startTime: Date.now()
@@ -91,29 +101,46 @@ class CalibrationTool {
     this.landmarkFilter = new LandmarkFilter();
     this.analyzer.setLandmarkFilter(this.landmarkFilter);
 
+    // Set handedness if provided (skip auto-detection)
+    if (handedness && handedness !== 'unknown') {
+      this.analyzer.dominantHand = handedness;
+      if (this.analyzer.footworkAnalyzer) this.analyzer.footworkAnalyzer.setDominantHand(handedness);
+      if (this.analyzer.serveAnalyzer) this.analyzer.serveAnalyzer.setDominantHand(handedness);
+      if (this.analyzer.motionSequenceAnalyzer?.kineticChainAnalyzer) {
+        this.analyzer.motionSequenceAnalyzer.kineticChainAnalyzer.setDominantHand(handedness);
+      }
+      if (this.analyzer.physicsAnalyzer) this.analyzer.physicsAnalyzer.setDominantHand(handedness);
+    }
+
     // Load video
     const videoInfo = await this.loadVideo(file);
-    console.log(`Calibrating video: ${videoInfo.duration.toFixed(1)}s, ${videoInfo.width}x${videoInfo.height}`);
+    console.log(`Calibrating video: ${videoInfo.duration.toFixed(1)}s, ${videoInfo.width}x${videoInfo.height}, speed=${videoSpeed}x`);
 
-    // Process video frame by frame
+    // Adjust frame sampling for slow-motion videos
+    // videoSpeed: 1 = real-time, 0.5 = 0.5x slow-mo, 0.25 = 0.25x slow-mo
+    const speedMultiplier = videoSpeed || 1;
+    const frameSkip = Math.round(1 / speedMultiplier);  // 1x→1, 0.5x→2, 0.25x→4
+
     const fps = 30;
     const totalFrames = Math.floor(videoInfo.duration * fps);
-    const frameInterval = 1;  // Analyze every frame for accuracy
+    const effectiveFrames = Math.floor(totalFrames / frameSkip);
 
     let processedFrames = 0;
     let lastStrokeCount = 0;
 
-    for (let frameNum = 0; frameNum < totalFrames && this.isCalibrating; frameNum += frameInterval) {
-      const time = frameNum / fps;
+    for (let frameNum = 0; frameNum < totalFrames && this.isCalibrating; frameNum += frameSkip) {
+      const videoTime = frameNum / fps;
+      // Scale timestamps to real-time equivalent
+      const realTime = videoTime * speedMultiplier;
 
       // Seek to frame
-      await this.seekToTime(time);
+      await this.seekToTime(videoTime);
 
       // Draw frame to canvas
       this.ctx.drawImage(this.video, 0, 0, this.canvas.width, this.canvas.height);
 
-      // Set timestamp for onPoseResults callback (ms)
-      this._frameTimestamp = time * 1000;
+      // Set timestamp for onPoseResults callback (ms) — use real-time timestamp
+      this._frameTimestamp = realTime * 1000;
 
       // Run pose detection
       await this.pose.send({ image: this.canvas });
@@ -134,8 +161,9 @@ class CalibrationTool {
         onProgress({
           progress: (frameNum / totalFrames) * 100,
           framesProcessed: processedFrames,
+          totalFrames: effectiveFrames,
           strokesDetected: this.calibrationData.strokes.length,
-          currentTime: time
+          currentTime: videoTime
         });
       }
     }
@@ -231,6 +259,12 @@ class CalibrationTool {
     const strokeRecord = {
       timestamp: strokeData.timestamp,
       type: strokeData.type,
+
+      // Calibration metadata
+      ntrpLevel: this.calibrationData.ntrpLevel,
+      cameraAngle: this.calibrationData.cameraAngle,
+      handedness: this.calibrationData.handedness,
+      videoSpeed: this.calibrationData.videoSpeed,
 
       // Physics metrics
       velocity: strokeData.velocity?.magnitude || 0,
@@ -404,6 +438,11 @@ class CalibrationTool {
       label: this.calibrationData.label,
       player: this.calibrationData.player,
       strokeType: this.calibrationData.strokeType,
+      ntrpLevel: this.calibrationData.ntrpLevel,
+      cameraAngle: this.calibrationData.cameraAngle,
+      handedness: this.calibrationData.handedness,
+      videoSpeed: this.calibrationData.videoSpeed,
+      notes: this.calibrationData.notes,
       totalStrokes: strokes.length,
       normalizedStrokes: normalizedCount,
       duration: (Date.now() - this.calibrationData.startTime) / 1000,
@@ -818,6 +857,3 @@ class CalibrationTool {
     console.log('Calibration data cleared');
   }
 }
-
-// Global instance
-const calibrationTool = new CalibrationTool();

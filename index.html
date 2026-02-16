@@ -45,8 +45,6 @@
     <script src="js/motion-sequence-analyzer.js"></script>
     <script src="js/biomechanical-checkpoints.js"></script>
     <script src="js/diagnostic-logger.js"></script>
-    <script src="js/calibration-tool.js"></script>
-    <script src="js/threshold-updater.js"></script>
 
     <!-- Sport Configuration -->
     <script src="js/sport-loader.js"></script>
@@ -4952,17 +4950,6 @@
                     <div class="profile-row-value" id="settingsGhostStatus">Off</div>
                 </div>
 
-                <!-- Calibration -->
-                <div class="profile-row" onclick="openCalibrationModal(); closeSettings();">
-                    <div class="profile-row-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </div>
-                    <div class="profile-row-text">Calibration</div>
-                    <div class="profile-row-chevron">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </div>
-                </div>
-
                 <!-- Set Password (only visible when authenticated) -->
                 <div class="profile-row" id="settingsSetPassword" style="display:none;" onclick="openSetPasswordModal(); closeSettings();">
                     <div class="profile-row-icon">
@@ -5181,84 +5168,6 @@
             </div>
         </div>
 
-        <!-- Calibration Modal -->
-        <div id="calibrationModal" class="modal-overlay">
-            <div class="modal" style="max-width: 600px;">
-                <div class="modal-header">
-                    <div class="modal-title">Calibration Tool</div>
-                    <button class="modal-close" onclick="closeCalibrationModal()">&times;</button>
-                </div>
-                <div id="calibrationContent">
-                    <p style="color: rgba(255,255,255,0.7); margin-bottom: 20px;">
-                        Upload professional tennis videos to calibrate the analysis thresholds.
-                        Use slow-motion court-level footage for best results.
-                    </p>
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
-                        <div>
-                            <label style="font-size: 12px; color: rgba(255,255,255,0.6);">Skill Level</label>
-                            <select id="calibrationLabel" style="width: 100%; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white;">
-                                <option value="professional">Professional</option>
-                                <option value="advanced">Advanced</option>
-                                <option value="intermediate">Intermediate</option>
-                                <option value="beginner">Beginner</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="font-size: 12px; color: rgba(255,255,255,0.6);">Player Name</label>
-                            <input type="text" id="calibrationPlayer" placeholder="e.g., Djokovic" style="width: 100%; padding: 8px; border-radius: 8px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.2); color: white;">
-                        </div>
-                    </div>
-
-                    <div id="calibrationUploadZone" style="border: 2px dashed rgba(255,255,255,0.3); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; margin-bottom: 20px;">
-                        <div style="font-size: 18px; font-weight: bold; letter-spacing: 2px; margin-bottom: 12px;">UPLOAD</div>
-                        <div>Drop video here or click to upload</div>
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.5); margin-top: 8px;">MP4, MOV, WebM supported</div>
-                        <input type="file" id="calibrationFileInput" accept="video/*" style="display: none;">
-                    </div>
-
-                    <div id="calibrationProgress" style="display: none; margin-bottom: 20px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span id="calibrationStatus">Processing...</span>
-                            <span id="calibrationStrokeCount">0 strokes</span>
-                        </div>
-                        <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden;">
-                            <div id="calibrationProgressBar" style="height: 100%; background: var(--accent-ozone, #A0F0FF); width: 0%; transition: width 0.3s;"></div>
-                        </div>
-                    </div>
-
-                    <div id="calibrationResults" style="display: none;">
-                        <!-- Results will be inserted here -->
-                    </div>
-
-                    <div style="display: flex; gap: 12px; margin-top: 20px;">
-                        <button class="btn btn-secondary" onclick="showCalibrationStats()" style="flex: 1;">
-                            View All Stats
-                        </button>
-                        <button class="btn btn-secondary" onclick="exportCalibrationData()" style="flex: 1;">
-                            Export Data
-                        </button>
-                    </div>
-
-                    <!-- Threshold Update Actions -->
-                    <div id="thresholdUpdateSection" style="display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1);">
-                        <div style="font-size: 14px; font-weight: bold; margin-bottom: 12px;">Apply Calibration</div>
-                        <p style="font-size: 12px; color: rgba(255,255,255,0.6); margin-bottom: 16px;">
-                            Apply calibrated thresholds to improve stroke detection accuracy.
-                        </p>
-                        <div style="display: flex; gap: 12px;">
-                            <button class="btn" onclick="applyThresholdsToApp()" style="flex: 1; background: var(--accent-ozone, #A0F0FF);">
-                                Apply Now
-                            </button>
-                            <button class="btn btn-secondary" onclick="exportThresholdUpdates()" style="flex: 1;">
-                                Export Code
-                            </button>
-                        </div>
-                        <div id="thresholdApplyStatus" style="margin-top: 12px; font-size: 12px; color: rgba(255,255,255,0.6);"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Replay Button (fixed, bottom-right) -->
@@ -9456,19 +9365,6 @@ This is a demo — make them feel excited about the coaching experience.`;
                 </div>
             `;
 
-            // Calibration
-            html += `
-                <div class="profile-row" onclick="openCalibrationModal()">
-                    <div class="profile-row-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </div>
-                    <div class="profile-row-text">Calibration</div>
-                    <div class="profile-row-chevron">
-                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                    </div>
-                </div>
-            `;
-
             // Sign out (if authenticated)
             if (typeof supabaseClient !== 'undefined' && supabaseClient.isAuthenticated()) {
                 html += `
@@ -11354,7 +11250,6 @@ This is a demo — make them feel excited about the coaching experience.`;
         document.addEventListener('DOMContentLoaded', () => {
             initVideoUpload();
             initTimelineInteraction();
-            initCalibrationUpload();
             initializeAuth();
 
             // Free tier limit events
@@ -11391,253 +11286,6 @@ This is a demo — make them feel excited about the coaching experience.`;
                 }
             } catch (e) {
                 console.log('Onboarding init:', e);
-            }
-        }
-
-        // ========================================
-        // Calibration Functions
-        // ========================================
-
-        function openCalibrationModal() {
-            document.getElementById('calibrationModal').classList.add('visible');
-        }
-
-        function closeCalibrationModal() {
-            document.getElementById('calibrationModal').classList.remove('visible');
-            if (typeof calibrationTool !== 'undefined') {
-                calibrationTool.cancel();
-            }
-        }
-
-        function initCalibrationUpload() {
-            const uploadZone = document.getElementById('calibrationUploadZone');
-            const fileInput = document.getElementById('calibrationFileInput');
-
-            if (!uploadZone || !fileInput) return;
-
-            uploadZone.addEventListener('click', () => fileInput.click());
-
-            uploadZone.addEventListener('dragover', (e) => {
-                e.preventDefault();
-                uploadZone.style.borderColor = 'var(--accent-ozone, #A0F0FF)';
-            });
-
-            uploadZone.addEventListener('dragleave', () => {
-                uploadZone.style.borderColor = 'rgba(255,255,255,0.3)';
-            });
-
-            uploadZone.addEventListener('drop', (e) => {
-                e.preventDefault();
-                uploadZone.style.borderColor = 'rgba(255,255,255,0.3)';
-                const file = e.dataTransfer.files[0];
-                if (file && file.type.startsWith('video/')) {
-                    startCalibration(file);
-                }
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    startCalibration(file);
-                }
-            });
-        }
-
-        async function startCalibration(file) {
-            const label = document.getElementById('calibrationLabel').value;
-            const player = document.getElementById('calibrationPlayer').value || 'unknown';
-
-            // Show progress
-            document.getElementById('calibrationUploadZone').style.display = 'none';
-            document.getElementById('calibrationProgress').style.display = 'block';
-            document.getElementById('calibrationResults').style.display = 'none';
-
-            try {
-                // Initialize calibration tool
-                await calibrationTool.initialize();
-
-                // Run calibration
-                const results = await calibrationTool.calibrateFromVideo(file, {
-                    label: label,
-                    player: player,
-                    onProgress: (progress) => {
-                        document.getElementById('calibrationProgressBar').style.width = progress.progress + '%';
-                        document.getElementById('calibrationStatus').textContent =
-                            `Processing... ${progress.progress.toFixed(0)}%`;
-                        document.getElementById('calibrationStrokeCount').textContent =
-                            `${progress.strokesDetected} strokes detected`;
-                    },
-                    onStrokeDetected: (stroke, count) => {
-                        console.log(`Calibration stroke #${count}: ${stroke.type}`);
-                    }
-                });
-
-                // Show results
-                displayCalibrationResults(results);
-
-            } catch (error) {
-                console.error('Calibration failed:', error);
-                document.getElementById('calibrationStatus').textContent = 'Calibration failed: ' + error.message;
-            }
-        }
-
-        function displayCalibrationResults(results) {
-            document.getElementById('calibrationProgress').style.display = 'none';
-            document.getElementById('calibrationResults').style.display = 'block';
-
-            if (results.error) {
-                document.getElementById('calibrationResults').innerHTML = `
-                    <div style="color: #f44336; padding: 20px; text-align: center;">
-                        ${results.error}
-                    </div>
-                `;
-                return;
-            }
-
-            let html = `
-                <div class="summary-stats" style="margin-bottom: 20px;">
-                    <div class="summary-stat highlight">
-                        <div class="summary-stat-value">${results.totalStrokes}</div>
-                        <div class="summary-stat-label">Strokes Detected</div>
-                    </div>
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${results.label}</div>
-                        <div class="summary-stat-label">Skill Level</div>
-                    </div>
-                    <div class="summary-stat">
-                        <div class="summary-stat-value">${results.player}</div>
-                        <div class="summary-stat-label">Player</div>
-                    </div>
-                </div>
-            `;
-
-            // Key metrics
-            if (results.metrics) {
-                html += `<div class="summary-section"><div class="summary-section-title">Key Metrics</div>`;
-                html += `<div style="font-size: 13px; background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px;">`;
-
-                const metricsToShow = ['velocity', 'acceleration', 'rotation', 'elbowAngle', 'hipShoulderSeparation'];
-                for (const metric of metricsToShow) {
-                    if (results.metrics[metric]) {
-                        const m = results.metrics[metric];
-                        html += `<div style="margin-bottom: 8px;">
-                            <strong>${metric}:</strong>
-                            avg=${m.avg.toFixed(4)}, range=[${m.min.toFixed(4)} - ${m.max.toFixed(4)}]
-                        </div>`;
-                    }
-                }
-
-                html += `</div></div>`;
-            }
-
-            // Recommended thresholds
-            if (results.recommendedThresholds && Object.keys(results.recommendedThresholds).length > 0) {
-                html += `<div class="summary-section"><div class="summary-section-title">Recommended Thresholds</div>`;
-                html += `<div style="font-size: 12px; background: rgba(76,175,80,0.2); padding: 12px; border-radius: 8px; border: 1px solid rgba(76,175,80,0.3);">`;
-
-                for (const [metric, data] of Object.entries(results.recommendedThresholds)) {
-                    if (data.recommended) {
-                        html += `<div style="margin-bottom: 8px;">
-                            <strong>${metric}:</strong><br>
-                            <span style="color: rgba(255,255,255,0.6);">Current:</span> ${JSON.stringify(data.current)}<br>
-                            <span style="color: var(--accent-ozone, #A0F0FF);">Recommended:</span> ${JSON.stringify(data.recommended)}
-                        </div>`;
-                    }
-                }
-
-                html += `</div></div>`;
-            }
-
-            // Stroke type distribution
-            if (results.distributions?.strokeTypes) {
-                html += `<div class="summary-section"><div class="summary-section-title">Stroke Distribution</div>`;
-                html += `<div style="display: flex; gap: 8px; flex-wrap: wrap;">`;
-                for (const [type, count] of Object.entries(results.distributions.strokeTypes)) {
-                    html += `<span style="background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 4px; font-size: 12px;">
-                        ${type}: ${count}
-                    </span>`;
-                }
-                html += `</div></div>`;
-            }
-
-            html += `
-                <button class="btn" onclick="resetCalibrationUI()" style="width: 100%; margin-top: 16px;">
-                    Calibrate Another Video
-                </button>
-            `;
-
-            document.getElementById('calibrationResults').innerHTML = html;
-
-            // Show threshold update section after successful calibration
-            showThresholdUpdateSection();
-        }
-
-        function resetCalibrationUI() {
-            document.getElementById('calibrationUploadZone').style.display = 'block';
-            document.getElementById('calibrationProgress').style.display = 'none';
-            document.getElementById('calibrationResults').style.display = 'none';
-            document.getElementById('calibrationProgressBar').style.width = '0%';
-            document.getElementById('calibrationFileInput').value = '';
-            // Reset threshold update section
-            document.getElementById('thresholdUpdateSection').style.display = 'none';
-            document.getElementById('thresholdApplyStatus').textContent = '';
-        }
-
-        function showCalibrationStats() {
-            if (typeof calibrationTool === 'undefined') return;
-
-            const stats = calibrationTool.getAggregateStats();
-            calibrationTool.printThresholdComparison();
-
-            if (stats.error) {
-                showToast(stats.error);
-                return;
-            }
-
-            showToast(`Calibration: ${stats.totalRuns} runs, ${stats.totalStrokes} strokes. See console for details.`);
-            console.log('Calibration Stats:', stats);
-        }
-
-        function exportCalibrationData() {
-            if (typeof calibrationTool !== 'undefined') {
-                calibrationTool.exportCalibrationData();
-            }
-        }
-
-        function applyThresholdsToApp() {
-            const statusEl = document.getElementById('thresholdApplyStatus');
-
-            if (typeof thresholdUpdater === 'undefined') {
-                statusEl.textContent = 'ERROR: ThresholdUpdater not loaded';
-                statusEl.style.color = '#f44336';
-                return;
-            }
-
-            const result = thresholdUpdater.applyToRunningApp();
-
-            if (result.success) {
-                statusEl.innerHTML = `Applied ${result.updatedModules.length} module updates!<br>` +
-                    result.updatedModules.map(m => `• ${m}`).join('<br>');
-                statusEl.style.color = 'var(--accent-ozone, #A0F0FF)';
-            } else {
-                statusEl.textContent = `FAILED: ${result.error}`;
-                statusEl.style.color = '#f44336';
-            }
-        }
-
-        function exportThresholdUpdates() {
-            if (typeof thresholdUpdater === 'undefined') {
-                showToast('ThresholdUpdater not loaded');
-                return;
-            }
-
-            thresholdUpdater.exportUpdates();
-        }
-
-        function showThresholdUpdateSection() {
-            const section = document.getElementById('thresholdUpdateSection');
-            if (section && calibrationTool && calibrationTool.calibrationRuns.length > 0) {
-                section.style.display = 'block';
             }
         }
 
